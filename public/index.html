@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MDC — Reporte Mensual de Actividades</title>
 
-  <!-- Libs -->
+  <!-- UI libs -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
@@ -13,28 +13,22 @@
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.min.js"></script>
   <script>dayjs.extend(window.dayjs_plugin_isoWeek);dayjs.extend(window.dayjs_plugin_customParseFormat);</script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+  <!-- Google Maps (Maps + Places) -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&callback=initMap"></script>
+
+  <!-- Export PDF -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
-  <!-- Google Maps -->
-  <script>
-    const GOOGLE_MAPS_API_KEY = "AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4";
-  </script>
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&callback=initMap"></script>
-
   <style>
-    :root{--bg:#0b0d10;--card:#12161b;--text:#e5e7eb;--muted:#9aa4b2;--brand:#ff2a6d}
-    body{background:var(--bg);color:var(--text)}
-    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));background-color:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:1rem}
+    body{background:#0b0d10;color:#e5e7eb}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));background-color:#12161b;border:1px solid rgba(255,255,255,.06);border-radius:1rem}
     .dot{display:inline-block;width:10px;height:10px;border-radius:9999px;margin-right:.5rem}
-    .nowrap{white-space:nowrap}
     #map{min-height:420px;height:420px}
-    /* Mejor contraste de controles */
-    .formc{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f8fafc}
+    .formc{background-color:#1e293b;color:#f1f5f9;border:1px solid #334155}
     .formc::placeholder{color:#cbd5e1}
-    .formc:focus{outline:2px solid #22c55e;outline-offset:0}
-    select.formc option{color:#0b0d10;background:#e5e7eb}
-    /* Alturas para charts */
+    select.formc option{color:#000}
     .chart-h{height:300px}
     .chart-h-lg{height:320px}
   </style>
@@ -85,9 +79,7 @@
         <option>Vacaciones</option>
       </select>
       <select id="fModalidad" class="px-3 py-2 rounded-lg formc">
-        <option value="">Remoto/Presencial</option>
-        <option>Remoto</option>
-        <option>Presencial</option>
+        <option value="">Remoto/Presencial</option><option>Remoto</option><option>Presencial</option>
       </select>
       <select id="fGarantia" class="px-3 py-2 rounded-lg formc">
         <option value="">Garantía / No</option><option>Sí</option><option>No</option>
@@ -96,32 +88,18 @@
     </div>
   </section>
 
-  <!-- GRÁFICAS FILA 1: Donas -->
-  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-    <div class="card p-4">
-      <h3 class="mb-2">Distribución por actividad</h3>
-      <div class="chart-h"><canvas id="chartActividad"></canvas></div>
-    </div>
-    <div class="card p-4">
-      <h3 class="mb-2">Garantía vs No garantía</h3>
-      <div class="chart-h"><canvas id="chartGarantia"></canvas></div>
-    </div>
-    <div class="card p-4">
-      <h3 class="mb-2">Modalidad (Remoto vs Presencial)</h3>
-      <div class="chart-h"><canvas id="chartModalidad"></canvas></div>
-    </div>
-  </section>
-
-  <!-- GRÁFICAS FILA 2: Barras -->
+  <!-- GRÁFICAS -->
   <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <div class="card p-4">
-      <h3 class="mb-2">Actividades por técnico</h3>
-      <div class="chart-h-lg"><canvas id="chartTechCount"></canvas></div>
-    </div>
-    <div class="card p-4">
-      <h3 class="mb-2">Ingresos por técnico (MXN)</h3>
-      <div class="chart-h-lg"><canvas id="chartRevenue"></canvas></div>
-    </div>
+    <div class="card p-4"><h3 class="mb-2">Actividades por técnico</h3><div class="chart-h-lg"><canvas id="chartTechCount"></canvas></div></div>
+    <div class="card p-4"><h3 class="mb-2">Remoto vs Presencial</h3><div class="chart-h-lg"><canvas id="chartRemPre"></canvas></div></div>
+  </section>
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <div class="card p-4"><h3 class="mb-2">Distribución por actividad</h3><div class="chart-h"><canvas id="chartActividad"></canvas></div></div>
+    <div class="card p-4"><h3 class="mb-2">Garantía vs No garantía</h3><div class="chart-h"><canvas id="chartGarantia"></canvas></div></div>
+  </section>
+  <section class="card p-4 mb-6">
+    <h3 class="mb-2">Ingresos por técnico (MXN)</h3>
+    <div class="chart-h-lg"><canvas id="chartRevenue"></canvas></div>
   </section>
 
   <!-- MAPA -->
@@ -133,36 +111,8 @@
     <div id="map" class="w-full rounded-xl"></div>
   </section>
 
-  <!-- TABLA Y FORM -->
-  <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-16">
-    <!-- Tabla -->
-    <div class="card p-4 overflow-visible">
-      <div class="flex items-center justify-between mb-2">
-        <h3>Registros</h3>
-        <button id="btnExportCSV" class="text-xs px-3 py-1 rounded-lg border border-white/10 hover:bg-white/5">Descargar CSV</button>
-      </div>
-      <table class="w-full text-sm table-auto border-collapse">
-        <thead>
-          <tr class="text-left text-slate-400">
-            <th class="py-2 px-3">Inicio</th>
-            <th class="py-2 px-3">Fin</th>
-            <th class="py-2 px-3">Técnico</th>
-            <th class="py-2 px-3">Actividad</th>
-            <th class="py-2 px-3">Modalidad</th>
-            <th class="py-2 px-3">Garantía</th>
-            <th class="py-2 px-3">Cobrado</th>
-            <th class="py-2 px-3">Monto</th>
-            <th class="py-2 px-3">Cliente</th>
-            <th class="py-2 px-3">Teléfono</th>
-            <th class="py-2 px-3">Ciudad</th>
-            <th class="py-2 px-3">Notas</th>
-          </tr>
-        </thead>
-        <tbody id="tbody" class="divide-y divide-white/10 text-sm"></tbody>
-      </table>
-    </div>
-
-    <!-- Captura -->
+  <!-- CAPTURAR (arriba) -->
+  <section class="mb-6">
     <div class="card p-4">
       <h3 class="mb-2">Capturar actividad</h3>
       <form id="form" class="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-min">
@@ -241,15 +191,46 @@
     </div>
   </section>
 
+  <!-- REGISTROS (abajo) -->
+  <section class="mb-16">
+    <div class="card p-4 overflow-visible">
+      <div class="flex items-center justify-between mb-2">
+        <h3>Registros</h3>
+        <button id="btnExportCSV" class="text-xs px-3 py-1 rounded-lg border border-white/10 hover:bg-white/5">Descargar CSV</button>
+      </div>
+      <table class="w-full text-sm table-auto border-collapse">
+        <thead>
+          <tr class="text-left text-slate-400">
+            <th class="py-2 px-3">Inicio</th>
+            <th class="py-2 px-3">Fin</th>
+            <th class="py-2 px-3">Técnico</th>
+            <th class="py-2 px-3">Actividad</th>
+            <th class="py-2 px-3">Modalidad</th>
+            <th class="py-2 px-3">Garantía</th>
+            <th class="py-2 px-3">Cobrado</th>
+            <th class="py-2 px-3">Monto</th>
+            <th class="py-2 px-3">Cliente</th>
+            <th class="py-2 px-3">Teléfono</th>
+            <th class="py-2 px-3">Ciudad</th>
+            <th class="py-2 px-3">Notas</th>
+          </tr>
+        </thead>
+        <tbody id="tbody" class="divide-y divide-white/10 text-sm"></tbody>
+      </table>
+    </div>
+  </section>
+
   <!-- FOOTER -->
-  <footer class="text-center text-xs text-slate-500 pb-10">© MDC Dental — Sistema de Reporte Mensual · Desarrollado por Israel Landa Fuentes</footer>
+  <footer class="text-center text-xs text-slate-500 pb-10">
+    © MDC Dental — Reporte Mensual · Desarrollado por Israel Landa Fuentes
+  </footer>
 </div>
 
 <script>
 /* ========= CONFIG ========= */
 const SHEETS_ENDPOINT = "/.netlify/functions/sheets";
 
-/* ========= DEMO ========= */
+/* ========= DEMO (fallback si no hay hoja o falla) ========= */
 const demoData = [
   {fecha_inicio:"2025-08-02",hora_inicio:"09:00",fecha_fin:"2025-08-02",hora_fin:"10:15",tecnico:"Israel",actividad:"Soporte de garantía",modalidad:"Remoto",garantia:"Sí",cliente:"Clínica Sonrisa Feliz",telefono:"3312345678",ciudad:"Guadalajara, JAL",notas:"Actualización de software",lat:20.6736,lng:-103.344,cobrado:"Sí",monto:1200},
   {fecha_inicio:"2025-08-03",hora_inicio:"11:30",fecha_fin:"2025-08-03",hora_fin:"14:00",tecnico:"Selene",actividad:"Instalación",modalidad:"Presencial",garantia:"",cliente:"Dental Zapopan",telefono:"3323456789",ciudad:"Zapopan, JAL",notas:"Calibración fresadora",lat:20.7236,lng:-103.389,cobrado:"No",monto:0},
@@ -277,6 +258,17 @@ function initMonthSelect(){
   sel.value=state.month; sel.addEventListener('change',e=>{state.month=e.target.value; renderAll();});
 }
 
+/* ========= Parse/Format ========= */
+function parseDay(d){
+  if (!d) return null;
+  if (Object.prototype.toString.call(d)==='[object Date]'){const m=dayjs(d);return m.isValid()?m:null;}
+  const s=String(d).trim();
+  let m=dayjs(s,['YYYY-MM-DD','DD/MM/YYYY','D/M/YYYY','YYYY/MM/DD'],true);
+  if(!m.isValid()) m=dayjs(s); // fallback (ISO)
+  return m.isValid()?m:null;
+}
+function formatMoney(n){try{return n.toLocaleString('es-MX',{style:'currency',currency:'MXN'});}catch(e){return '$'+(n||0).toFixed(2);}}
+
 /* ========= Load/Save ========= */
 async function loadData(){
   try{
@@ -291,7 +283,6 @@ async function loadData(){
   }
   rebuildClientBook(); populateClientDatalist();
 }
-
 function normalizeRowFromSheet(r){
   const rawActividad = r.actividad || r.Actividad || '';
   const rawModalidad = r.modalidad || r.Modalidad || (['Remoto','Presencial'].includes(r.tipo)? r.tipo : '');
@@ -319,7 +310,6 @@ function normalizeRowFromSheet(r){
     monto:        r.monto? Number(r.monto) : 0,
   };
 }
-
 async function saveRow(p){
   try{
     const res=await fetch(SHEETS_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
@@ -328,7 +318,7 @@ async function saveRow(p){
   }catch(err){console.error(err); setBanner('Error al guardar. Revisa tu Apps Script/endpoint.','error');}
 }
 
-/* ========= Client autocomplete ========= */
+/* ========= Client autocomplete (local) ========= */
 function loadClientBookLS(){try{const raw=localStorage.getItem('mdc_client_book');return raw?JSON.parse(raw):{};}catch(e){return {};}
 }
 function saveClientBookLS(){localStorage.setItem('mdc_client_book',JSON.stringify(state.clientBook));}
@@ -345,7 +335,8 @@ function populateClientDatalist(){
 function getFiltered(){
   const {tecnico,actividad,modalidad,garantia,q}=state.filters; const [y,m]=state.month.split('-');
   return state.rows.filter(r=>{
-    const start=r.fecha_inicio||r.fecha; const inMonth=start&&dayjs(start).format('YYYY-MM')===`${y}-${m}`;
+    const md=parseDay(r.fecha_inicio||r.fecha);
+    const inMonth = md && md.format('YYYY-MM')===`${y}-${m}`;
     if(!inMonth) return false;
     if(tecnico && r.tecnico!==tecnico) return false;
     if(actividad && r.actividad!==actividad) return false;
@@ -357,7 +348,6 @@ function getFiltered(){
 }
 
 /* ========= KPIs / Charts ========= */
-function formatMoney(n){try{return n.toLocaleString('es-MX',{style:'currency',currency:'MXN'});}catch(e){return '$'+(n||0).toFixed(2);}}
 function renderKPIs(rows){
   const total=rows.length;
   const soporte=rows.filter(r=> r.actividad==='Soporte de garantía' || r.actividad==='Soporte fuera de garantía').length;
@@ -370,85 +360,64 @@ function renderKPIs(rows){
   document.getElementById('kpiEvt').innerText=otros;
   document.getElementById('kpiCobrado').innerText=formatMoney(cob);
 }
-
 function ensureChart(id,config){
   const ctx=document.getElementById(id).getContext('2d');
   if(state.charts[id]) state.charts[id].destroy();
-  // Para permitir que respete la altura del contenedor:
   config.options = config.options || {};
-  config.options.maintainAspectRatio = false;
   config.options.responsive = true;
+  config.options.maintainAspectRatio = false;
   state.charts[id]=new Chart(ctx,config);
 }
-
 function renderCharts(rows){
   const tecnicos=['Israel','Selene','Diego','Yared'];
   const acts=['Soporte de garantía','Soporte fuera de garantía','Instalación','Evento','Proyecto','Curso','Vacaciones'];
 
-  // Donut Actividad
-  ensureChart('chartActividad',{
-    type:'doughnut',
-    data:{labels:acts,datasets:[{data:acts.map(a=>rows.filter(r=>r.actividad===a).length)}]},
-    options:{plugins:{legend:{position:'bottom'}}}
-  });
-
-  // Donut Garantía
-  const g=rows.filter(r=>r.garantia==='Sí').length, ng=rows.filter(r=>r.garantia==='No').length;
-  ensureChart('chartGarantia',{
-    type:'doughnut',
-    data:{labels:['Garantía','No garantía'],datasets:[{data:[g,ng]}]},
-    options:{plugins:{legend:{position:'bottom'}}}
-  });
-
-  // Donut Modalidad
-  const rem=rows.filter(r=>r.modalidad==='Remoto').length, pre=rows.filter(r=>r.modalidad==='Presencial').length;
-  ensureChart('chartModalidad',{
-    type:'doughnut',
-    data:{labels:['Remoto','Presencial'],datasets:[{data:[rem,pre]}]},
-    options:{plugins:{legend:{position:'bottom'}}}
-  });
-
-  // Barra Actividades por técnico (total de registros por técnico)
-  const techCounts = tecnicos.map(t => rows.filter(r=>r.tecnico===t).length);
+  // Actividades por técnico (conteo)
+  const counts = tecnicos.map(t => rows.filter(r=>r.tecnico===t).length);
   ensureChart('chartTechCount',{
     type:'bar',
-    data:{labels:tecnicos,datasets:[{label:'Total actividades',data:techCounts}]},
-    options:{
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>`${c.parsed.y||0} actividades`}}},
-      scales:{y:{beginAtZero:true}}
-    }
+    data:{labels:tecnicos,datasets:[{label:'Actividades',data:counts}]},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>`${c.parsed.y||0} actividades`}}},scales:{y:{beginAtZero:true}}}
   });
 
-  // Barra Revenue por técnico
+  // Remoto vs Presencial
+  const rem=rows.filter(r=>r.modalidad==='Remoto').length, pre=rows.filter(r=>r.modalidad==='Presencial').length;
+  ensureChart('chartRemPre',{type:'doughnut',data:{labels:['Remoto','Presencial'],datasets:[{data:[rem,pre]}]},options:{plugins:{legend:{position:'bottom'}}}});
+
+  // Distribución por actividad
+  ensureChart('chartActividad',{type:'doughnut',data:{labels:acts,datasets:[{data:acts.map(a=>rows.filter(r=>r.actividad===a).length)}]},options:{plugins:{legend:{position:'bottom'}}}});
+
+  // Garantía
+  const g=rows.filter(r=>r.garantia==='Sí').length, ng=rows.filter(r=>r.garantia==='No').length;
+  ensureChart('chartGarantia',{type:'doughnut',data:{labels:['Garantía','No garantía'],datasets:[{data:[g,ng]}]},options:{plugins:{legend:{position:'bottom'}}}});
+
+  // Revenue por técnico
   const rev=tecnicos.map(t=>rows.reduce((sum,r)=>sum+(r.tecnico===t&&r.cobrado==='Sí'?(Number(r.monto)||0):0),0));
-  ensureChart('chartRevenue',{
-    type:'bar',
-    data:{labels:tecnicos,datasets:[{label:'MXN',data:rev}]},
-    options:{
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>formatMoney(c.parsed.y)}}},
-      scales:{y:{beginAtZero:true,ticks:{callback:(v)=>formatMoney(v)}}}
-    }
-  });
+  ensureChart('chartRevenue',{type:'bar',data:{labels:tecnicos,datasets:[{label:'MXN',data:rev}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>formatMoney(c.parsed.y)}}},scales:{y:{beginAtZero:true,ticks:{callback:(v)=>formatMoney(v)}}}}});
 }
 
 /* ========= Table ========= */
 function renderTable(rows){
   const tbody=document.getElementById('tbody');
-  const fmt=(d,t)=> d?(t?dayjs(`${d} ${t}`).format('DD/MM/YYYY HH:mm'):dayjs(d).format('DD/MM/YYYY')):'';
+  function fmt(d,t){
+    const base=parseDay(d); if(!base) return '';
+    if(t){const m=dayjs(`${base.format('YYYY-MM-DD')} ${t}`,'YYYY-MM-DD HH:mm',true); return m.isValid()?m.format('DD/MM/YYYY HH:mm'):base.format('DD/MM/YYYY');}
+    return base.format('DD/MM/YYYY');
+  }
   tbody.innerHTML=rows.map(r=>`
     <tr>
-      <td class="py-2 px-3 nowrap align-top">${fmt(r.fecha_inicio,r.hora_inicio)}</td>
-      <td class="py-2 px-3 nowrap align-top">${fmt(r.fecha_fin,r.hora_fin)}</td>
-      <td class="py-2 px-3 align-top">${r.tecnico||''}</td>
-      <td class="py-2 px-3 align-top">${r.actividad||''}</td>
-      <td class="py-2 px-3 align-top">${r.modalidad||''}</td>
-      <td class="py-2 px-3 align-top">${r.garantia||''}</td>
-      <td class="py-2 px-3 align-top">${r.cobrado||'No'}</td>
-      <td class="py-2 px-3 align-top">${r.cobrado==='Sí'?formatMoney(Number(r.monto)||0):''}</td>
-      <td class="py-2 px-3 align-top whitespace-normal break-words">${r.cliente||''}</td>
-      <td class="py-2 px-3 align-top whitespace-normal break-words">${r.telefono||''}</td>
-      <td class="py-2 px-3 align-top whitespace-normal break-words">${r.ciudad||''}</td>
-      <td class="py-2 px-3 align-top whitespace-normal break-words">${r.notas||''}</td>
+      <td class="py-2 px-3">${fmt(r.fecha_inicio,r.hora_inicio)}</td>
+      <td class="py-2 px-3">${fmt(r.fecha_fin,r.hora_fin)}</td>
+      <td class="py-2 px-3">${r.tecnico||''}</td>
+      <td class="py-2 px-3">${r.actividad||''}</td>
+      <td class="py-2 px-3">${r.modalidad||''}</td>
+      <td class="py-2 px-3">${r.garantia||''}</td>
+      <td class="py-2 px-3">${r.cobrado||'No'}</td>
+      <td class="py-2 px-3">${r.cobrado==='Sí'?formatMoney(Number(r.monto)||0):''}</td>
+      <td class="py-2 px-3 whitespace-normal break-words">${r.cliente||''}</td>
+      <td class="py-2 px-3 whitespace-normal break-words">${r.telefono||''}</td>
+      <td class="py-2 px-3 whitespace-normal break-words">${r.ciudad||''}</td>
+      <td class="py-2 px-3 whitespace-normal break-words">${r.notas||''}</td>
     </tr>
   `).join('');
 }
