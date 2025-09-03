@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="h-full">
 <head>
   <meta charset="utf-8" />
@@ -482,6 +482,65 @@ function setClickMarker(latLng){
   clickMarker = new google.maps.Marker({ position: latLng, map: gmap, animation: google.maps.Animation.DROP });
 }
 
+
+// helpers seguros
+function toNum(n){ const v = Number(n); return Number.isFinite(v) ? v : null; }
+function clearMarkers(){
+  gmarkers.forEach(m => m.setMap(null));
+  gmarkers = [];
+}
+
+// PINTAR MARCADORES DE LOS REGISTROS
+function renderMarkers(rows){
+  if(!gmap) return; // mapa aún no listo
+  clearMarkers();
+
+  const bounds = new google.maps.LatLngBounds();
+  let hasAny = false;
+
+  rows.forEach((r) => {
+    const lat = toNum(r.lat);
+    const lng = toNum(r.lng || r.long); // por si algún dato viejo trae "long"
+    if(lat == null || lng == null) return;
+
+    const pos = { lat, lng };
+    const marker = new google.maps.Marker({
+      position: pos,
+      map: gmap,
+      title: `${r.cliente || 'Cliente'} — ${r.tecnico || ''}`,
+    });
+
+    const html = `
+      <div style="min-width:220px">
+        <div><strong>${r.cliente || 'Cliente'}</strong></div>
+        <div>${r.ciudad || ''}</div>
+        <div>${(r.tipo || '')} · Garantía: ${(r.garantia || '')}</div>
+        <div>Por: ${r.tecnico || ''}</div>
+        <div>${(r.fecha_inicio || '')} ${r.hora_inicio || ''}</div>
+        ${r.cobrado === 'Sí' ? `<div><strong>Monto:</strong> $${Number(r.monto||0).toLocaleString('es-MX')}</div>` : ''}
+      </div>
+    `;
+    const infow = new google.maps.InfoWindow({ content: html });
+    marker.addListener('click', () => infow.open({ anchor: marker, map: gmap }));
+
+    gmarkers.push(marker);
+    bounds.extend(pos);
+    hasAny = true;
+  });
+
+  if(hasAny){
+    // si hay 1 solo, centra y acerca; si hay varios, fitBounds
+    if (gmarkers.length === 1){
+      gmap.setCenter(gmarkers[0].getPosition());
+      gmap.setZoom(14);
+    } else {
+      gmap.fitBounds(bounds, 60);
+    }
+  }
+}
+
+
+
 // ========= CSV/PDF =========
 function exportCSV(rows){
   const header = ['fecha_inicio','hora_inicio','fecha_fin','hora_fin','tecnico','tipo','garantia','cobrado','monto','cliente','telefono','ciudad','notas','lat','lng'];
@@ -525,6 +584,7 @@ function renderAll(){
   renderKPIs(rows);
   renderCharts(rows);
   renderTable(rows);
+  renderMarkers(rows); 
 }
 
 // ========= Bind =========
