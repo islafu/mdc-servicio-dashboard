@@ -19,7 +19,7 @@
   <script>
     const GOOGLE_MAPS_API_KEY = "AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4";
   </script>
-  <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places"></script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places"></script>
 
   <!-- Exportar a PDF -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -209,7 +209,7 @@
 
 <script>
 // ========= CONFIG =========
-const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxEuF70m2SSBhmLiB8yWSawJrZeD6Q_EEJJM7aPNLxW5-7xED81ofgugHGmPYjzIWDK/exec"; // Pega tu Web App /exec aquí
+const SHEETS_ENDPOINT = "/.netlify/functions/sheets"; // Pega tu Web App /exec aquí
 
 // ========= DEMO =========
 const demoData = [
