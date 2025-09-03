@@ -1,4 +1,4 @@
-[build]
+﻿[build]
   publish = "public"
   functions = "netlify/functions"
 
@@ -19,3 +19,9 @@
     worker-src 'self' blob:;
     frame-ancestors 'none';
     """
+
+# Atajo opcional: /api/sheets -> /.netlify/functions/sheets
+[[redirects]]
+  from = "/api/sheets"
+  to = "/.netlify/functions/sheets"
+  status = 200
