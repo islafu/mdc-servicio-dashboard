@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDC — Reporte Mensual de Servicio Técnico</title>
+  <!-- TailwindCSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Day.js -->
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/isoWeek.min.js"></script>
+  <script>
+    dayjs.extend(window.dayjs_plugin_isoWeek);
+  </script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+  <!-- Google Maps JS API (Maps + Places) -->
+  <script>
+    // 🔑 Reemplaza este valor con tu API Key real ANTES de publicar.
+    const GOOGLE_MAPS_API_KEY = "AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4";
+  </script>
+  <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places"></script>
+
+  <!-- Exportar a PDF -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <style>
+    :root{color-scheme:dark light}
+    body{--bg:#0b0d10; --card:#12161b; --muted:#9aa4b2; --brand:#22c55e}
+    body{background:var(--bg); color:#e5e7eb}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); background-color:var(--card); border:1px solid rgba(255,255,255,0.06); border-radius:1rem}
+    .glass{backdrop-filter: blur(8px)}
+    .dot{display:inline-block;width:10px;height:10px;border-radius:9999px;margin-right:.5rem}
+  </style>
+</head>
+<body class="h-full">
+  <div class="max-w-7xl mx-auto p-4 sm:p-6">
+    <!-- Header / Portada -->
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-400/20">
+          <i data-lucide="activity" class="w-6 h-6 text-emerald-400"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-semibold">MDC — Reporte de Actividades de Servicio Técnico</h1>
+          <p class="text-sm text-slate-400">Dashboard interactivo · Captura + KPIs + Mapas + PDF</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2 items-center">
+        <select id="monthSelect" class="card px-3 py-2 text-sm">
+          <!-- Se rellena dinámicamente -->
+        </select>
+        <button id="exportPdfBtn" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-medium">Exportar PDF</button>
+      </div>
+    </header>
+
+    <!-- Avisos -->
+    <div id="banner" class="hidden card p-3 mb-4 text-sm"></div>
+
+    <!-- KPIs -->
+    <section id="kpis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="card p-4">
+        <div class="text-slate-400 text-xs">Servicios totales</div>
+        <div id="kpiTotal" class="text-3xl font-semibold mt-1">0</div>
+      </div>
+      <div class="card p-4">
+        <div class="text-slate-400 text-xs flex items-center"><span class="dot bg-emerald-400"></span>Remoto</div>
+        <div id="kpiRemoto" class="text-3xl font-semibold mt-1">0</div>
+      </div>
+      <div class="card p-4">
+        <div class="text-slate-400 text-xs flex items-center"><span class="dot bg-sky-400"></span>Presencial</div>
+        <div id="kpiPresencial" class="text-3xl font-semibold mt-1">0</div>
+      </div>
+      <div class="card p-4">
+        <div class="text-slate-400 text-xs flex items-center"><span class="dot bg-amber-400"></span>Garantía</div>
+        <div id="kpiGarantia" class="text-3xl font-semibold mt-1">0</div>
+      </div>
+    </section>
+
+    <!-- Filtros -->
+    <section class="card p-4 mb-6">
+      <h2 class="text-lg font-medium mb-3">Filtros</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <select id="fTecnico" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+          <option value="">Todos los técnicos</option>
+          <option>Israel</option>
+          <option>Selene</option>
+          <option>Diego</option>
+          <option>Yared</option>
+        </select>
+        <select id="fTipo" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+          <option value="">Remoto/Presencial</option>
+          <option>Remoto</option>
+          <option>Presencial</option>
+        </select>
+        <select id="fGarantia" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+          <option value="">Garantía / No</option>
+          <option>Sí</option>
+          <option>No</option>
+        </select>
+        <input id="fBusqueda" placeholder="Buscar cliente/ciudad/nota" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10" />
+      </div>
+    </section>
+
+    <!-- Gráficas -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+      <div class="card p-4"><h3 class="mb-2">Remoto/Presencial por técnico</h3><canvas id="chartStack"></canvas></div>
+      <div class="card p-4"><h3 class="mb-2">Distribución por tipo</h3><canvas id="chartTipo"></canvas></div>
+      <div class="card p-4"><h3 class="mb-2">Garantía vs No garantía</h3><canvas id="chartGarantia"></canvas></div>
+    </section>
+
+    <section class="card p-4 mb-6">
+      <h3 class="mb-2">Servicios por día</h3>
+      <canvas id="chartLinea"></canvas>
+    </section>
+
+    <!-- Mapa -->
+    <section class="card p-4 mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <h3>Mapa de cobertura</h3>
+        <div class="text-xs text-slate-400">Tip: escribe dirección, usa tu GPS o haz clic en el mapa.</div>
+      </div>
+      <div id="map" class="w-full h-[420px] rounded-xl"></div>
+    </section>
+
+    <!-- Tabla y captura -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-16">
+      <!-- Tabla -->
+      <div class="card p-4 overflow-hidden">
+        <div class="flex items-center justify-between mb-2">
+          <h3>Registros</h3>
+          <button id="btnExportCSV" class="text-xs px-3 py-1 rounded-lg border border-white/10 hover:bg-white/5">Descargar CSV</button>
+        </div>
+        <div class="overflow-auto max-h-[420px]">
+          <table class="w-full text-sm">
+            <thead class="sticky top-0 bg-black/30">
+              <tr class="text-left text-slate-400">
+                <th class="py-2 pr-3">Fecha</th>
+                <th class="py-2 pr-3">Técnico</th>
+                <th class="py-2 pr-3">Tipo</th>
+                <th class="py-2 pr-3">Garantía</th>
+                <th class="py-2 pr-3">Cliente</th>
+                <th class="py-2 pr-3">Ciudad</th>
+                <th class="py-2 pr-3">Notas</th>
+              </tr>
+            </thead>
+            <tbody id="tbody" class="divide-y divide-white/5"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Captura -->
+      <div class="card p-4">
+        <h3 class="mb-2">Capturar servicio</h3>
+        <form id="form" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-400">Fecha</label>
+            <input name="fecha" type="date" required class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Técnico</label>
+            <select name="tecnico" required class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+              <option value="Israel">Israel</option>
+              <option value="Selene">Selene</option>
+              <option value="Diego">Diego</option>
+              <option value="Yared">Yared</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Tipo</label>
+            <select name="tipo" required class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+              <option>Remoto</option>
+              <option>Presencial</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">¿Garantía?</label>
+            <select name="garantia" required class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+              <option>Sí</option>
+              <option>No</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Dirección o ciudad</label>
+            <input id="direccion" name="ciudad" placeholder="Ej. Av. Vallarta 6500, Zapopan" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10" />
+            <div class="mt-2 flex gap-2">
+              <button type="button" id="btnUbicacion" class="px-3 py-1.5 text-xs rounded-lg bg-white/5 border border-white/10 hover:bg-white/10">📍 Usar mi ubicación</button>
+              <span class="text-xs text-slate-400">o haz clic en el mapa para fijar el punto</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:col-span-2">
+            <div>
+              <label class="text-xs text-slate-400">Lat</label>
+              <input name="lat" id="lat" type="number" step="any" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10" readonly />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400">Lng</label>
+              <input name="lng" id="lng" type="number" step="any" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10" readonly />
+            </div>
+            <div class="flex items-end">
+              <button class="w-full px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-medium" type="submit">Guardar</button>
+            </div>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="text-xs text-slate-400">Notas</label>
+            <textarea name="notas" rows="2" placeholder="Descripción breve del soporte" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10"></textarea>
+          </div>
+          <p class="text-xs text-slate-400 sm:col-span-2">Puedes escribir una dirección/ciudad, usar tu ubicación o hacer clic en el mapa. Las coordenadas se rellenan solas.</p>
+        </form>
+      </div>
+    </section>
+
+    <footer class="text-center text-xs text-slate-500 pb-10">© MDC Dental — Sistema de Reporte Mensual · v0.2</footer>
+  </div>
+
+<script>
+/**
+ * =============================
+ *   CONFIGURACIÓN RÁPIDA
+ * =============================
+ * 1) Crea un Google Sheet con columnas: fecha, tecnico, tipo, garantia, cliente, ciudad, notas, lat, lng
+ * 2) Publica un Apps Script como Web App (doPost/doGet) que lea/escriba en esa hoja
+ * 3) Pega aquí la URL del Web App:
+ */
+const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzwimZ5b42-OrT5nVZRIHqaPgbT6ss7zDTeWcbWrPZe4fTALkbHMefatutuVF4yZcGu/exec"; // <-- Pega aquí tu URL de Apps Script (Web App). Si queda vacío, usa demo local.
+
+/** DEMO: datos locales si no hay endpoint */
+const demoData = [
+  {fecha:"2025-08-02", tecnico:"Israel", tipo:"Remoto", garantia:"Sí", cliente:"Clínica Sonrisa Feliz", ciudad:"Guadalajara, JAL", notas:"Actualización de software", lat:20.6736, lng:-103.344},
+  {fecha:"2025-08-03", tecnico:"Selene", tipo:"Presencial", garantia:"No", cliente:"Dental Zapopan", ciudad:"Zapopan, JAL", notas:"Calibración fresadora", lat:20.7236, lng:-103.389},
+  {fecha:"2025-08-05", tecnico:"Diego", tipo:"Remoto", garantia:"Sí", cliente:"Sonrisas del Bajío", ciudad:"León, GTO", notas:"Diagnóstico remoto", lat:21.1221, lng:-101.68},
+  {fecha:"2025-08-09", tecnico:"Yared", tipo:"Presencial", garantia:"Sí", cliente:"Odonto Smile", ciudad:"CDMX", notas:"Cambio de refacción", lat:19.4326, lng:-99.1332},
+  {fecha:"2025-08-11", tecnico:"Israel", tipo:"Presencial", garantia:"No", cliente:"Smile Center", ciudad:"Tlaquepaque, JAL", notas:"Mantenimiento preventivo", lat:20.6405, lng:-103.293},
+  {fecha:"2025-08-16", tecnico:"Selene", tipo:"Remoto", garantia:"No", cliente:"Dental Morelia", ciudad:"Morelia, MICH", notas:"Soporte CAM", lat:19.705, lng:-101.194},
+  {fecha:"2025-08-19", tecnico:"Diego", tipo:"Presencial", garantia:"Sí", cliente:"Odonto Torreón", ciudad:"Torreón, COAH", notas:"Instalación inicial", lat:25.5427, lng:-103.406},
+  {fecha:"2025-08-22", tecnico:"Yared", tipo:"Remoto", garantia:"No", cliente:"Dental Colima", ciudad:"Colima, COL", notas:"Actualización driver", lat:19.2433, lng:-103.725},
+  {fecha:"2025-08-25", tecnico:"Israel", tipo:"Presencial", garantia:"Sí", cliente:"Odonto Tepic", ciudad:"Tepic, NAY", notas:"Alineación láser", lat:21.501, lng:-104.895},
+  {fecha:"2025-08-28", tecnico:"Diego", tipo:"Remoto", garantia:"No", cliente:"Dental Puebla", ciudad:"Puebla, PUE", notas:"Respaldo de librerías", lat:19.0414, lng:-98.2063}
+];
+
+let state = {
+  rows: [],
+  month: dayjs().format('YYYY-MM'),
+  filters: { tecnico:"", tipo:"", garantia:"", q:"" },
+  charts: {},
+  map: null,
+  markers: []
+};
+
+// UI helpers
+function setBanner(msg, type="info"){
+  const el = document.getElementById('banner');
+  el.classList.remove('hidden');
+  el.innerText = msg;
+  el.className = `card p-3 mb-4 text-sm ${type==='error'?'border-red-500/40 text-red-300':''}`;
+}
+function hideBanner(){
+  const el = document.getElementById('banner');
+  el.classList.add('hidden');
+}
+
+// Meses en selector
+function initMonthSelect(){
+  const sel = document.getElementById('monthSelect');
+  const months = [];
+  const base = dayjs();
+  for(let i=0;i<12;i++){
+    const d = base.subtract(i,'month');
+    months.push(d.format('YYYY-MM'));
+  }
+  sel.innerHTML = months.map(m => `<option value="${m}">${dayjs(m+'-01').format('MMMM YYYY')}</option>`).join('');
+  sel.value = state.month;
+  sel.addEventListener('change', e=>{ state.month = e.target.value; renderAll(); });
+}
+
+// Carga inicial de datos
+async function loadData(){
+  try{
+    if(!SHEETS_ENDPOINT){
+      setBanner('Modo DEMO: conecta tu Google Sheet para usar datos reales.');
+      state.rows = demoData.slice();
+      return;
+    }
+    const res = await fetch(SHEETS_ENDPOINT);
+    if(!res.ok) throw new Error('No se pudo leer el endpoint');
+    const data = await res.json();
+    state.rows = (Array.isArray(data)?data:[]).map(r=>({
+      fecha: r.fecha || r.date || r.Fecha,
+      tecnico: r.tecnico || r.Técnico || r.Tecnico,
+      tipo: r.tipo || r.Tipo,
+      garantia: r.garantia || r.Garantia || r.Garantía,
+      cliente: r.cliente || r.Cliente,
+      ciudad: r.ciudad || r.Ciudad,
+      notas: r.notas || r.Notas || '',
+      lat: r.lat? Number(r.lat): undefined,
+      lng: r.lng? Number(r.lng): undefined,
+    }));
+  }catch(err){
+    console.error(err);
+    setBanner('No se pudo conectar con el Sheet. Cargando datos de demostración.', 'error');
+    state.rows = demoData.slice();
+  }
+}
+
+// Guardar (POST) registro
+async function saveRow(payload){
+  try{
+    if(!SHEETS_ENDPOINT){
+      state.rows.push(payload);
+      setBanner('Guardado local (DEMO). Conecta tu Sheet para persistir.', 'info');
+      renderAll();
+      return;
+    }
+    const res = await fetch(SHEETS_ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error('Error al guardar');
+    await loadData();
+    hideBanner();
+    renderAll();
+  }catch(err){
+    console.error(err);
+    setBanner('Error al guardar. Revisa tu Apps Script/endpoint.', 'error');
+  }
+}
+
+// Filtros
+function getFiltered(){
+  const {tecnico,tipo,garantia,q} = state.filters;
+  const [y,m] = state.month.split('-');
+  return state.rows.filter(r=>{
+    const inMonth = r.fecha && dayjs(r.fecha).format('YYYY-MM')===`${y}-${m}`;
+    if(!inMonth) return false;
+    if(tecnico && r.tecnico!==tecnico) return false;
+    if(tipo && r.tipo!==tipo) return false;
+    if(garantia && r.garantia!==garantia) return false;
+    if(q){
+      const s = `${r.cliente||''} ${r.ciudad||''} ${r.notas||''}`.toLowerCase();
+      if(!s.includes(q.toLowerCase())) return false;
+    }
+    return true;
+  });
+}
+
+// KPIs
+function renderKPIs(rows){
+  const total = rows.length;
+  const remoto = rows.filter(r=>r.tipo==='Remoto').length;
+  const presencial = rows.filter(r=>r.tipo==='Presencial').length;
+  const garantia = rows.filter(r=>r.garantia==='Sí').length;
+  document.getElementById('kpiTotal').innerText = total;
+  document.getElementById('kpiRemoto').innerText = `${remoto} (${total?Math.round(remoto*100/total):0}%)`;
+  document.getElementById('kpiPresencial').innerText = `${presencial} (${total?Math.round(presencial*100/total):0}%)`;
+  document.getElementById('kpiGarantia').innerText = `${garantia} (${total?Math.round(garantia*100/total):0}%)`;
+}
+
+// Charts helpers
+function ensureChart(id, config){
+  const ctx = document.getElementById(id).getContext('2d');
+  if(state.charts[id]){ state.charts[id].destroy(); }
+  state.charts[id] = new Chart(ctx, config);
+}
+function renderCharts(rows){
+  const tecnicos = ['Israel','Selene','Diego','Yared'];
+  const rem = tecnicos.map(t => rows.filter(r=>r.tecnico===t && r.tipo==='Remoto').length);
+  const pre = tecnicos.map(t => rows.filter(r=>r.tecnico===t && r.tipo==='Presencial').length);
+  ensureChart('chartStack', {
+    type:'bar', data:{ labels: tecnicos, datasets:[
+      {label:'Remoto', data: rem},
+      {label:'Presencial', data: pre},
+    ]}, options:{ responsive:true, plugins:{legend:{position:'bottom'}, tooltip:{}},
+      scales:{ x:{stacked:true, grid:{display:true}}, y:{stacked:true, beginAtZero:true, grid:{display:true}} }
+    }
+  });
+  const cRem = rows.filter(r=>r.tipo==='Remoto').length;
+  const cPre = rows.filter(r=>r.tipo==='Presencial').length;
+  ensureChart('chartTipo', { type:'doughnut', data:{ labels:['Remoto','Presencial'], datasets:[{ data:[cRem,cPre] }] }, options:{ plugins:{legend:{position:'bottom'}} }});
+  const cG = rows.filter(r=>r.garantia==='Sí').length;
+  const cNG = rows.filter(r=>r.garantia==='No').length;
+  ensureChart('chartGarantia', { type:'doughnut', data:{ labels:['Garantía','No garantía'], datasets:[{ data:[cG,cNG] }] }, options:{ plugins:{legend:{position:'bottom'}} }});
+  const byDay = {};
+  rows.forEach(r=>{
+    const d = dayjs(r.fecha).format('YYYY-MM-DD');
+    byDay[d] = (byDay[d]||0)+1;
+  });
+  const labels = Object.keys(byDay).sort();
+  const values = labels.map(k=>byDay[k]);
+  ensureChart('chartLinea', { type:'line', data:{ labels, datasets:[{ label:'Servicios', data: values, tension:.3, fill:true }] }, options:{ plugins:{legend:{display:false}}, scales:{x:{grid:{display:true}}, y:{beginAtZero:true, grid:{display:true}}}}});
+}
+
+// ===== Mapa (Google Maps) =====
+let gmap = null;
+let gmarkers = [];
+let geocoder = null;
+let placeAutocomplete = null;
+let clickMarker = null;
+
+function ensureGoogleReady(){
+  return new Promise(resolve=>{
+    if (window.google && window.google.maps) return resolve();
+    const iv = setInterval(()=>{
+      if (window.google && window.google.maps){ clearInterval(iv); resolve(); }
+    }, 100);
+  });
+}
+async function initMap(){
+  await ensureGoogleReady();
+  geocoder = new google.maps.Geocoder();
+  gmap = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 22.0, lng: -102.0 }, zoom: 5, mapTypeControl: false, streetViewControl: false,
+  });
+  gmap.addListener('click', (e)=>{
+    setClickMarker(e.latLng);
+    document.getElementById('lat').value = e.latLng.lat().toFixed(6);
+    document.getElementById('lng').value = e.latLng.lng().toFixed(6);
+  });
+  const input = document.getElementById('direccion');
+  if (input){
+    await ensureGoogleReady();
+    placeAutocomplete = new google.maps.places.Autocomplete(input, { fields: ['geometry'] });
+    placeAutocomplete.addListener('place_changed', ()=>{
+      const place = placeAutocomplete.getPlace();
+      if (place && place.geometry){
+        const pos = place.geometry.location;
+        gmap.setCenter(pos); gmap.setZoom(14);
+        setClickMarker(pos);
+        document.getElementById('lat').value = pos.lat().toFixed(6);
+        document.getElementById('lng').value = pos.lng().toFixed(6);
+      }
+    });
+  }
+  const btn = document.getElementById('btnUbicacion');
+  if(btn){
+    btn.addEventListener('click', ()=>{
+      if(!navigator.geolocation){ setBanner('Tu dispositivo no permite geolocalización', 'error'); return; }
+      navigator.geolocation.getCurrentPosition((pos)=>{
+        const { latitude, longitude } = pos.coords;
+        const latLng = { lat: latitude, lng: longitude };
+        gmap.setCenter(latLng); gmap.setZoom(15);
+        setClickMarker(latLng);
+        document.getElementById('lat').value = latitude.toFixed(6);
+        document.getElementById('lng').value = longitude.toFixed(6);
+      }, (err)=>{
+        setBanner('No se pudo leer tu ubicación ('+err.message+')','error');
+      });
+    });
+  }
+}
+function setClickMarker(latLng){
+  if(clickMarker){ clickMarker.setMap(null); }
+  clickMarker = new google.maps.Marker({ position: latLng, map: gmap, animation: google.maps.Animation.DROP });
+}
+function clearDataMarkers(){
+  gmarkers.forEach(m=> m.setMap(null));
+  gmarkers = [];
+}
+function renderMap(rows){
+  if(!gmap){ return; }
+  clearDataMarkers();
+  const pts = rows.filter(r=> Number.isFinite(r.lat) && Number.isFinite(r.lng));
+  const bounds = new google.maps.LatLngBounds();
+  pts.forEach(r=>{
+    const marker = new google.maps.Marker({ position: {lat: Number(r.lat), lng: Number(r.lng)}, map: gmap });
+    const info = new google.maps.InfoWindow({ content: `
+      <div class="text-sm"><strong>${r.cliente||'Cliente'}</strong><br/>
+      ${dayjs(r.fecha).format('DD/MM/YYYY')} · ${r.tecnico}<br/>
+      ${r.tipo} · ${r.garantia==='Sí'?'Garantía':'No garantía'}<br/>
+      <span class="text-slate-400">${r.ciudad||''}</span></div>` });
+    marker.addListener('click', ()=> info.open({anchor: marker, map: gmap}));
+    gmarkers.push(marker);
+    bounds.extend(marker.getPosition());
+  });
+  if (pts.length){ gmap.fitBounds(bounds); }
+}
+
+// Geocoding con Google (por texto de dirección)
+async function geocodeAddress(q){
+  await ensureGoogleReady();
+  return new Promise((resolve)=>{
+    geocoder.geocode({ address: q }, (results, status)=>{
+      if(status === 'OK' && results && results[0]){
+        const loc = results[0].geometry.location;
+        resolve({ lat: loc.lat(), lng: loc.lng() });
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+// CSV export
+function exportCSV(rows){
+  const header = ['fecha','tecnico','tipo','garantia','cliente','ciudad','notas','lat','lng'];
+  const lines = [header.join(',')].concat(rows.map(r=> header.map(h=> {
+    const val = (r[h]!==undefined && r[h]!==null)? String(r[h]).replaceAll('"','""') : '';
+    return `"${val}"`;
+  }).join(',')));
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `mdc-servicio-${state.month}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// PDF export
+async function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const node = document.body;
+  const canvas = await html2canvas(node, { scale: 2, useCORS:true });
+  const imgData = canvas.toDataURL('image/png');
+  const pdf = new jsPDF('p','mm','a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const imgWidth = pageWidth;
+  const imgHeight = canvas.height * imgWidth / canvas.width;
+  let position = 0;
+  let heightLeft = imgHeight;
+  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+  pdf.save(`MDC-Reporte-${state.month}.pdf`);
+}
+
+// Render general
+function renderAll(){
+  const rows = getFiltered();
+  renderKPIs(rows);
+  renderCharts(rows);
+  renderTable(rows);
+  renderMap(rows);
+}
+
+// Tabla
+function renderTable(rows){
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = rows.map(r=>`
+    <tr>
+      <td class="py-2 pr-3">${dayjs(r.fecha).format('DD/MM/YYYY')}</td>
+      <td class="py-2 pr-3">${r.tecnico}</td>
+      <td class="py-2 pr-3">${r.tipo}</td>
+      <td class="py-2 pr-3">${r.garantia}</td>
+      <td class="py-2 pr-3">${r.cliente||''}</td>
+      <td class="py-2 pr-3">${r.ciudad||''}</td>
+      <td class="py-2 pr-3 max-w-[320px] truncate" title="${r.notas||''}">${r.notas||''}</td>
+    </tr>
+  `).join('');
+}
+
+// Eventos UI
+function bindUI(){
+  document.getElementById('fTecnico').addEventListener('change', e=>{ state.filters.tecnico = e.target.value; renderAll(); });
+  document.getElementById('fTipo').addEventListener('change', e=>{ state.filters.tipo = e.target.value; renderAll(); });
+  document.getElementById('fGarantia').addEventListener('change', e=>{ state.filters.garantia = e.target.value; renderAll(); });
+  document.getElementById('fBusqueda').addEventListener('input', e=>{ state.filters.q = e.target.value; renderAll(); });
+  document.getElementById('btnExportCSV').addEventListener('click', ()=> exportCSV(getFiltered()));
+  document.getElementById('exportPdfBtn').addEventListener('click', exportPDF);
+
+  const form = document.getElementById('form');
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(form);
+    const payload = Object.fromEntries(fd.entries());
+    const latInp = document.getElementById('lat');
+    const lngInp = document.getElementById('lng');
+    if ((!latInp.value || !lngInp.value) && payload.ciudad){
+      const coords = await geocodeAddress(payload.ciudad);
+      if (coords){
+        payload.lat = Number(coords.lat);
+        payload.lng = Number(coords.lng);
+        latInp.value = coords.lat.toFixed(6);
+        lngInp.value = coords.lng.toFixed(6);
+      }
+    } else {
+      payload.lat = latInp.value ? Number(latInp.value) : undefined;
+      payload.lng = lngInp.value ? Number(lngInp.value) : undefined;
+    }
+    await saveRow(payload);
+    form.reset();
+    if(clickMarker){ clickMarker.setMap(null); clickMarker=null; }
+  });
+}
+
+// Init
+(async function(){
+  lucide.createIcons();
+  initMonthSelect();
+  bindUI();
+  await loadData();
+  await ensureGoogleReady();
+  await initMap();
+  renderAll();
+})();
+
+</script>
+
+<!--
+==============================
+ Instrucciones para conectar Google Sheets (Apps Script Web App)
+==============================
+1) Crea un Sheet con cabeceras EXACTAS: fecha, tecnico, tipo, garantia, cliente, ciudad, notas, lat, lng
+2) En Apps Script (Vinculado al Sheet) pega algo mínimo como:
+
+function doGet(){
+  const sh = SpreadsheetApp.getActive().getSheetByName('Hoja 1');
+  const data = sh.getDataRange().getDisplayValues();
+  const head = data.shift();
+  const rows = data.map(r=> head.reduce((o,k,i)=> (o[k]=r[i], o), {}));
+  return ContentService.createTextOutput(JSON.stringify(rows)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e){
+  const sh = SpreadsheetApp.getActive().getSheetByName('Hoja 1');
+  const body = JSON.parse(e.postData.contents);
+  const row = [body.fecha, body.tecnico, body.tipo, body.garantia, body.cliente, body.ciudad, body.notas, body.lat, body.lng];
+  sh.appendRow(row);
+  return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
+}
+
+3) Publica como Web App (Deploy > New deployment > type Web app) -> Access: Anyone with the link
+4) Copia la URL y pégala en SHEETS_ENDPOINT.
+-->
+
+</body>
+</html>

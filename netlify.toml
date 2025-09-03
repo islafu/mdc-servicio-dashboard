@@ -1,0 +1,17 @@
+[build]
+  publish = "public"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Permissions-Policy = "geolocation=(self)"
+    Content-Security-Policy = "default-src 'self' https: data: blob:; script-src 'self' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net https://maps.googleapis.com https://maps.gstatic.com 'unsafe-inline'; style-src 'self' https: 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' https: data:; connect-src 'self' https:; frame-ancestors 'none';"
+
+# SPA-style fallback (optional)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
