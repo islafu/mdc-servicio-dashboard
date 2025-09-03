@@ -369,31 +369,97 @@ function ensureChart(id,config){
   state.charts[id]=new Chart(ctx,config);
 }
 function renderCharts(rows){
-  const tecnicos=['Israel','Selene','Diego','Yared'];
-  const acts=['Soporte de garantía','Soporte fuera de garantía','Instalación','Evento','Proyecto','Curso','Vacaciones'];
+  const tecnicos = ['Israel','Selene','Diego','Yared'];
+  const acts = [
+    'Soporte de garantía',
+    'Soporte fuera de garantía',
+    'Instalación',
+    'Evento',
+    'Proyecto',
+    'Curso',
+    'Vacaciones'
+  ];
 
-  // Actividades por técnico (conteo)
-  const counts = tecnicos.map(t => rows.filter(r=>r.tecnico===t).length);
-  ensureChart('chartTechCount',{
-    type:'bar',
-    data:{labels:tecnicos,datasets:[{label:'Actividades',data:counts}]},
-    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>`${c.parsed.y||0} actividades`}}},scales:{y:{beginAtZero:true}}}
+  // === Actividades por técnico (STACKED por tipo de actividad) ===
+  const datasetsStack = acts.map(act => ({
+    label: act,
+    data: tecnicos.map(t =>
+      rows.filter(r => r.tecnico === t && r.actividad === act).length
+    ),
+    // sin colores fijos: Chart.js asigna una paleta automáticamente
+  }));
+
+  ensureChart('chartTechCount', {
+    type: 'bar',
+    data: { labels: tecnicos, datasets: datasetsStack },
+    options: {
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            footer: (items) => {
+              const total = items.reduce((s,i)=> s + i.parsed.y, 0);
+              return 'Total: ' + total;
+            }
+          }
+        }
+      },
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true, grid: { display: true } },
+        y: { stacked: true, beginAtZero: true, grid: { display: true } }
+      }
+    }
   });
 
-  // Remoto vs Presencial
-  const rem=rows.filter(r=>r.modalidad==='Remoto').length, pre=rows.filter(r=>r.modalidad==='Presencial').length;
-  ensureChart('chartRemPre',{type:'doughnut',data:{labels:['Remoto','Presencial'],datasets:[{data:[rem,pre]}]},options:{plugins:{legend:{position:'bottom'}}}});
+  // === Remoto vs Presencial ===
+  const rem = rows.filter(r => r.modalidad === 'Remoto').length;
+  const pre = rows.filter(r => r.modalidad === 'Presencial').length;
+  ensureChart('chartRemPre', {
+    type: 'doughnut',
+    data: { labels: ['Remoto','Presencial'], datasets: [{ data: [rem, pre] }] },
+    options: { plugins: { legend: { position: 'bottom' } } }
+  });
 
-  // Distribución por actividad
-  ensureChart('chartActividad',{type:'doughnut',data:{labels:acts,datasets:[{data:acts.map(a=>rows.filter(r=>r.actividad===a).length)}]},options:{plugins:{legend:{position:'bottom'}}}});
+  // === Distribución por actividad (conteo total) ===
+  ensureChart('chartActividad', {
+    type: 'doughnut',
+    data: {
+      labels: acts,
+      datasets: [{ data: acts.map(a => rows.filter(r => r.actividad === a).length) }]
+    },
+    options: { plugins: { legend: { position: 'bottom' } } }
+  });
 
-  // Garantía
-  const g=rows.filter(r=>r.garantia==='Sí').length, ng=rows.filter(r=>r.garantia==='No').length;
-  ensureChart('chartGarantia',{type:'doughnut',data:{labels:['Garantía','No garantía'],datasets:[{data:[g,ng]}]},options:{plugins:{legend:{position:'bottom'}}}});
+  // === Garantía vs No garantía ===
+  const g  = rows.filter(r => r.garantia === 'Sí').length;
+  const ng = rows.filter(r => r.garantia === 'No').length;
+  ensureChart('chartGarantia', {
+    type: 'doughnut',
+    data: { labels: ['Garantía','No garantía'], datasets: [{ data: [g, ng] }] },
+    options: { plugins: { legend: { position: 'bottom' } } }
+  });
 
-  // Revenue por técnico
-  const rev=tecnicos.map(t=>rows.reduce((sum,r)=>sum+(r.tecnico===t&&r.cobrado==='Sí'?(Number(r.monto)||0):0),0));
-  ensureChart('chartRevenue',{type:'bar',data:{labels:tecnicos,datasets:[{label:'MXN',data:rev}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>formatMoney(c.parsed.y)}}},scales:{y:{beginAtZero:true,ticks:{callback:(v)=>formatMoney(v)}}}}});
+  // === Ingresos por técnico ===
+  const rev = tecnicos.map(t =>
+    rows.reduce((sum, r) => sum + (r.tecnico === t && r.cobrado === 'Sí' ? (Number(r.monto)||0) : 0), 0)
+  );
+  ensureChart('chartRevenue', {
+    type: 'bar',
+    data: { labels: tecnicos, datasets: [{ label: 'MXN', data: rev }] },
+    options: {
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => formatMoney(ctx.parsed.y) } }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: (v) => formatMoney(v) } }
+      }
+    }
+  });
 }
 
 /* ========= Table ========= */
