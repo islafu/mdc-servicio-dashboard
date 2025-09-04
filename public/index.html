@@ -101,6 +101,15 @@
     <h3 class="mb-2">Ingresos por técnico (MXN)</h3>
     <div class="chart-h-lg"><canvas id="chartRevenue"></canvas></div>
   </section>
+  <section class="card p-4 mb-6">
+    <h3 class="mb-2">TeamViewer — Conexiones y horas (CSV)</h3>
+    <div class="text-xs text-slate-400 mb-3">
+      Fuente: <code>/connectionreport.csv</code> (actualízalo cada mes en <code>public/</code>)
+    </div>
+    <div class="chart-h-lg"><canvas id="chartTV"></canvas></div>
+    <div id="tvBanner" class="text-xs text-slate-400 mt-2"></div>
+  </section>
+
 
   <!-- MAPA -->
   <section class="card p-4 mb-6">
@@ -529,8 +538,186 @@ function exportCSV(rows){
 }
 async function exportPDF(){const {jsPDF}=window.jspdf; const node=document.body; const canvas=await html2canvas(node,{scale:2,useCORS:true}); const img=canvas.toDataURL('image/png'); const pdf=new jsPDF('p','mm','a4'); const W=pdf.internal.pageSize.getWidth(); const H=canvas.height*W/canvas.width; let pos=0,left=H; pdf.addImage(img,'PNG',0,pos,W,H); left-=pdf.internal.pageSize.getHeight(); while(left>0){pos=left-H; pdf.addPage(); pdf.addImage(img,'PNG',0,pos,W,H); left-=pdf.internal.pageSize.getHeight();} pdf.save(`MDC-Reporte-${state.month}.pdf`);}
 
+// ===== TeamViewer CSV =====
+
+// Lee /connectionreport.csv, detecta columnas y regresa filas con {date: Dayjs, durationHours: Number}
+async function loadTeamViewerCSV() {
+  try {
+    const res = await fetch('connectionreport.csv', { cache: 'no-store' });
+    if (!res.ok) throw new Error('CSV no encontrado');
+    const text = await res.text();
+
+    const { rows, meta } = parseCSV(text);
+    // Detectar columnas: Duration (hh:mm:ss) y Start/Date
+    const headerMap = meta.headerMap; // lowercased -> original index
+    const durKey = Object.keys(headerMap).find(k => k.includes('duration') || k.includes('time spent'));
+    const startKey = Object.keys(headerMap).find(k => k.includes('start') || k.includes('date') || k.includes('time'));
+
+    if (!durKey || !startKey) throw new Error('No se encontraron columnas de duración/fecha en el CSV');
+
+    // Normaliza
+    const normalized = rows.map(r => {
+      const dRaw = r[headerMap[startKey]]?.trim();
+      const m = parseDay(dRaw); // usa tu parser robusto
+      const durRaw = r[headerMap[durKey]]?.trim();
+      const hours = parseDurationToHours(durRaw);
+      return (m && Number.isFinite(hours)) ? { date: m, durationHours: hours } : null;
+    }).filter(Boolean);
+
+    return normalized;
+  } catch (e) {
+    console.warn('TeamViewer CSV:', e);
+    showTVBanner('No se pudo leer connectionreport.csv. (Colócalo en /public y verifica encabezados).', true);
+    return [];
+  }
+}
+
+function showTVBanner(msg, isError=false) {
+  const el = document.getElementById('tvBanner');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'text-xs mt-2 ' + (isError ? 'text-red-300' : 'text-slate-400');
+}
+
+// CSV simple (sin comillas escapadas complejas). Para CSV de TeamViewer suele bastar.
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length);
+  if (!lines.length) return { rows: [], meta: { headerMap: {} } };
+  const header = splitCSVLine(lines[0]);
+  const headerMap = Object.fromEntries(header.map((h, i) => [h.trim().toLowerCase(), i]));
+  const rows = lines.slice(1).map(line => splitCSVLine(line, header.length));
+  return { rows: rows.map(arr => arr), meta: { header, headerMap } };
+}
+
+function splitCSVLine(line, padTo) {
+  // Soporte básico de comillas: "campo, con, comas"
+  const out = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; } // escape ""
+      else inQ = !inQ;
+    } else if (ch === ',' && !inQ) {
+      out.push(cur); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  if (padTo && out.length < padTo) {
+    while (out.length < padTo) out.push('');
+  }
+  return out;
+}
+
+function parseDurationToHours(s) {
+  // Intenta hh:mm:ss o mm:ss o h.mm (algunos exportes)
+  if (!s) return 0;
+  const str = String(s).trim();
+
+  // hh:mm:ss
+  const hms = /^(\d{1,2}):(\d{2}):(\d{2})$/.exec(str);
+  if (hms) {
+    const h = Number(hms[1]), m = Number(hms[2]), sec = Number(hms[3]);
+    return h + (m/60) + (sec/3600);
+  }
+  // mm:ss
+  const ms = /^(\d{1,3}):(\d{2})$/.exec(str);
+  if (ms) {
+    const m = Number(ms[1]), sec = Number(ms[2]);
+    return (m/60) + (sec/3600);
+  }
+  // h.decimal (ej. 1.5)
+  const dec = Number(str.replace(',', '.'));
+  if (Number.isFinite(dec)) return dec;
+
+  return 0;
+}
+
+let tvChart = null;
+async function renderTeamViewerChart() {
+  const data = await loadTeamViewerCSV(); // [{date: dayjs, durationHours: n}]
+  if (!data.length) {
+    // Si no hay datos, limpia gráfica si existe
+    if (tvChart) { tvChart.destroy(); tvChart = null; }
+    return;
+  }
+  showTVBanner('Datos cargados desde connectionreport.csv');
+
+  // Filtrar por mes seleccionado
+  const [y, m] = state.month.split('-');
+  const monthData = data.filter(d => d.date.format('YYYY-MM') === `${y}-${m}`);
+
+  // Group by día del mes
+  const dayMap = new Map(); // key: '01'..'31' -> {count, hours}
+  monthData.forEach(d => {
+    const key = d.date.format('DD');
+    if (!dayMap.has(key)) dayMap.set(key, { count: 0, hours: 0 });
+    const agg = dayMap.get(key);
+    agg.count += 1;
+    agg.hours += d.durationHours;
+  });
+
+  const labels = Array.from(dayMap.keys()).sort((a,b)=>a.localeCompare(b));
+  const counts = labels.map(k => dayMap.get(k)?.count || 0);
+  const hours  = labels.map(k => Number((dayMap.get(k)?.hours || 0).toFixed(2)));
+
+  const ctx = document.getElementById('chartTV').getContext('2d');
+  if (tvChart) tvChart.destroy();
+  tvChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Conexiones',
+          data: counts,
+          yAxisID: 'yCount'
+        },
+        {
+          type: 'line',
+          label: 'Horas',
+          data: hours,
+          yAxisID: 'yHours',
+          tension: 0.25
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: (ctx) => ctx.dataset.yAxisID === 'yHours'
+              ? `Horas: ${ctx.parsed.y}`
+              : `Conexiones: ${ctx.parsed.y}`
+          }
+        }
+      },
+      scales: {
+        yCount: { position: 'left', beginAtZero: true, ticks: { precision: 0 } },
+        yHours: { position: 'right', beginAtZero: true }
+      }
+    }
+  });
+}
+
 /* ========= Render ========= */
-function renderAll(){const rows=getFiltered(); renderKPIs(rows); renderCharts(rows); renderTable(rows); renderMarkers(rows);}
+function renderAll(){
+  const rows = getFiltered();
+  renderKPIs(rows);
+  renderCharts(rows);
+  renderTable(rows);
+  renderMarkers(rows);
+  // NUEVO: render CSV TeamViewer
+  renderTeamViewerChart();
+}
 
 /* ========= Bind ========= */
 function bindUI(){
