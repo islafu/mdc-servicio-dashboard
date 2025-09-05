@@ -107,7 +107,7 @@
     <h3 class="mb-2">Ingresos por técnico (MXN)</h3>
     <div class="chart-h-lg"><canvas id="chartRevenue"></canvas></div>
   </section>
-  <section class="card p-4 mb-6" style="height: 900px;">
+  <section class="card p-4 mb-6" style="height: 800px;">
     <div class="flex items-center justify-between mb-2">
       <h3>Calendario de actividades</h3>
       <div class="text-xs text-slate-400">Vista mensual · colores por actividad</div>
@@ -626,7 +626,8 @@ function renderCalendar(rows){
   calendarInst = new FullCalendar.Calendar(el, {
     initialView: 'dayGridMonth',
     initialDate,
-    height: 650,
+    height: '100%',      // ocupa el 100% del alto disponible
+    expandRows: true,
     locale: 'es',
     firstDay: 1,
     headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
