@@ -755,7 +755,10 @@ function setTVKpis(totalConn, totalHours) {
     // Asegura que el contenedor ya tenga alto
     try { await waitForNonZeroHeight(el, 3000); } catch (_) {}
 
-    const events = buildCalendarEvents(getFiltered());
+    const filtered = getFiltered();
+    const sourceRows = filtered.length ? filtered : state.rows;
+    const events = buildCalendarEvents(sourceRows);
+
 
     if (fcCalendar) { fcCalendar.destroy(); fcCalendar = null; }
 
