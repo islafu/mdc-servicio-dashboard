@@ -14,6 +14,10 @@
   <script>dayjs.extend(window.dayjs_plugin_isoWeek);dayjs.extend(window.dayjs_plugin_customParseFormat);</script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 
+  <!-- FullCalendar -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+
   <!-- Google Maps (Maps + Places) -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&callback=initMap"></script>
 
@@ -31,12 +35,6 @@
     select.formc option{color:#000}
     .chart-h{height:300px}
     .chart-h-lg{height:320px}
-    /* Calendario */
-    #calendar{height:820px;}
-    #calendar .cal-inner{height:95%;}
-    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:.5rem}
-    .cal-cell{border:1px solid rgba(255,255,255,.06);border-radius:.5rem;padding:.5rem;min-height:100px;overflow:auto}
-    .badge{display:inline-block;padding:.15rem .4rem;border-radius:.4rem;font-size:.7rem;white-space:nowrap}
   </style>
 </head>
 <body class="h-full">
@@ -59,7 +57,7 @@
   <div id="banner" class="hidden card p-3 mb-4 text-sm"></div>
 
   <!-- KPIs -->
-  <section id="kpis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 mb-6">
+  <section id="kpis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
     <div class="card p-4"><div class="text-slate-400 text-xs">Total registros</div><div id="kpiTotal" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs"><span class="dot bg-emerald-400"></span>Soporte</div><div id="kpiSoporte" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs"><span class="dot bg-sky-400"></span>Instalaciones</div><div id="kpiInst" class="text-3xl font-semibold mt-1">0</div></div>
@@ -74,8 +72,7 @@
     <h2 class="text-lg font-medium mb-3">Filtros</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
       <select id="fAsesor" class="px-3 py-2 rounded-lg formc">
-        <option value="">Todos los asesores</option>
-        <option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option><option>Gabriel</option>
+        <option value="">Todos los asesores</option><option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option><option>Gabriel</option>
       </select>
       <select id="fActividad" class="px-3 py-2 rounded-lg formc">
         <option value="">Todas las actividades</option>
@@ -106,10 +103,8 @@
     <div class="card p-4"><h3 class="mb-2">Distribución por actividad</h3><div class="chart-h"><canvas id="chartActividad"></canvas></div></div>
     <div class="card p-4"><h3 class="mb-2">Garantía vs No garantía</h3><div class="chart-h"><canvas id="chartGarantia"></canvas></div></div>
   </section>
-  <section class="card p-4 mb-6">
-    <h3 class="mb-2">Ingresos por asesor (MXN)</h3>
-    <div class="chart-h-lg"><canvas id="chartRevenue"></canvas></div>
-  </section>
+
+  <!-- TeamViewer -->
   <section class="card p-4 mb-6">
     <h3 class="mb-2">TeamViewer — Conexiones y horas (CSV)</h3>
     <div class="text-xs text-slate-400 mb-3">
@@ -117,6 +112,21 @@
     </div>
     <div class="chart-h-lg"><canvas id="chartTV"></canvas></div>
     <div id="tvBanner" class="text-xs text-slate-400 mt-2"></div>
+  </section>
+
+  <!-- CALENDARIO (entre TeamViewer e Ingresos) -->
+  <section class="card p-4 mb-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3>Calendario de actividades</h3>
+      <div class="text-xs text-slate-400">Vista mensual · colores por actividad</div>
+    </div>
+    <div id="calendar" class="rounded-xl overflow-hidden" style="height: 820px;"></div>
+  </section>
+
+  <!-- Ingresos -->
+  <section class="card p-4 mb-6">
+    <h3 class="mb-2">Ingresos por asesor (MXN)</h3>
+    <div class="chart-h-lg"><canvas id="chartRevenue"></canvas></div>
   </section>
 
   <!-- MAPA -->
@@ -128,7 +138,7 @@
     <div id="map" class="w-full rounded-xl"></div>
   </section>
 
-  <!-- CAPTURAR (arriba) -->
+  <!-- CAPTURAR (arriba de Registros) -->
   <section class="mb-6">
     <div class="card p-4">
       <h3 class="mb-2">Capturar actividad</h3>
@@ -208,7 +218,7 @@
     </div>
   </section>
 
-  <!-- REGISTROS (abajo) -->
+  <!-- REGISTROS -->
   <section class="mb-16">
     <div class="card p-4 overflow-visible">
       <div class="flex items-center justify-between mb-2">
@@ -230,29 +240,11 @@
             <th class="py-2 px-3">Teléfono</th>
             <th class="py-2 px-3">Ciudad</th>
             <th class="py-2 px-3">Notas</th>
+            <th class="py-2 px-3">Acciones</th>
           </tr>
         </thead>
         <tbody id="tbody" class="divide-y divide-white/10 text-sm"></tbody>
       </table>
-    </div>
-  </section>
-
-  <!-- CALENDARIO -->
-  <section class="card p-4 mb-6">
-    <div class="flex items-center justify-between mb-2">
-      <h3>Calendario de actividades</h3>
-      <div class="text-xs text-slate-400">Vista mensual · colores por actividad</div>
-    </div>
-    <div id="calendar" class="rounded-xl overflow-hidden">
-      <div class="cal-inner flex flex-col gap-3">
-        <div class="flex items-center justify-between">
-          <div id="calTitle" class="text-sm text-slate-300"></div>
-        </div>
-        <div class="grid grid-cols-7 text-center text-xs text-slate-400">
-          <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
-        </div>
-        <div id="calGrid" class="cal-grid"></div>
-      </div>
     </div>
   </section>
 
@@ -265,13 +257,15 @@
 <script>
 /* ========= CONFIG ========= */
 const SHEETS_ENDPOINT = "/.netlify/functions/sheets";
+const EDIT_TOKEN = "42673"; // requerido para editar/eliminar
+let editingId = null;       // si existe, el submit actualizará ese id
 
-/* ========= DEMO (fallback) ========= */
+/* ========= DEMO ========= */
 const demoData = [
-  {fecha_inicio:"2025-08-02",hora_inicio:"09:00",fecha_fin:"2025-08-02",hora_fin:"10:15",asesor:"Israel",actividad:"Soporte de garantía",modalidad:"Remoto",garantia:"Sí",cliente:"Clínica Sonrisa Feliz",telefono:"3312345678",ciudad:"Guadalajara, JAL",notas:"Actualización de software",lat:20.6736,lng:-103.344,cobrado:"Sí",monto:1200},
-  {fecha_inicio:"2025-08-03",hora_inicio:"11:30",fecha_fin:"2025-08-03",hora_fin:"14:00",asesor:"Selene",actividad:"Instalación",modalidad:"Presencial",garantia:"",cliente:"Dental Zapopan",telefono:"3323456789",ciudad:"Zapopan, JAL",notas:"Calibración fresadora",lat:20.7236,lng:-103.389,cobrado:"No",monto:0},
-  {fecha_inicio:"2025-08-05",hora_inicio:"08:15",fecha_fin:"2025-08-05",hora_fin:"09:00",asesor:"Diego",actividad:"Proyecto",modalidad:"Remoto",garantia:"",cliente:"Sonrisas del Bajío",telefono:"4771234567",ciudad:"León, GTO",notas:"Integración CAD/CAM",lat:21.1221,lng:-101.68,cobrado:"Sí",monto:800},
-  {fecha_inicio:"2025-08-08",hora_inicio:"10:00",fecha_fin:"2025-08-08",hora_fin:"13:00",asesor:"Yared",actividad:"Curso",modalidad:"Presencial",garantia:"",cliente:"Colegio Odontológico",telefono:"",ciudad:"Torreón, COAH",notas:"Entrenamiento fresadora",lat:25.54,lng:-103.40,cobrado:"Sí",monto:20000}
+  {id:1,fecha_inicio:"2025-08-02",hora_inicio:"09:00",fecha_fin:"2025-08-02",hora_fin:"10:15",asesor:"Israel",actividad:"Soporte de garantía",modalidad:"Remoto",garantia:"Sí",cliente:"Clínica Sonrisa Feliz",telefono:"3312345678",ciudad:"Guadalajara, JAL",notas:"Actualización de software",lat:20.6736,lng:-103.344,cobrado:"Sí",monto:1200},
+  {id:2,fecha_inicio:"2025-08-03",hora_inicio:"11:30",fecha_fin:"2025-08-03",hora_fin:"14:00",asesor:"Selene",actividad:"Instalación",modalidad:"Presencial",garantia:"",cliente:"Dental Zapopan",telefono:"3323456789",ciudad:"Zapopan, JAL",notas:"Calibración fresadora",lat:20.7236,lng:-103.389,cobrado:"No",monto:0},
+  {id:3,fecha_inicio:"2025-08-05",hora_inicio:"08:15",fecha_fin:"2025-08-05",hora_fin:"09:00",asesor:"Diego",actividad:"Proyecto",modalidad:"Remoto",garantia:"",cliente:"Sonrisas del Bajío",telefono:"4771234567",ciudad:"León, GTO",notas:"Integración CAD/CAM",lat:21.1221,lng:-101.68,cobrado:"Sí",monto:800},
+  {id:4,fecha_inicio:"2025-08-08",hora_inicio:"10:00",fecha_fin:"2025-08-08",hora_fin:"13:00",asesor:"Yared",actividad:"Curso",modalidad:"Presencial",garantia:"",cliente:"Colegio Odontológico",telefono:"",ciudad:"Torreón, COAH",notas:"Entrenamiento fresadora",lat:25.54,lng:-103.40,cobrado:"Sí",monto:20000}
 ];
 
 let state = {
@@ -280,9 +274,10 @@ let state = {
   filters: { asesor:"", actividad:"", modalidad:"", garantia:"", q:"" },
   charts: {},
   clientBook: {},
+  calendar: null,
 };
 
-/* ========= UI helpers ========= */
+/* ========= helpers UI ========= */
 function setBanner(msg,type="info"){const el=document.getElementById('banner');el.classList.remove('hidden');el.innerText=msg;el.className=`card p-3 mb-4 text-sm ${type==='error'?'border-red-500/40 text-red-300':''}`;}
 function hideBanner(){document.getElementById('banner').classList.add('hidden');}
 
@@ -300,7 +295,7 @@ function parseDay(d){
   if (Object.prototype.toString.call(d)==='[object Date]'){const m=dayjs(d);return m.isValid()?m:null;}
   const s=String(d).trim();
   let m=dayjs(s,['YYYY-MM-DD','DD/MM/YYYY','D/M/YYYY','YYYY/MM/DD'],true);
-  if(!m.isValid()) m=dayjs(s); // fallback (ISO)
+  if(!m.isValid()) m=dayjs(s);
   return m.isValid()?m:null;
 }
 function formatMoney(n){try{return n.toLocaleString('es-MX',{style:'currency',currency:'MXN'});}catch(e){return '$'+(n||0).toFixed(2);}}
@@ -320,24 +315,26 @@ async function loadData(){
   rebuildClientBook(); populateClientDatalist();
 }
 function normalizeRowFromSheet(r){
-  // Compatibilidad asesor/tecnico al leer
+  // Aceptar 'asesor' o 'tecnico' de la hoja
   const asesor = r.asesor || r.Asesor || r.tecnico || r.Técnico || r.Tecnico || '';
+  // Derivar garantía si viene por actividad de soporte
+  const act = r.actividad || r.Actividad || '';
   const modalidad = r.modalidad || r.Modalidad || (['Remoto','Presencial'].includes(r.tipo)? r.tipo : '');
-  let garantia = r.garantia || r.Garantia || r.Garantía || '';
-  if (!garantia && r.actividad) {
-    if (r.actividad === 'Soporte de garantía') garantia = 'Sí';
-    else if (r.actividad === 'Soporte fuera de garantía') garantia = 'No';
-  }
+  const garantiaDerivada =
+    act==='Soporte de garantía' ? 'Sí' :
+    act==='Soporte fuera de garantía' ? 'No' :
+    (r.garantia || r.Garantia || r.Garantía || '');
+
   return {
-    id: r.id ?? r.ID ?? '',
+    id: r.id ? Number(r.id) : (r.ID ? Number(r.ID): undefined),
     fecha_inicio: r.fecha_inicio || r['fecha inicio'] || r.fecha || '',
     hora_inicio:  r.hora_inicio  || r['hora inicio']  || '',
     fecha_fin:    r.fecha_fin    || r['fecha fin']    || r.fecha || '',
     hora_fin:     r.hora_fin     || r['hora fin']     || '',
     asesor,
-    actividad:    r.actividad || r.Actividad || '',
+    actividad:    act,
     modalidad,
-    garantia,
+    garantia:     garantiaDerivada,
     cliente:      r.cliente || r.Cliente || '',
     telefono:     r.telefono || r.Teléfono || r.Telefono || '',
     ciudad:       r.ciudad || r.Ciudad || '',
@@ -409,44 +406,94 @@ function ensureChart(id,config){
 function renderCharts(rows){
   const asesores = ['Israel','Selene','Diego','Yared','Gabriel'];
   const acts = [
-    'Soporte de garantía','Soporte fuera de garantía','Instalación','Evento','Proyecto','Curso','Vacaciones'
+    'Soporte de garantía',
+    'Soporte fuera de garantía',
+    'Instalación',
+    'Evento',
+    'Proyecto',
+    'Curso',
+    'Vacaciones'
   ];
 
   // Stacked por actividad
   const datasetsStack = acts.map(act => ({
     label: act,
-    data: asesores.map(a => rows.filter(r => r.asesor === a && r.actividad === act).length),
+    data: asesores.map(t =>
+      rows.filter(r => r.asesor === t && r.actividad === act).length
+    ),
   }));
   ensureChart('chartTechCount', {
-    type:'bar', data:{ labels: asesores, datasets: datasetsStack },
-    options:{ plugins:{legend:{position:'bottom'},tooltip:{mode:'index',intersect:false,callbacks:{footer:(items)=>'Total: '+items.reduce((s,i)=>s+i.parsed.y,0)}}},
-      scales:{ x:{stacked:true,grid:{display:true}}, y:{stacked:true,beginAtZero:true,grid:{display:true}} } }
+    type: 'bar',
+    data: { labels: asesores, datasets: datasetsStack },
+    options: {
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            footer: (items) => {
+              const total = items.reduce((s,i)=> s + i.parsed.y, 0);
+              return 'Total: ' + total;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { display: true } },
+        y: { stacked: true, beginAtZero: true, grid: { display: true } }
+      }
+    }
   });
 
+  // Remoto vs Presencial
   const rem = rows.filter(r => r.modalidad === 'Remoto').length;
   const pre = rows.filter(r => r.modalidad === 'Presencial').length;
-  ensureChart('chartRemPre', { type:'doughnut', data:{ labels:['Remoto','Presencial'], datasets:[{data:[rem,pre]}] }, options:{ plugins:{legend:{position:'bottom'}} } });
-
-  ensureChart('chartActividad', {
-    type:'doughnut',
-    data:{ labels:acts, datasets:[{ data: acts.map(a => rows.filter(r => r.actividad===a).length) }] },
-    options:{ plugins:{legend:{position:'bottom'}} }
+  ensureChart('chartRemPre', {
+    type: 'doughnut',
+    data: { labels: ['Remoto','Presencial'], datasets: [{ data: [rem, pre] }] },
+    options: { plugins: { legend: { position: 'bottom' } } }
   });
 
+  // Distribución por actividad
+  ensureChart('chartActividad', {
+    type: 'doughnut',
+    data: {
+      labels: acts,
+      datasets: [{ data: acts.map(a => rows.filter(r => r.actividad === a).length) }]
+    },
+    options: { plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // Garantía vs No
   const g  = rows.filter(r => r.garantia === 'Sí').length;
   const ng = rows.filter(r => r.garantia === 'No').length;
-  ensureChart('chartGarantia', { type:'doughnut', data:{ labels:['Garantía','No garantía'], datasets:[{data:[g,ng]}] }, options:{ plugins:{legend:{position:'bottom'}} } });
+  ensureChart('chartGarantia', {
+    type: 'doughnut',
+    data: { labels: ['Garantía','No garantía'], datasets: [{ data: [g, ng] }] },
+    options: { plugins: { legend: { position: 'bottom' } } }
+  });
 
-  const rev = asesores.map(a => rows.reduce((sum,r)=> sum + (r.asesor===a && r.cobrado==='Sí' ? (Number(r.monto)||0) : 0), 0));
+  // Ingresos por asesor
+  const rev = asesores.map(t =>
+    rows.reduce((sum, r) => sum + (r.asesor === t && r.cobrado === 'Sí' ? (Number(r.monto)||0) : 0), 0)
+  );
   ensureChart('chartRevenue', {
-    type:'bar',
-    data:{ labels: asesores, datasets:[{ label:'MXN', data: rev }] },
-    options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=> formatMoney(ctx.parsed.y)}}},
-              scales:{ y:{beginAtZero:true,ticks:{callback:(v)=> formatMoney(v)}} } }
+    type: 'bar',
+    data: { labels: asesores, datasets: [{ label: 'MXN', data: rev }] },
+    options: {
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => formatMoney(ctx.parsed.y) } }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: (v) => formatMoney(v) } }
+      }
+    }
   });
 }
 
-/* ========= Table ========= */
+/* ========= Tabla (con Acciones) ========= */
 function renderTable(rows){
   const tbody=document.getElementById('tbody');
   function fmt(d,t){
@@ -468,8 +515,55 @@ function renderTable(rows){
       <td class="py-2 px-3 whitespace-normal break-words">${r.telefono||''}</td>
       <td class="py-2 px-3 whitespace-normal break-words">${r.ciudad||''}</td>
       <td class="py-2 px-3 whitespace-normal break-words">${r.notas||''}</td>
+      <td class="py-2 px-3">
+        <button class="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 mr-1" onclick="editRow(${r.id??'null'})" title="Editar">✏️</button>
+        <button class="text-xs px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/30" onclick="deleteRow(${r.id??'null'})" title="Eliminar">🗑️</button>
+      </td>
     </tr>
   `).join('');
+}
+
+/* ========= Calendario ========= */
+function renderCalendar(rows){
+  const calEl = document.getElementById('calendar');
+  if (!calEl) return;
+
+  const [y,m] = state.month.split('-');
+  const inMonth = rows.filter(r => {
+    const d = parseDay(r.fecha_inicio||r.fecha);
+    return d && d.format('YYYY-MM') === `${y}-${m}`;
+  });
+
+  const events = inMonth.map(r => ({
+    id: r.id || undefined,
+    title: `${r.actividad||''} — ${r.asesor||''}`,
+    start: r.fecha_inicio ? `${r.fecha_inicio}T${r.hora_inicio||'00:00'}` : undefined,
+    end:   r.fecha_fin ? `${r.fecha_fin}T${r.hora_fin||'23:59'}` : undefined
+  })).filter(e => e.start);
+
+  // recalcular o crear
+  if (state.calendar) {
+    state.calendar.removeAllEvents();
+    events.forEach(ev => state.calendar.addEvent(ev));
+    // navegar al mes seleccionado
+    const firstDay = dayjs(`${state.month}-01`).toDate();
+    state.calendar.gotoDate(firstDay);
+  } else {
+    state.calendar = new FullCalendar.Calendar(calEl, {
+      initialView: 'dayGridMonth',
+      height: '95%',               // ocupa ~95% del contenedor (la tarjeta mide 820px)
+      headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+      firstDay: 1,                 // lunes
+      locale: 'es',
+      events,
+      eventDisplay: 'block',
+      dayMaxEventRows: true,
+    });
+    state.calendar.render();
+    // Asegura mes inicial
+    const firstDay = dayjs(`${state.month}-01`).toDate();
+    state.calendar.gotoDate(firstDay);
+  }
 }
 
 /* ========= Google Maps ========= */
@@ -507,7 +601,7 @@ function renderMarkers(rows){
 
 /* ========= CSV / PDF ========= */
 function exportCSV(rows){
-  const header=['fecha_inicio','hora_inicio','fecha_fin','hora_fin','asesor','actividad','modalidad','garantia','cobrado','monto','cliente','telefono','ciudad','notas','lat','lng'];
+  const header=['id','fecha_inicio','hora_inicio','fecha_fin','hora_fin','asesor','actividad','modalidad','garantia','cobrado','monto','cliente','telefono','ciudad','notas','lat','lng'];
   const lines=[header.join(',')].concat(rows.map(r=> header.map(h=>{const v=(r[h]??'').toString().replaceAll('"','""'); return `"${v}"`;}).join(',')));
   const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`mdc-servicio-${state.month}.csv`; a.click(); URL.revokeObjectURL(url);
 }
@@ -519,10 +613,12 @@ async function loadTeamViewerCSV() {
     const res = await fetch('connectionreport.csv', { cache: 'no-store' });
     if (!res.ok) throw new Error('CSV no encontrado');
     const text = await res.text();
+
     const { rows, meta } = parseCSV(text);
-    const headerMap = meta.headerMap;
-    const durKey = Object.keys(headerMap).find(k => k.includes('duration') || k.includes('time spent'));
+    const headerMap = meta.headerMap; // lowercased -> index
+    const durKey = Object.keys(headerMap).find(k => k.includes('duration') || k.includes('time spent') || k.includes('minutes'));
     const startKey = Object.keys(headerMap).find(k => k.includes('start') || k.includes('date') || k.includes('time'));
+
     if (!durKey || !startKey) throw new Error('No se encontraron columnas de duración/fecha en el CSV');
 
     const normalized = rows.map(r => {
@@ -568,7 +664,6 @@ function splitCSVLine(line, padTo) {
   if (padTo && out.length < padTo) { while (out.length < padTo) out.push(''); }
   return out;
 }
-// "90", "90.5", "90,5", "90 min" => horas
 function parseDurationToHours(s) {
   if (!s) return 0;
   const cleaned = String(s).toLowerCase().replace('min', '').trim().replace(',', '.');
@@ -579,7 +674,11 @@ function parseDurationToHours(s) {
 let tvChart = null;
 async function renderTeamViewerChart() {
   const data = await loadTeamViewerCSV();
-  if (!data.length) { if (tvChart) { tvChart.destroy(); tvChart = null; } setTVKpis(0, 0); return; }
+  if (!data.length) {
+    if (tvChart) { tvChart.destroy(); tvChart = null; }
+    setTVKpis(0, 0);
+    return;
+  }
   showTVBanner('Datos cargados desde connectionreport.csv');
 
   const [y, m] = state.month.split('-');
@@ -614,9 +713,24 @@ async function renderTeamViewerChart() {
       ]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' }, tooltip: { mode: 'index', intersect: false } },
-      scales: { yCount: { position: 'left', beginAtZero: true, ticks: { precision: 0 } }, yHours: { position: 'right', beginAtZero: true } }
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: (ctx) => ctx.dataset.yAxisID === 'yHours'
+              ? `Horas: ${ctx.parsed.y}`
+              : `Conexiones: ${ctx.parsed.y}`
+          }
+        }
+      },
+      scales: {
+        yCount: { position: 'left', beginAtZero: true, ticks: { precision: 0 } },
+        yHours: { position: 'right', beginAtZero: true }
+      }
     }
   });
 }
@@ -627,66 +741,60 @@ function setTVKpis(totalConn, totalHours) {
   if (elH) elH.textContent = String(totalHours);
 }
 
-/* ========= Calendario ========= */
-function renderCalendar(rows){
-  const wrap = document.getElementById('calGrid');
-  const title = document.getElementById('calTitle');
-  wrap.innerHTML = '';
-  const [y,m] = state.month.split('-'); // YYYY-MM
-  const first = dayjs(`${y}-${m}-01`);
-  title.textContent = first.format('MMMM YYYY');
-
-  // Primer día (lunes = 1… domingo = 7)
-  const startDow = (first.day() + 6) % 7 + 1;
-  const daysInMonth = first.daysInMonth();
-
-  // Pre-celdas vacías hasta el lunes
-  for(let i=1;i<startDow;i++){
-    const cell = document.createElement('div');
-    cell.className = 'cal-cell opacity-30';
-    wrap.appendChild(cell);
-  }
-
-  const monthRows = rows.filter(r => {
-    const md = parseDay(r.fecha_inicio);
-    return md && md.format('YYYY-MM') === `${y}-${m}`;
-  });
-
-  const colorByAct = (act)=>{
-    if(act==='Soporte de garantía') return 'bg-emerald-500/20 border border-emerald-400/30';
-    if(act==='Soporte fuera de garantía') return 'bg-rose-500/20 border border-rose-400/30';
-    if(act==='Instalación') return 'bg-sky-500/20 border border-sky-400/30';
-    if(act==='Evento') return 'bg-amber-500/20 border border-amber-400/30';
-    if(act==='Proyecto') return 'bg-fuchsia-500/20 border border-fuchsia-400/30';
-    if(act==='Curso') return 'bg-indigo-500/20 border border-indigo-400/30';
-    if(act==='Vacaciones') return 'bg-slate-500/20 border border-slate-400/30';
-    return 'bg-white/10 border border-white/10';
-  };
-
-  for(let d=1; d<=daysInMonth; d++){
-    const cell = document.createElement('div');
-    cell.className = 'cal-cell';
-    const dayHeader = document.createElement('div');
-    dayHeader.className = 'text-xs text-slate-400 mb-1';
-    dayHeader.textContent = String(d).padStart(2,'0');
-    cell.appendChild(dayHeader);
-
-    // items del día
-    const dayStr = `${y}-${m}-${String(d).padStart(2,'0')}`;
-    const items = monthRows.filter(r => (r.fecha_inicio === dayStr));
-    items.forEach(r=>{
-      const tag = document.createElement('div');
-      tag.className = `badge ${colorByAct(r.actividad)} mb-1`;
-      tag.title = `${r.asesor||''} · ${r.modalidad||''} · ${r.cliente||''}`;
-      tag.textContent = `${r.asesor||''} — ${r.actividad||''}`;
-      cell.appendChild(tag);
-    });
-
-    wrap.appendChild(cell);
-  }
+/* ========= Editar / Eliminar ========= */
+function requireToken() {
+  const t = prompt("Ingresa el token de edición:");
+  return t && t.trim() === EDIT_TOKEN;
 }
+function scrollToCapture(){
+  document.getElementById('form')?.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function fillFormFromRow(r){
+  const f = document.getElementById('form');
+  f.fecha_inicio.value = r.fecha_inicio || '';
+  f.hora_inicio.value  = r.hora_inicio  || '';
+  f.fecha_fin.value    = r.fecha_fin    || '';
+  f.hora_fin.value     = r.hora_fin     || '';
+  f.asesor.value       = r.asesor       || 'Israel';
+  f.actividad.value    = r.actividad    || 'Soporte de garantía';
+  f.modalidad.value    = r.modalidad    || 'Remoto';
+  f.cliente.value      = r.cliente      || '';
+  f.telefono.value     = r.telefono     || '';
+  f.ciudad.value       = r.ciudad       || '';
+  f.notas.value        = r.notas        || '';
+  document.getElementById('lat').value  = r.lat ?? '';
+  document.getElementById('lng').value  = r.lng ?? '';
+  const cobSel = document.getElementById('cobrado');
+  cobSel.value = r.cobrado || 'No';
+  const monInp = document.getElementById('monto');
+  monInp.value = r.monto || '';
+  monInp.disabled = (cobSel.value !== 'Sí');
+}
+window.editRow = async function(id){
+  if (!id && id !== 0) { alert("Este registro no tiene ID válido."); return; }
+  if (!requireToken()) return;
+  const row = state.rows.find(r => Number(r.id) === Number(id));
+  if (!row) { alert("Registro no encontrado."); return; }
+  editingId = Number(id);
+  fillFormFromRow(row);
+  scrollToCapture();
+};
+window.deleteRow = async function(id){
+  if (!id && id !== 0) { alert("Este registro no tiene ID válido."); return; }
+  if (!requireToken()) return;
+  if (!confirm(`¿Eliminar el registro #${id}?`)) return;
+  try{
+    const res = await fetch(SHEETS_ENDPOINT, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'delete', id:Number(id), token:EDIT_TOKEN })
+    });
+    if(!res.ok){ const t = await res.text(); throw new Error(t); }
+    await loadData(); renderAll();
+  }catch(e){ console.error(e); setBanner('No se pudo eliminar el registro. Revisa el backend.','error'); }
+};
 
-/* ========= Render ========= */
+/* ========= Render principal ========= */
 function renderAll(){
   const rows = getFiltered();
   renderKPIs(rows);
@@ -712,20 +820,40 @@ function bindUI(){
   cobSel?.addEventListener('change',toggleMonto); toggleMonto();
 
   const form=document.getElementById('form');
-  form.addEventListener('submit',async (e)=>{e.preventDefault(); const fd=new FormData(form); const p=Object.fromEntries(fd.entries());
+  form.addEventListener('submit',async (e)=>{
+    e.preventDefault();
+    const fd=new FormData(form); const p=Object.fromEntries(fd.entries());
+
     // Derivar garantía desde actividad
     if (p.actividad === 'Soporte de garantía') p.garantia = 'Sí';
     else if (p.actividad === 'Soporte fuera de garantía') p.garantia = 'No';
     else p.garantia = '';
 
-    const start=dayjs(`${p.fecha_inicio} ${p.hora_inicio}`,'YYYY-MM-DD HH:mm'); const end=dayjs(`${p.fecha_fin} ${p.hora_fin}`,'YYYY-MM-DD HH:mm');
+    const start=dayjs(`${p.fecha_inicio} ${p.hora_inicio}`,'YYYY-MM-DD HH:mm');
+    const end=dayjs(`${p.fecha_fin} ${p.hora_fin}`,'YYYY-MM-DD HH:mm');
     if(!start.isValid()||!end.isValid()||end.isBefore(start)){setBanner('Revisa fechas/horas: el fin no puede ser antes que el inicio.','error'); return;}
     if(p.cobrado==='Sí'){p.monto=p.monto?Number(p.monto):0;} else {p.monto=0;}
-    p.lat = document.getElementById('lat').value ? Number(document.getElementById('lat').value) : undefined;
-    p.lng = document.getElementById('lng').value ? Number(document.getElementById('lng').value) : undefined;
+    p.lat = document.getElementById('lat').value ? Number(document.getElementById('lat').value) : '';
+    p.lng = document.getElementById('lng').value ? Number(document.getElementById('lng').value) : '';
 
     upsertClient(p.cliente,p.telefono);
-    await saveRow(p); form.reset();
+
+    // Crear o actualizar
+    if (editingId != null) {
+      // requiere token
+      if (!requireToken()) return;
+      p.id = Number(editingId);
+      p.action = 'update';
+      p.token = EDIT_TOKEN;
+      await saveRow(p);
+      editingId = null;
+      form.reset();
+    } else {
+      // crear (sin token)
+      p.action = 'create';
+      await saveRow(p);
+      form.reset();
+    }
   });
 }
 
