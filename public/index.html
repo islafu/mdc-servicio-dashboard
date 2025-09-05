@@ -13,6 +13,10 @@
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.min.js"></script>
   <script>dayjs.extend(window.dayjs_plugin_isoWeek);dayjs.extend(window.dayjs_plugin_customParseFormat);</script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <!-- FullCalendar (calendario) -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
 
   <!-- Google Maps (Maps + Places) -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&callback=initMap"></script>
@@ -102,6 +106,13 @@
   <section class="card p-4 mb-6">
     <h3 class="mb-2">Ingresos por técnico (MXN)</h3>
     <div class="chart-h-lg"><canvas id="chartRevenue"></canvas></div>
+  </section>
+  <section class="card p-4 mb-6">
+  <div class="flex items-center justify-between mb-2">
+    <h3>Calendario de actividades</h3>
+    <div class="text-xs text-slate-400">Vista mensual · colores por actividad</div>
+  </div>
+  <div id="calendar" class="rounded-xl overflow-hidden" style="height: 650px;"></div>
   </section>
   <section class="card p-4 mb-6">
     <h3 class="mb-2">TeamViewer — Conexiones y horas (CSV)</h3>
@@ -532,6 +543,92 @@ function renderMarkers(rows){
   if(any){ if(gmarkers.length===1){gmap.setCenter(gmarkers[0].getPosition()); gmap.setZoom(14);} else {gmap.fitBounds(bounds,60);} }
 }
 
+// ===== CALENDARIO (FullCalendar) =====
+let calendarInst = null;
+
+function activityColor(act){
+  switch (act) {
+    case 'Soporte de garantía':       return '#22c55e';
+    case 'Soporte fuera de garantía': return '#f59e0b';
+    case 'Instalación':               return '#3b82f6';
+    case 'Evento':                    return '#a855f7';
+    case 'Proyecto':                  return '#ef4444';
+    case 'Curso':                     return '#14b8a6';
+    case 'Vacaciones':                return '#94a3b8';
+    default:                          return '#9ca3af';
+  }
+}
+
+function renderCalendar(rows){
+  const el = document.getElementById('calendar');
+  if (!el) return;
+
+  // Destruir instancia previa si existe (para volver a crearla al cambiar de mes/filtros)
+  if (calendarInst) {
+    calendarInst.destroy();
+    calendarInst = null;
+  }
+
+  // Construir eventos desde filas
+  const events = rows.map(r => {
+    const fi = (r.fecha_inicio || '').toString();
+    const ff = (r.fecha_fin || '').toString();
+    const hi = r.hora_inicio || '00:00';
+    const hf = r.hora_fin    || '23:59';
+    const start = fi ? `${fi}T${hi}` : null;
+    const end   = ff ? `${ff}T${hf}` : null;
+
+    return {
+      title: `${r.tecnico || ''} — ${r.actividad || r.modalidad || ''}`,
+      start,
+      end,
+      color: activityColor(r.actividad),
+      extendedProps: {
+        cliente: r.cliente || '',
+        ciudad:  r.ciudad || '',
+        notas:   r.notas  || '',
+        modalidad: r.modalidad || '',
+        garantia:  r.garantia  || ''
+      }
+    };
+  }).filter(e => !!e.start);
+
+  // Fecha inicial según selector de mes
+  const [yy, mm] = state.month.split('-');
+  const initialDate = `${yy}-${mm}-01`;
+
+  calendarInst = new FullCalendar.Calendar(el, {
+    initialView: 'dayGridMonth',
+    initialDate,
+    height: 650,
+    locale: 'es',
+    firstDay: 1,
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: '' // si quieres agregar 'dayGridMonth,timeGridWeek,timeGridDay' luego
+    },
+    events,
+    eventDidMount: (info) => {
+      // Tooltip nativo simple
+      const p = info.event.extendedProps;
+      const tip = [
+        info.event.title,
+        p.cliente ? `Cliente: ${p.cliente}` : '',
+        p.ciudad  ? `Ciudad: ${p.ciudad}`   : '',
+        p.modalidad ? `Modalidad: ${p.modalidad}` : '',
+        p.garantia  ? `Garantía: ${p.garantia}`   : '',
+        p.notas   ? `Notas: ${p.notas}`     : ''
+      ].filter(Boolean).join('\n');
+      info.el.title = tip;
+    }
+  });
+
+  calendarInst.render();
+}
+
+
+
 /* ========= CSV / PDF ========= */
 function exportCSV(rows){
   const header=['fecha_inicio','hora_inicio','fecha_fin','hora_fin','tecnico','actividad','modalidad','garantia','cobrado','monto','cliente','telefono','ciudad','notas','lat','lng'];
@@ -706,6 +803,8 @@ function renderAll(){
   renderCharts(rows);
   renderTable(rows);
   renderMarkers(rows);
+  // NUEVO: calendario
+  renderCalendar(rows);
   // NUEVO: render CSV TeamViewer
   renderTeamViewerChart();
 }
