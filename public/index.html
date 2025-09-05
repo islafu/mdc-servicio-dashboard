@@ -544,6 +544,20 @@ function renderMarkers(rows){
 }
 
 // ===== CALENDARIO (FullCalendar) =====
+
+function activityColor(act){
+  switch (act) {
+    case 'Soporte de garantía':       return '#22c55e';
+    case 'Soporte fuera de garantía': return '#f59e0b';
+    case 'Instalación':               return '#3b82f6';
+    case 'Evento':                    return '#a855f7';
+    case 'Proyecto':                  return '#ef4444';
+    case 'Curso':                     return '#14b8a6';
+    case 'Vacaciones':                return '#94a3b8';
+    default:                          return '#9ca3af';
+  }
+}
+
 let calendarInst = null;
 
 function activityColor(act){
@@ -559,29 +573,39 @@ function activityColor(act){
   }
 }
 
+function buildISO(dateStr, timeStr, defTime){
+  const md = parseDay(dateStr);
+  if (!md) return null;
+  const t = (timeStr && String(timeStr).trim()) ? String(timeStr).trim() : defTime; // HH:mm
+  // Forzamos HH:mm
+  const composed = dayjs(`${md.format('YYYY-MM-DD')} ${t}`, 'YYYY-MM-DD HH:mm', true);
+  return composed.isValid() ? composed.format('YYYY-MM-DDTHH:mm') : `${md.format('YYYY-MM-DD')}T${defTime}`;
+}
+
 function renderCalendar(rows){
   const el = document.getElementById('calendar');
   if (!el) return;
 
-  // Destruir instancia previa si existe (para volver a crearla al cambiar de mes/filtros)
-  if (calendarInst) {
-    calendarInst.destroy();
-    calendarInst = null;
-  }
+  // destruir si existe
+  if (calendarInst) { calendarInst.destroy(); calendarInst = null; }
 
-  // Construir eventos desde filas
+  // construimos eventos robustos
   const events = rows.map(r => {
-    const fi = (r.fecha_inicio || '').toString();
-    const ff = (r.fecha_fin || '').toString();
-    const hi = r.hora_inicio || '00:00';
-    const hf = r.hora_fin    || '23:59';
-    const start = fi ? `${fi}T${hi}` : null;
-    const end   = ff ? `${ff}T${hf}` : null;
+    const startISO = buildISO(r.fecha_inicio || r.fecha, r.hora_inicio, '09:00');
+    // Si no hay fecha_fin, usamos misma fecha; si no hay hora_fin, ponemos 18:00
+    const endISO   = buildISO(r.fecha_fin   || r.fecha_inicio || r.fecha, r.hora_fin, '18:00');
+
+    if (!startISO) return null; // evento inválido
+
+    // Si end < start, empujamos fin a +1 hora
+    let startD = dayjs(startISO);
+    let endD   = endISO ? dayjs(endISO) : startD.add(1, 'hour');
+    if (!endD.isValid() || endD.isBefore(startD)) endD = startD.add(1, 'hour');
 
     return {
       title: `${r.tecnico || ''} — ${r.actividad || r.modalidad || ''}`,
-      start,
-      end,
+      start: startD.format(), // ISO
+      end:   endD.format(),
       color: activityColor(r.actividad),
       extendedProps: {
         cliente: r.cliente || '',
@@ -591,9 +615,11 @@ function renderCalendar(rows){
         garantia:  r.garantia  || ''
       }
     };
-  }).filter(e => !!e.start);
+  }).filter(Boolean);
 
-  // Fecha inicial según selector de mes
+  console.info('Calendario — eventos construidos:', events.length);
+
+  // fecha inicial desde el selector de mes
   const [yy, mm] = state.month.split('-');
   const initialDate = `${yy}-${mm}-01`;
 
@@ -603,14 +629,9 @@ function renderCalendar(rows){
     height: 650,
     locale: 'es',
     firstDay: 1,
-    headerToolbar: {
-      left: 'prev,next today',
-      center: 'title',
-      right: '' // si quieres agregar 'dayGridMonth,timeGridWeek,timeGridDay' luego
-    },
+    headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
     events,
     eventDidMount: (info) => {
-      // Tooltip nativo simple
       const p = info.event.extendedProps;
       const tip = [
         info.event.title,
@@ -625,6 +646,15 @@ function renderCalendar(rows){
   });
 
   calendarInst.render();
+
+  // feedback si no hay eventos del mes
+  if (events.length === 0) {
+    // opcional: mensaje sutil en el propio calendario
+    const note = document.createElement('div');
+    note.className = 'text-center text-sm text-slate-400 py-6';
+    note.textContent = `Sin actividades para ${dayjs(initialDate).format('MMMM YYYY')}.`;
+    el.appendChild(note);
+  }
 }
 
 
