@@ -794,7 +794,11 @@ function renderCalendar() {
   const el = document.getElementById('calendar');
   if (!el) return;
 
-  const events = buildCalendarEvents(getFiltered());
+    // Usa las filas del mes seleccionado, y si no hay, usa todas (fallback)
+  const filtered = getFiltered();
+  const baseRows = filtered.length ? filtered : state.rows;
+  const events = buildCalendarEvents(baseRows);
+
 
   // Destruye una instancia previa si existe
   if (fcCalendar) { fcCalendar.destroy(); fcCalendar = null; }
@@ -803,8 +807,9 @@ function renderCalendar() {
     initialView: 'dayGridMonth',
     locale: 'es',
     timeZone: 'local',
-    height: '100%',       // usa todo el alto del contenedor
-    expandRows: true,     // que no colapse filas
+    height: '100%',
+    expandRows: true,
+    initialDate: dayjs(state.month + '-01').toDate(), // <--- NUEVO
     headerToolbar: {
       left: 'prev,next today',
       center: 'title',
@@ -812,6 +817,7 @@ function renderCalendar() {
     },
     events
   });
+
 
   // Render después de pintar layout
   requestAnimationFrame(() => {
