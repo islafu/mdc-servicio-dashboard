@@ -930,46 +930,43 @@ function bindUI(){
   cobSel?.addEventListener('change',toggleMonto); toggleMonto();
 
 const form=document.getElementById('form');
-form.addEventListener('submit',async (e)=>{
-  e.preventDefault(); 
-  const fd=new FormData(form); 
-  const p=Object.fromEntries(fd.entries());
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(form);
+  let p = Object.fromEntries(fd.entries());
 
-  // Derivar garantía desde actividad
-  if (p.actividad === 'Soporte de garantía') p.garantia = 'Sí';
-  else if (p.actividad === 'Soporte fuera de garantía') p.garantia = 'No';
-  else p.garantia = '';
+  // Asegurar valores por defecto
+  p.garantia =
+    p.actividad === 'Soporte de garantía' ? 'Sí' :
+    p.actividad === 'Soporte fuera de garantía' ? 'No' : (p.garantia || '');
 
-  // Validar fechas/horas (si hay horas deben formar fecha-hora válidas)
-  const start=dayjs(`${p.fecha_inicio} ${p.hora_inicio||'00:00'}`,'YYYY-MM-DD HH:mm');
-  const end=dayjs(`${p.fecha_fin} ${p.hora_fin||'23:59'}`,'YYYY-MM-DD HH:mm');
-  if(!start.isValid()||!end.isValid()||end.isBefore(start)){
-    setBanner('Revisa fechas/horas: el fin no puede ser antes que el inicio.','error'); 
-    return;
+  if (p.cobrado === 'Sí') {
+    p.monto = p.monto ? Number(p.monto) : 0;
+  } else {
+    p.monto = 0;
   }
 
-  if(p.cobrado==='Sí'){p.monto=p.monto?Number(p.monto):0;} else {p.monto=0;}
   p.lat = document.getElementById('lat').value ? Number(document.getElementById('lat').value) : undefined;
   p.lng = document.getElementById('lng').value ? Number(document.getElementById('lng').value) : undefined;
 
-  upsertClient(p.cliente,p.telefono);
-
-  try{
-    if (state.editId != null) {
-      // ACTUALIZAR
+  // === Diferenciar entre crear y actualizar ===
+  try {
+    if (state.editId) {
+      // 🚩 Actualizar
       await updateRow(state.editId, p);
-      exitEditMode();
+      state.editId = null;
+      document.getElementById('form').reset();
+      setBanner('Registro actualizado correctamente');
     } else {
-      // CREAR
+      // 🚩 Crear
       await createRow(p);
+      setBanner('Registro creado correctamente');
     }
     await loadData();
-    hideBanner();
     renderAll();
-    form.reset();
-  }catch(err){
+  } catch (err) {
     console.error(err);
-    setBanner('Error al guardar/actualizar. Revisa tu Apps Script/endpoint.','error');
+    setBanner('Error al guardar. Revisa tu Apps Script/endpoint.', 'error');
   }
 });
 }
