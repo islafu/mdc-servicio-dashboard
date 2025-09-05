@@ -755,19 +755,31 @@ function makeISO(startDate, startTime, endDate, endTime) {
 
 // Construye eventos válidos; descarta filas sin inicio
 function buildCalendarEvents(rows) {
-  const evs = [];
-  for (const r of rows) {
-    const stamp = makeISO(r.fecha_inicio, r.hora_inicio, r.fecha_fin, r.hora_fin);
-    if (!stamp) continue;
-    evs.push({
-      id:    r.id != null ? String(r.id) : undefined,
-      title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`.trim(),
-      start: stamp.startISO,
-      end:   stamp.endISO,
+  const hhmm = /^\d{1,2}:\d{2}$/;
+
+  return rows.map(r => {
+    const hasStartTime = r.hora_inicio && hhmm.test(String(r.hora_inicio).trim());
+    const hasEndTime   = r.hora_fin    && hhmm.test(String(r.hora_fin).trim());
+
+    // Si falta alguna hora, lo tratamos como evento de día completo
+    const allDay = !(hasStartTime && hasEndTime);
+
+    const start = hasStartTime
+      ? `${r.fecha_inicio}T${String(r.hora_inicio).trim()}`
+      : r.fecha_inicio;
+
+    const end = hasEndTime
+      ? `${r.fecha_fin}T${String(r.hora_fin).trim()}`
+      : r.fecha_fin;
+
+    return {
+      title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`,
+      start,
+      end,
+      allDay,
       color: pickColor(r.actividad),
-    });
-  }
-  return evs;
+    };
+  });
 }
 
 function renderCalendar() {
@@ -783,18 +795,21 @@ function renderCalendar() {
     initialView: 'dayGridMonth',
     initialDate: state.month + '-01',
     locale: 'es',
-    // Fuerza tamaños
-    height: '100%',          // ocupa todo el alto del #calendar
-    contentHeight: 'auto',   // calcula contenido automáticamente
-    expandRows: true,        // llena alto vertical con filas
+    height: '100%',
+    contentHeight: 'auto',
+    expandRows: true,
     handleWindowResize: true,
     headerToolbar: {
       left: 'prev,next today',
       center: 'title',
       right: 'dayGridMonth,timeGridWeek,timeGridDay'
     },
+    // 👉 NUEVO: formato 24h y mostrar hora cuando aplique
+    displayEventTime: true,
+    eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
     events
   });
+
 
   // Render y dos ajustes de tamaño (inmediato y diferido)
   fcCalendar.render();
