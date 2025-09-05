@@ -789,80 +789,61 @@ function normTime(t) {
 // Construye eventos de FullCalendar con allDay correcto
 function buildCalendarEvents(rows) {
   return rows.map(r => {
-    const d1 = parseDay(r.fecha_inicio);
-    const d2 = parseDay(r.fecha_fin || r.fecha_inicio);
-    const t1 = normTime(r.hora_inicio);
-    const t2raw = normTime(r.hora_fin);
+    const hasStartTime = r.hora_inicio && r.hora_inicio.trim() !== '';
+    const hasEndTime   = r.hora_fin    && r.hora_fin.trim()   !== '';
 
-    const hasTimeStart = !!t1;
-    const hasTimeEnd   = !!t2raw;
+    const start = hasStartTime
+      ? dayjs(`${r.fecha_inicio} ${r.hora_inicio}`, 'YYYY-MM-DD HH:mm', true)
+      : dayjs(r.fecha_inicio, 'YYYY-MM-DD', true);
 
-    // Si no hay hora fin pero sí inicio, asumimos 1 hora de duración
-    const t2 = hasTimeEnd
-      ? t2raw
-      : (hasTimeStart ? dayjs(`${d1.format('YYYY-MM-DD')}T${t1}`).add(1, 'hour').format('HH:mm') : null);
+    // si no hay hora_fin, ponemos una hora después para que no quede “pegado”
+    const endBase = hasEndTime
+      ? dayjs(`${r.fecha_fin} ${r.hora_fin}`, 'YYYY-MM-DD HH:mm', true)
+      : dayjs(r.fecha_fin || r.fecha_inicio, 'YYYY-MM-DD', true).add(hasStartTime ? 1 : 24, 'hour');
 
-    const allDay = !(hasTimeStart || hasTimeEnd);
-
-    let startStr, endStr;
-    if (allDay) {
-      // Evento de día completo
-      startStr = d1 ? d1.format('YYYY-MM-DD') : undefined;
-      // Para allDay, FullCalendar recomienda end = día siguiente
-      const d2Plus = (d2 || d1 || dayjs()).add(1, 'day');
-      endStr = d2Plus.format('YYYY-MM-DD');
-    } else {
-      // Evento con hora
-      const sd = (d1 || dayjs()).format('YYYY-MM-DD');
-      const ed = (d2 || d1 || dayjs()).format('YYYY-MM-DD');
-      startStr = `${sd}T${t1 || '00:00'}`;
-      endStr   = `${ed}T${t2 || '23:59'}`;
-    }
+    const allDay = !(hasStartTime || hasEndTime);
 
     return {
       title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`,
-      start: startStr,
-      end: endStr,
+      start: start.isValid() ? start.toDate() : undefined,
+      end:   endBase.isValid() ? endBase.toDate() : undefined,
       allDay,
       color: pickColor(r.actividad),
     };
-  });
+  }).filter(ev => ev.start); // descarta filas sin fecha válida
 }
 
 function renderCalendar() {
   const el = document.getElementById('calendar');
   if (!el) return;
 
-  // Usa TODO el arreglo para eventos (no sólo el filtrado), y fija initialDate con el selector de mes.
-  const events = buildCalendarEvents(state.rows);
+  const events = buildCalendarEvents(getFiltered());
 
   if (fcCalendar) { fcCalendar.destroy(); fcCalendar = null; }
 
   fcCalendar = new FullCalendar.Calendar(el, {
     initialView: 'dayGridMonth',
-    initialDate: state.month + '-01',
     locale: 'es',
+    timeZone: 'local',                // <- fuerza manejo local
     height: '100%',
-    contentHeight: 'auto',
     expandRows: true,
-    handleWindowResize: true,
+    slotMinTime: '06:00:00',          // opcional (ajusta si quieres)
+    slotMaxTime: '22:00:00',          // opcional (ajusta si quieres)
     headerToolbar: {
       left: 'prev,next today',
       center: 'title',
       right: 'dayGridMonth,timeGridWeek,timeGridDay'
     },
-    // 👉 NUEVO: formato 24h y mostrar hora cuando aplique
-    displayEventTime: true,
-    eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
     events
   });
 
-
-  // Render y dos ajustes de tamaño (inmediato y diferido)
-  fcCalendar.render();
-  fcCalendar.updateSize();
-  setTimeout(() => fcCalendar.updateSize(), 200);
+  requestAnimationFrame(() => {
+    fcCalendar.render();
+    fcCalendar.updateSize();
+    setTimeout(() => fcCalendar.updateSize(), 200);
+  });
 }
+
 
 // Ajusta si cambia tamaño/visibilidad
 window.addEventListener('resize', () => { if (fcCalendar) fcCalendar.updateSize(); });
