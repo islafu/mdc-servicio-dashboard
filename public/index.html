@@ -754,28 +754,75 @@ function makeISO(startDate, startTime, endDate, endTime) {
 }
 
 // Construye eventos válidos; descarta filas sin inicio
+function normTime(t) {
+  if (!t) return null;
+  const s = String(t).trim().toLowerCase();
+
+  // Casos comunes de Google Sheets: "6:00", "06:00", "18:00", "18:00:00", "6:00 pm", etc.
+  // Intenta varios formatos y devuelve HH:mm
+  const tryFormats = [
+    'H:mm', 'HH:mm',
+    'H:mm:ss', 'HH:mm:ss',
+    'h:mm A', 'hh:mm A', // con AM/PM
+  ];
+  for (const f of tryFormats) {
+    const m = dayjs(s, f, true);
+    if (m.isValid()) return m.format('HH:mm');
+  }
+
+  // Si viene como Date (raro, pero Apps Script a veces lo hace)
+  if (Object.prototype.toString.call(t) === '[object Date]') {
+    const m = dayjs(t);
+    if (m.isValid()) return m.format('HH:mm');
+  }
+
+  // Último intento: extraer hh:mm a mano
+  const m2 = s.match(/(\d{1,2}):(\d{2})/);
+  if (m2) {
+    const hh = String(m2[1]).padStart(2, '0');
+    const mm = String(m2[2]).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+  return null;
+}
+
+// Construye eventos de FullCalendar con allDay correcto
 function buildCalendarEvents(rows) {
-  const hhmm = /^\d{1,2}:\d{2}$/;
-
   return rows.map(r => {
-    const hasStartTime = r.hora_inicio && hhmm.test(String(r.hora_inicio).trim());
-    const hasEndTime   = r.hora_fin    && hhmm.test(String(r.hora_fin).trim());
+    const d1 = parseDay(r.fecha_inicio);
+    const d2 = parseDay(r.fecha_fin || r.fecha_inicio);
+    const t1 = normTime(r.hora_inicio);
+    const t2raw = normTime(r.hora_fin);
 
-    // Si falta alguna hora, lo tratamos como evento de día completo
-    const allDay = !(hasStartTime && hasEndTime);
+    const hasTimeStart = !!t1;
+    const hasTimeEnd   = !!t2raw;
 
-    const start = hasStartTime
-      ? `${r.fecha_inicio}T${String(r.hora_inicio).trim()}`
-      : r.fecha_inicio;
+    // Si no hay hora fin pero sí inicio, asumimos 1 hora de duración
+    const t2 = hasTimeEnd
+      ? t2raw
+      : (hasTimeStart ? dayjs(`${d1.format('YYYY-MM-DD')}T${t1}`).add(1, 'hour').format('HH:mm') : null);
 
-    const end = hasEndTime
-      ? `${r.fecha_fin}T${String(r.hora_fin).trim()}`
-      : r.fecha_fin;
+    const allDay = !(hasTimeStart || hasTimeEnd);
+
+    let startStr, endStr;
+    if (allDay) {
+      // Evento de día completo
+      startStr = d1 ? d1.format('YYYY-MM-DD') : undefined;
+      // Para allDay, FullCalendar recomienda end = día siguiente
+      const d2Plus = (d2 || d1 || dayjs()).add(1, 'day');
+      endStr = d2Plus.format('YYYY-MM-DD');
+    } else {
+      // Evento con hora
+      const sd = (d1 || dayjs()).format('YYYY-MM-DD');
+      const ed = (d2 || d1 || dayjs()).format('YYYY-MM-DD');
+      startStr = `${sd}T${t1 || '00:00'}`;
+      endStr   = `${ed}T${t2 || '23:59'}`;
+    }
 
     return {
       title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`,
-      start,
-      end,
+      start: startStr,
+      end: endStr,
       allDay,
       color: pickColor(r.actividad),
     };
