@@ -787,30 +787,42 @@ function normTime(t) {
 }
 
 // Construye eventos de FullCalendar con allDay correcto
+// Parser flexible: acepta 2025-08-01 6:00, 2025/8/1 06:00, etc.
+function parseLocalDateTime(dateStr, timeStr) {
+  const hasTime = timeStr && String(timeStr).trim() !== '';
+  const s = hasTime ? `${dateStr} ${timeStr}` : String(dateStr || '').trim();
+
+  // Formatos comunes de Sheets/CSV con y sin cero a la izquierda
+  const formats = hasTime
+    ? ['YYYY-MM-DD HH:mm', 'YYYY-MM-DD H:mm', 'YYYY/M/D HH:mm', 'YYYY/M/D H:mm', 'YYYY-M-D HH:mm', 'YYYY-M-D H:mm']
+    : ['YYYY-MM-DD', 'YYYY/M/D', 'YYYY-M-D'];
+
+  let m = dayjs(s, formats, true);
+  if (!m.isValid()) m = dayjs(s); // último recurso (ISO/libre)
+
+  return m.isValid() ? m : null;
+}
+
 function buildCalendarEvents(rows) {
   return rows.map(r => {
     const hasStartTime = r.hora_inicio && r.hora_inicio.trim() !== '';
     const hasEndTime   = r.hora_fin    && r.hora_fin.trim()   !== '';
 
-    const start = hasStartTime
-      ? dayjs(`${r.fecha_inicio} ${r.hora_inicio}`, 'YYYY-MM-DD HH:mm', true)
-      : dayjs(r.fecha_inicio, 'YYYY-MM-DD', true);
-
-    // si no hay hora_fin, ponemos una hora después para que no quede “pegado”
-    const endBase = hasEndTime
-      ? dayjs(`${r.fecha_fin} ${r.hora_fin}`, 'YYYY-MM-DD HH:mm', true)
-      : dayjs(r.fecha_fin || r.fecha_inicio, 'YYYY-MM-DD', true).add(hasStartTime ? 1 : 24, 'hour');
+    const start = parseLocalDateTime(r.fecha_inicio, hasStartTime ? r.hora_inicio : null);
+    // Si no hay fin, usamos misma fecha u hora +1h (para que se vea en week/day)
+    const endBase = parseLocalDateTime(r.fecha_fin || r.fecha_inicio, hasEndTime ? r.hora_fin : null)
+                 || (start ? start.add(hasStartTime ? 1 : 24, 'hour') : null);
 
     const allDay = !(hasStartTime || hasEndTime);
 
     return {
       title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`,
-      start: start.isValid() ? start.toDate() : undefined,
-      end:   endBase.isValid() ? endBase.toDate() : undefined,
+      start: start ? start.toDate() : undefined,
+      end:   endBase ? endBase.toDate() : undefined,
       allDay,
       color: pickColor(r.actividad),
     };
-  }).filter(ev => ev.start); // descarta filas sin fecha válida
+  }).filter(ev => ev.start);
 }
 
 function renderCalendar() {
