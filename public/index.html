@@ -712,7 +712,7 @@ function setTVKpis(totalConn, totalHours) {
 // ========= Calendario =========
 let fcCalendar = null;
 
-// Color por tipo de actividad
+// Colores por actividad
 function pickColor(act) {
   const map = {
     'Soporte de garantía': '#22c55e',
@@ -726,23 +726,15 @@ function pickColor(act) {
   return map[act] || '#64748b';
 }
 
-/* ---------- Normalizadores tolerantes ---------- */
+// ---------- Utilidades de fecha/hora (robustas para Sheets) ----------
 function pad2(n){ return String(n).padStart(2,'0'); }
-
-function normalizeDateStr(s) {
-  if (!s) return null;
-  s = String(s).trim().replace(/\./g,'-').replace(/\//g,'-'); // 2025/8/1 -> 2025-8-1
-  const m = dayjs(s);                    // acepta muchos formatos
-  return m.isValid() ? m.format('YYYY-MM-DD') : null;
-}
 
 function normalizeTimeStr(s) {
   if (!s) return null;
   s = String(s).trim();
 
-  // Quita segundos si vienen
   const hhmmss = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
-  const ampm   = /^(\d{1,2}):(\d{2})\s*([ap]\.?m\.?|[AP]M)$/; // 6:30 pm, 6:30 p.m., etc.
+  const ampm   = /^(\d{1,2}):(\d{2})\s*([ap]\.?m\.?|[AP]M)$/;
 
   let h, m;
 
@@ -757,7 +749,6 @@ function normalizeTimeStr(s) {
     if (isPM && h < 12) h += 12;
     if (!isPM && h === 12) h = 0;
   } else {
-    // último recurso: que lo intente dayjs
     const m3 = dayjs(s, ['H:mm','HH:mm','h:mm A','h:mmA'], true);
     if (m3.isValid()) { h = m3.hour(); m = m3.minute(); }
   }
@@ -768,15 +759,52 @@ function normalizeTimeStr(s) {
   return `${pad2(h)}:${pad2(m)}`;
 }
 
-function makeJSDate(dateStr, timeStr) {
-  const d = normalizeDateStr(dateStr);
-  if (!d) return null;
-  const t = normalizeTimeStr(timeStr);
-  // Usa 00:00 si no hay hora para all-day
-  return new Date(`${d}T${t || '00:00'}:00`);
+/** Convierte Date/serial/string a dayjs (sólo fecha, local) */
+function toDayjsDateOnly(input) {
+  if (input == null) return null;
+
+  // 1) Date real
+  if (Object.prototype.toString.call(input) === '[object Date]') {
+    const m = dayjs(input);
+    return m.isValid() ? m.startOf('day') : null;
+  }
+
+  // 2) Número serial de Sheets/Excel (base 1899-12-30)
+  if (typeof input === 'number' && isFinite(input)) {
+    const base = dayjs('1899-12-30');
+    return base.add(input, 'day').startOf('day');
+  }
+
+  // 3) String
+  let s = String(input).trim();
+  s = s.replace(/\./g,'-').replace(/\//g,'-'); // normaliza separadores
+  let m = dayjs(s);
+  if (!m.isValid()) {
+    m = dayjs(s, ['YYYY-MM-DD','YYYY-M-D','YYYY-MM','YYYY/M/D','YYYY/M'], true);
+  }
+  return m.isValid() ? m.startOf('day') : null;
 }
 
-/* ---------- Construcción de eventos ---------- */
+/** Combina fecha (de cualquier tipo) + hora (string opcional) → Date local */
+function makeJSDate(dateInput, timeStr) {
+  const d = toDayjsDateOnly(dateInput);
+  if (!d) return null;
+
+  const t = normalizeTimeStr(timeStr);
+  if (!t) {
+    // all-day => 00:00 local
+    return d.toDate();
+  }
+  const [hh, mm] = t.split(':').map(Number);
+  return d.hour(hh).minute(mm).second(0).millisecond(0).toDate();
+}
+
+// ---------- Construcción de eventos ----------
+/**
+ * Construye eventos para FullCalendar a partir de filas YA filtradas (getFiltered()).
+ * - Si hay hora de inicio y no hay fin → duración 1h
+ * - Si no hay horas → evento all-day
+ */
 function buildCalendarEvents(rows) {
   const events = [];
 
@@ -794,9 +822,10 @@ function buildCalendarEvents(rows) {
     if (hasEndTime) {
       end = makeJSDate(r.fecha_fin || r.fecha_inicio || r.fecha, r.hora_fin);
     } else if (hasStartTime) {
-      end = new Date(start.getTime() + 60*60*1000); // +1h por defecto
+      // Sin hora fin → 1 hora por defecto
+      end = new Date(start.getTime() + 60*60*1000);
     } else {
-      // all-day => fin al día siguiente para que pinte el bloque
+      // All-day sin horas → fin = inicio + 1 día (para pintar el día completo)
       end = new Date(start.getTime() + 24*60*60*1000);
     }
 
@@ -819,7 +848,17 @@ function renderCalendar() {
   const el = document.getElementById('calendar');
   if (!el) return;
 
-  const events = buildCalendarEvents(getFiltered());
+  // DEBUG: muestra tipos que llegan desde Sheets (quítalo cuando ya todo se vea bien)
+  const _rows = getFiltered();
+  console.log('Sample rows (tipos):', _rows.slice(0,3).map(r => ({
+    id: r.id,
+    fi: r.fecha_inicio, fiType: Object.prototype.toString.call(r.fecha_inicio),
+    hi: r.hora_inicio,
+    ff: r.fecha_fin, ffType: Object.prototype.toString.call(r.fecha_fin),
+    hf: r.hora_fin
+  })));
+
+  const events = buildCalendarEvents(_rows);
 
   if (fcCalendar) { fcCalendar.destroy(); fcCalendar = null; }
 
@@ -844,6 +883,7 @@ function renderCalendar() {
   });
 }
 
+// Recalcula si cambia el tamaño de la ventana o vuelves de otra pestaña
 window.addEventListener('resize', () => fcCalendar?.updateSize());
 document.addEventListener('visibilitychange', () => { if (!document.hidden) fcCalendar?.updateSize(); });
 
