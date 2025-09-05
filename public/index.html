@@ -709,9 +709,10 @@ function setTVKpis(totalConn, totalHours) {
   if (elH) elH.textContent = String(totalHours);
 }
 
-/* ========= Calendario ========= */
+// ========= Calendario =========
 let fcCalendar = null;
 
+// Color por tipo de actividad
 function pickColor(act) {
   const map = {
     'Soporte de garantía': '#22c55e',
@@ -725,74 +726,16 @@ function pickColor(act) {
   return map[act] || '#64748b';
 }
 
-// Forma un rango ISO seguro a partir de las columnas de la fila
-function makeISO(startDate, startTime, endDate, endTime) {
-  const sDate = parseDay(startDate);
-  if (!sDate) return null;
-
-  const start = dayjs(
-    `${sDate.format('YYYY-MM-DD')} ${startTime || '00:00'}`,
-    'YYYY-MM-DD HH:mm',
-    true
-  );
-
-  const eBase = parseDay(endDate) || sDate;
-  const end = dayjs(
-    `${eBase.format('YYYY-MM-DD')} ${endTime || '23:59'}`,
-    'YYYY-MM-DD HH:mm',
-    true
-  );
-
-  const s = start.isValid() ? start : sDate.startOf('day');
-  let e = end.isValid() ? end : s.add(1, 'hour');
-  if (e.isBefore(s)) e = s.add(1, 'hour');
-
-  return {
-    startISO: s.format('YYYY-MM-DDTHH:mm:ss'),
-    endISO:   e.format('YYYY-MM-DDTHH:mm:ss'),
-  };
-}
-
-// Construye eventos válidos; descarta filas sin inicio
-function normTime(t) {
-  if (!t) return null;
-  const s = String(t).trim().toLowerCase();
-
-  // Casos comunes de Google Sheets: "6:00", "06:00", "18:00", "18:00:00", "6:00 pm", etc.
-  // Intenta varios formatos y devuelve HH:mm
-  const tryFormats = [
-    'H:mm', 'HH:mm',
-    'H:mm:ss', 'HH:mm:ss',
-    'h:mm A', 'hh:mm A', // con AM/PM
-  ];
-  for (const f of tryFormats) {
-    const m = dayjs(s, f, true);
-    if (m.isValid()) return m.format('HH:mm');
-  }
-
-  // Si viene como Date (raro, pero Apps Script a veces lo hace)
-  if (Object.prototype.toString.call(t) === '[object Date]') {
-    const m = dayjs(t);
-    if (m.isValid()) return m.format('HH:mm');
-  }
-
-  // Último intento: extraer hh:mm a mano
-  const m2 = s.match(/(\d{1,2}):(\d{2})/);
-  if (m2) {
-    const hh = String(m2[1]).padStart(2, '0');
-    const mm = String(m2[2]).padStart(2, '0');
-    return `${hh}:${mm}`;
-  }
-  return null;
-}
-
-// Construye eventos de FullCalendar con allDay correcto
-// Parser flexible: acepta 2025-08-01 6:00, 2025/8/1 06:00, etc.
+/**
+ * Parser robusto de fecha+hora:
+ * - Acepta "YYYY-MM-DD H:mm" y "HH:mm"
+ * - Acepta también "YYYY/M/D" variantes
+ * - Si no hay hora, parsea solo la fecha (para all-day)
+ */
 function parseLocalDateTime(dateStr, timeStr) {
   const hasTime = timeStr && String(timeStr).trim() !== '';
   const s = hasTime ? `${dateStr} ${timeStr}` : String(dateStr || '').trim();
 
-  // Formatos comunes de Sheets/CSV con y sin cero a la izquierda
   const formats = hasTime
     ? ['YYYY-MM-DD HH:mm', 'YYYY-MM-DD H:mm', 'YYYY/M/D HH:mm', 'YYYY/M/D H:mm', 'YYYY-M-D HH:mm', 'YYYY-M-D H:mm']
     : ['YYYY-MM-DD', 'YYYY/M/D', 'YYYY-M-D'];
@@ -803,26 +746,48 @@ function parseLocalDateTime(dateStr, timeStr) {
   return m.isValid() ? m : null;
 }
 
+/**
+ * Construye eventos para FullCalendar con filas ya filtradas por mes (getFiltered())
+ * - Si hay hora de inicio pero no fin, se asume duración 1h
+ * - Si no hay horas, evento all-day
+ */
 function buildCalendarEvents(rows) {
-  return rows.map(r => {
-    const hasStartTime = r.hora_inicio && r.hora_inicio.trim() !== '';
-    const hasEndTime   = r.hora_fin    && r.hora_fin.trim()   !== '';
+  const events = [];
+
+  rows.forEach(r => {
+    const hasStartTime = r.hora_inicio && String(r.hora_inicio).trim() !== '';
+    const hasEndTime   = r.hora_fin    && String(r.hora_fin).trim()   !== '';
 
     const start = parseLocalDateTime(r.fecha_inicio, hasStartTime ? r.hora_inicio : null);
-    // Si no hay fin, usamos misma fecha u hora +1h (para que se vea en week/day)
-    const endBase = parseLocalDateTime(r.fecha_fin || r.fecha_inicio, hasEndTime ? r.hora_fin : null)
-                 || (start ? start.add(hasStartTime ? 1 : 24, 'hour') : null);
+    if (!start) {
+      console.warn('Evento con inicio inválido, se omite:', r);
+      return;
+    }
+
+    let end = null;
+    if (hasEndTime) {
+      end = parseLocalDateTime(r.fecha_fin || r.fecha_inicio, r.hora_fin);
+    } else if (hasStartTime) {
+      // Sin hora fin: asumimos 1 hora
+      end = start.add(1, 'hour');
+    } else {
+      // All-day sin horas: fin = fecha_inicio + 1 día (para que FC pinte el día completo)
+      end = parseLocalDateTime(r.fecha_inicio, null)?.add(1, 'day');
+    }
 
     const allDay = !(hasStartTime || hasEndTime);
 
-    return {
+    events.push({
       title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`,
-      start: start ? start.toDate() : undefined,
-      end:   endBase ? endBase.toDate() : undefined,
+      start: start.toDate(),
+      end:   end ? end.toDate() : undefined,
       allDay,
       color: pickColor(r.actividad),
-    };
-  }).filter(ev => ev.start);
+    });
+  });
+
+  console.log('[Calendar] eventos construidos:', events.length, events);
+  return events;
 }
 
 function renderCalendar() {
@@ -831,16 +796,15 @@ function renderCalendar() {
 
   const events = buildCalendarEvents(getFiltered());
 
+  // Destruye una instancia previa si existe
   if (fcCalendar) { fcCalendar.destroy(); fcCalendar = null; }
 
   fcCalendar = new FullCalendar.Calendar(el, {
     initialView: 'dayGridMonth',
     locale: 'es',
-    timeZone: 'local',                // <- fuerza manejo local
-    height: '100%',
-    expandRows: true,
-    slotMinTime: '06:00:00',          // opcional (ajusta si quieres)
-    slotMaxTime: '22:00:00',          // opcional (ajusta si quieres)
+    timeZone: 'local',
+    height: '100%',       // usa todo el alto del contenedor
+    expandRows: true,     // que no colapse filas
     headerToolbar: {
       left: 'prev,next today',
       center: 'title',
@@ -849,21 +813,20 @@ function renderCalendar() {
     events
   });
 
+  // Render después de pintar layout
   requestAnimationFrame(() => {
     fcCalendar.render();
     fcCalendar.updateSize();
+    // Un ajuste adicional por si el layout cambia con mapas/gráficas
     setTimeout(() => fcCalendar.updateSize(), 200);
   });
 }
 
-
-// Ajusta si cambia tamaño/visibilidad
-window.addEventListener('resize', () => { if (fcCalendar) fcCalendar.updateSize(); });
+// Recalcula tamaño si cambia la ventana o vuelves de otra pestaña
+window.addEventListener('resize', () => fcCalendar?.updateSize());
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && fcCalendar) fcCalendar.updateSize();
+  if (!document.hidden) fcCalendar?.updateSize();
 });
-
-
 
 /* ========= Render ========= */
 function renderAll(){
