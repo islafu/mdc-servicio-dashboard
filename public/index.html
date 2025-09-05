@@ -13,7 +13,8 @@
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.min.js"></script>
   <script>dayjs.extend(window.dayjs_plugin_isoWeek);dayjs.extend(window.dayjs_plugin_customParseFormat);</script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <!-- FullCalendar (calendario) -->
+
+  <!-- FullCalendar (calendario) -->
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
@@ -35,6 +36,7 @@
     select.formc option{color:#000}
     .chart-h{height:300px}
     .chart-h-lg{height:320px}
+    .btn-link{cursor:pointer}
   </style>
 </head>
 <body class="h-full">
@@ -45,7 +47,7 @@
       <img src="logo-mdc.png" alt="MDC Digital" class="h-10">
       <div>
         <h1 class="text-2xl font-semibold">MDC Digital — Reporte de Actividades Asesores CAD-CAM</h1>
-        <p class="text-sm text-slate-400">Captura · KPIs · Mapas · PDF</p>
+        <p class="text-sm text-slate-400">Captura · KPIs · Mapas · Calendario · PDF</p>
       </div>
     </div>
     <div class="flex flex-wrap gap-2 items-center">
@@ -72,7 +74,8 @@
     <h2 class="text-lg font-medium mb-3">Filtros</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
       <select id="fTecnico" class="px-3 py-2 rounded-lg formc">
-        <option value="">Todos los técnicos</option><option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option>
+        <option value="">Todos los asesores</option>
+        <option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option><option>Gabriel</option>
       </select>
       <select id="fActividad" class="px-3 py-2 rounded-lg formc">
         <option value="">Todas las actividades</option>
@@ -96,7 +99,7 @@
 
   <!-- GRÁFICAS -->
   <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <div class="card p-4"><h3 class="mb-2">Actividades por técnico</h3><div class="chart-h-lg"><canvas id="chartTechCount"></canvas></div></div>
+    <div class="card p-4"><h3 class="mb-2">Actividades por asesor</h3><div class="chart-h-lg"><canvas id="chartTechCount"></canvas></div></div>
     <div class="card p-4"><h3 class="mb-2">Remoto vs Presencial</h3><div class="chart-h-lg"><canvas id="chartRemPre"></canvas></div></div>
   </section>
   <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -104,9 +107,11 @@
     <div class="card p-4"><h3 class="mb-2">Garantía vs No garantía</h3><div class="chart-h"><canvas id="chartGarantia"></canvas></div></div>
   </section>
   <section class="card p-4 mb-6">
-    <h3 class="mb-2">Ingresos por técnico (MXN)</h3>
+    <h3 class="mb-2">Ingresos por asesor (MXN)</h3>
     <div class="chart-h-lg"><canvas id="chartRevenue"></canvas></div>
   </section>
+
+  <!-- CALENDARIO -->
   <section class="card p-4 mb-6" style="height: 820px;">
     <div class="flex items-center justify-between mb-2">
       <h3>Calendario de actividades</h3>
@@ -114,6 +119,8 @@
     </div>
     <div id="calendar" class="rounded-xl overflow-hidden h-full"></div>
   </section>
+
+  <!-- TEAMVIEWER -->
   <section class="card p-4 mb-6">
     <h3 class="mb-2">TeamViewer — Conexiones y horas (CSV)</h3>
     <div class="text-xs text-slate-400 mb-3">
@@ -123,14 +130,13 @@
     <div id="tvBanner" class="text-xs text-slate-400 mt-2"></div>
   </section>
 
-
   <!-- MAPA -->
   <section class="card p-4 mb-6">
     <div class="flex items-center justify-between mb-3">
       <h3>Mapa de cobertura</h3>
       <div class="text-xs text-slate-400">Tip: escribe dirección, usa tu GPS o haz clic en el mapa.</div>
     </div>
-    <div id="map" class="w-full rounded-xl"></div>
+    <div id="map" class="w-full rounded-xl" style="height:420px"></div>
   </section>
 
   <!-- CAPTURAR (arriba) -->
@@ -138,15 +144,19 @@
     <div class="card p-4">
       <h3 class="mb-2">Capturar actividad</h3>
       <form id="form" class="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-min">
+        <!-- ocultos para edición/folio -->
+        <input type="hidden" id="editId" name="editId" />
+        <input type="hidden" id="rowId"  name="id" />
+
         <div><label class="text-xs text-slate-400">Inicio — fecha</label><input name="fecha_inicio" type="date" required class="w-full px-3 py-2 rounded-lg formc"/></div>
         <div><label class="text-xs text-slate-400">Inicio — hora</label><input name="hora_inicio" type="time" required class="w-full px-3 py-2 rounded-lg formc"/></div>
         <div><label class="text-xs text-slate-400">Fin — fecha</label><input name="fecha_fin" type="date" required class="w-full px-3 py-2 rounded-lg formc"/></div>
         <div><label class="text-xs text-slate-400">Fin — hora</label><input name="hora_fin" type="time" required class="w-full px-3 py-2 rounded-lg formc"/></div>
 
         <div>
-          <label class="text-xs text-slate-400">Técnico</label>
+          <label class="text-xs text-slate-400">Asesor</label>
           <select name="tecnico" required class="w-full px-3 py-2 rounded-lg formc">
-            <option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option>
+            <option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option><option>Gabriel</option>
           </select>
         </div>
 
@@ -225,7 +235,7 @@
           <tr class="text-left text-slate-400">
             <th class="py-2 px-3">Inicio</th>
             <th class="py-2 px-3">Fin</th>
-            <th class="py-2 px-3">Técnico</th>
+            <th class="py-2 px-3">Asesor</th>
             <th class="py-2 px-3">Actividad</th>
             <th class="py-2 px-3">Modalidad</th>
             <th class="py-2 px-3">Garantía</th>
@@ -235,6 +245,7 @@
             <th class="py-2 px-3">Teléfono</th>
             <th class="py-2 px-3">Ciudad</th>
             <th class="py-2 px-3">Notas</th>
+            <th class="py-2 px-3">Acciones</th>
           </tr>
         </thead>
         <tbody id="tbody" class="divide-y divide-white/10 text-sm"></tbody>
@@ -251,13 +262,15 @@
 <script>
 /* ========= CONFIG ========= */
 const SHEETS_ENDPOINT = "/.netlify/functions/sheets";
+const API_TOKEN = "42673"; // Token para edición/eliminación
 
 /* ========= DEMO (fallback si no hay hoja o falla) ========= */
 const demoData = [
-  {fecha_inicio:"2025-08-02",hora_inicio:"09:00",fecha_fin:"2025-08-02",hora_fin:"10:15",tecnico:"Israel",actividad:"Soporte de garantía",modalidad:"Remoto",garantia:"Sí",cliente:"Clínica Sonrisa Feliz",telefono:"3312345678",ciudad:"Guadalajara, JAL",notas:"Actualización de software",lat:20.6736,lng:-103.344,cobrado:"Sí",monto:1200},
-  {fecha_inicio:"2025-08-03",hora_inicio:"11:30",fecha_fin:"2025-08-03",hora_fin:"14:00",tecnico:"Selene",actividad:"Instalación",modalidad:"Presencial",garantia:"",cliente:"Dental Zapopan",telefono:"3323456789",ciudad:"Zapopan, JAL",notas:"Calibración fresadora",lat:20.7236,lng:-103.389,cobrado:"No",monto:0},
-  {fecha_inicio:"2025-08-05",hora_inicio:"08:15",fecha_fin:"2025-08-05",hora_fin:"09:00",tecnico:"Diego",actividad:"Proyecto",modalidad:"Remoto",garantia:"",cliente:"Sonrisas del Bajío",telefono:"4771234567",ciudad:"León, GTO",notas:"Integración CAD/CAM",lat:21.1221,lng:-101.68,cobrado:"Sí",monto:800},
-  {fecha_inicio:"2025-08-08",hora_inicio:"10:00",fecha_fin:"2025-08-08",hora_fin:"13:00",tecnico:"Yared",actividad:"Curso",modalidad:"Presencial",garantia:"",cliente:"Colegio Odontológico",telefono:"",ciudad:"Torreón, COAH",notas:"Entrenamiento fresadora",lat:25.54,lng:-103.40,cobrado:"Sí",monto:20000}
+  {id:"d1",fecha_inicio:"2025-08-02",hora_inicio:"09:00",fecha_fin:"2025-08-02",hora_fin:"10:15",tecnico:"Israel",actividad:"Soporte de garantía",modalidad:"Remoto",garantia:"Sí",cliente:"Clínica Sonrisa Feliz",telefono:"3312345678",ciudad:"Guadalajara, JAL",notas:"Actualización de software",lat:20.6736,lng:-103.344,cobrado:"Sí",monto:1200},
+  {id:"d2",fecha_inicio:"2025-08-03",hora_inicio:"11:30",fecha_fin:"2025-08-03",hora_fin:"14:00",tecnico:"Selene",actividad:"Instalación",modalidad:"Presencial",garantia:"",cliente:"Dental Zapopan",telefono:"3323456789",ciudad:"Zapopan, JAL",notas:"Calibración fresadora",lat:20.7236,lng:-103.389,cobrado:"No",monto:0},
+  {id:"d3",fecha_inicio:"2025-08-05",hora_inicio:"08:15",fecha_fin:"2025-08-05",hora_fin:"09:00",tecnico:"Diego",actividad:"Proyecto",modalidad:"Remoto",garantia:"",cliente:"Sonrisas del Bajío",telefono:"4771234567",ciudad:"León, GTO",notas:"Integración CAD/CAM",lat:21.1221,lng:-101.68,cobrado:"Sí",monto:800},
+  {id:"d4",fecha_inicio:"2025-08-08",hora_inicio:"10:00",fecha_fin:"2025-08-08",hora_fin:"13:00",tecnico:"Yared",actividad:"Curso",modalidad:"Presencial",garantia:"",cliente:"Colegio Odontológico",telefono:"",ciudad:"Torreón, COAH",notas:"Entrenamiento fresadora",lat:25.54,lng:-103.40,cobrado:"Sí",monto:20000},
+  {id:"d5",fecha_inicio:"2025-08-10",hora_inicio:"09:00",fecha_fin:"2025-08-10",hora_fin:"11:00",tecnico:"Gabriel",actividad:"Soporte fuera de garantía",modalidad:"Remoto",garantia:"No",cliente:"Odonto Norte",telefono:"",ciudad:"Monterrey, NL",notas:"Sesión remota",lat:25.6866,lng:-100.3161,cobrado:"No",monto:0}
 ];
 
 let state = {
@@ -286,7 +299,7 @@ function parseDay(d){
   if (Object.prototype.toString.call(d)==='[object Date]'){const m=dayjs(d);return m.isValid()?m:null;}
   const s=String(d).trim();
   let m=dayjs(s,['YYYY-MM-DD','DD/MM/YYYY','D/M/YYYY','YYYY/MM/DD'],true);
-  if(!m.isValid()) m=dayjs(s); // fallback (ISO)
+  if(!m.isValid()) m=dayjs(s); // fallback ISO
   return m.isValid()?m:null;
 }
 function formatMoney(n){try{return n.toLocaleString('es-MX',{style:'currency',currency:'MXN'});}catch(e){return '$'+(n||0).toFixed(2);}}
@@ -294,7 +307,7 @@ function formatMoney(n){try{return n.toLocaleString('es-MX',{style:'currency',cu
 /* ========= Load/Save ========= */
 async function loadData(){
   try{
-    const res=await fetch(SHEETS_ENDPOINT);
+    const res=await fetch(SHEETS_ENDPOINT,{headers:{'X-API-Key':API_TOKEN}});
     if(!res.ok) throw new Error('No se pudo leer el endpoint');
     const data=await res.json();
     const arr=(Array.isArray(data)?data:[]).map(normalizeRowFromSheet);
@@ -312,13 +325,13 @@ function normalizeRowFromSheet(r){
     rawActividad==='Soporte de garantía' ? 'Sí' :
     rawActividad==='Soporte fuera de garantía' ? 'No' :
     (r.garantia || r.Garantia || r.Garantía || '');
-
   return {
+    id: r.id || r.ID || r.Id || r.Folio || r.folio || '',
     fecha_inicio: r.fecha_inicio || r['fecha inicio'] || r.fecha || '',
     hora_inicio:  r.hora_inicio  || r['hora inicio']  || '',
     fecha_fin:    r.fecha_fin    || r['fecha fin']    || r.fecha || '',
     hora_fin:     r.hora_fin     || r['hora fin']     || '',
-    tecnico:      r.tecnico || r.Técnico || r.Tecnico || '',
+    tecnico:      r.tecnico || r.Asesor || r.Técnico || r.Tecnico || '',
     actividad:    rawActividad,
     modalidad:    rawModalidad,
     garantia:     garantiaDerivada,
@@ -334,7 +347,39 @@ function normalizeRowFromSheet(r){
 }
 async function saveRow(p){
   try{
-    const res=await fetch(SHEETS_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+    const isUpdate = !!p.editId;
+    // Si es alta, genera id
+    if (!p.id && !isUpdate) p.id = (crypto?.randomUUID?.() || ('id_' + Date.now()));
+    if (isUpdate) p.id = p.editId;
+
+    const body = {
+      action: isUpdate ? 'update' : 'insert',
+      data: {
+        id: p.id,
+        fecha_inicio: p.fecha_inicio,
+        hora_inicio:  p.hora_inicio,
+        fecha_fin:    p.fecha_fin,
+        hora_fin:     p.hora_fin,
+        tecnico:      p.tecnico,
+        actividad:    p.actividad,
+        modalidad:    p.modalidad,
+        garantia:     p.garantia || '',
+        cliente:      p.cliente,
+        telefono:     p.telefono,
+        ciudad:       p.ciudad,
+        notas:        p.notas,
+        lat:          p.lat,
+        lng:          p.lng,
+        cobrado:      p.cobrado,
+        monto:        Number(p.monto || 0),
+      }
+    };
+
+    const res=await fetch(SHEETS_ENDPOINT,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-API-Key':API_TOKEN},
+      body: JSON.stringify(body)
+    });
     if(!res.ok) throw new Error('Error al guardar');
     await loadData(); hideBanner(); renderAll();
   }catch(err){console.error(err); setBanner('Error al guardar. Revisa tu Apps Script/endpoint.','error');}
@@ -391,96 +436,45 @@ function ensureChart(id,config){
   state.charts[id]=new Chart(ctx,config);
 }
 function renderCharts(rows){
-  const tecnicos = ['Israel','Selene','Diego','Yared'];
-  const acts = [
-    'Soporte de garantía',
-    'Soporte fuera de garantía',
-    'Instalación',
-    'Evento',
-    'Proyecto',
-    'Curso',
-    'Vacaciones'
-  ];
+  const asesores = ['Israel','Selene','Diego','Yared','Gabriel'];
+  const acts = ['Soporte de garantía','Soporte fuera de garantía','Instalación','Evento','Proyecto','Curso','Vacaciones'];
 
-  // === Actividades por técnico (STACKED por tipo de actividad) ===
+  // === Actividades por asesor (STACKED por tipo de actividad) ===
   const datasetsStack = acts.map(act => ({
     label: act,
-    data: tecnicos.map(t =>
-      rows.filter(r => r.tecnico === t && r.actividad === act).length
-    ),
-    // sin colores fijos: Chart.js asigna una paleta automáticamente
+    data: asesores.map(a => rows.filter(r => r.tecnico === a && r.actividad === act).length)
   }));
-
   ensureChart('chartTechCount', {
     type: 'bar',
-    data: { labels: tecnicos, datasets: datasetsStack },
+    data: { labels: asesores, datasets: datasetsStack },
     options: {
       plugins: {
         legend: { position: 'bottom' },
-        tooltip: {
-          mode: 'index',
-          intersect: false,
-          callbacks: {
-            footer: (items) => {
-              const total = items.reduce((s,i)=> s + i.parsed.y, 0);
-              return 'Total: ' + total;
-            }
-          }
-        }
+        tooltip: { mode: 'index', intersect: false, callbacks: { footer: (items)=>'Total: '+items.reduce((s,i)=>s+i.parsed.y,0) } }
       },
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: { stacked: true, grid: { display: true } },
-        y: { stacked: true, beginAtZero: true, grid: { display: true } }
-      }
+      scales: { x:{stacked:true,grid:{display:true}}, y:{stacked:true,beginAtZero:true,grid:{display:true}} }
     }
   });
 
   // === Remoto vs Presencial ===
   const rem = rows.filter(r => r.modalidad === 'Remoto').length;
   const pre = rows.filter(r => r.modalidad === 'Presencial').length;
-  ensureChart('chartRemPre', {
-    type: 'doughnut',
-    data: { labels: ['Remoto','Presencial'], datasets: [{ data: [rem, pre] }] },
-    options: { plugins: { legend: { position: 'bottom' } } }
-  });
+  ensureChart('chartRemPre', { type:'doughnut', data:{ labels:['Remoto','Presencial'], datasets:[{data:[rem,pre]}] }, options:{ plugins:{legend:{position:'bottom'}} } });
 
-  // === Distribución por actividad (conteo total) ===
-  ensureChart('chartActividad', {
-    type: 'doughnut',
-    data: {
-      labels: acts,
-      datasets: [{ data: acts.map(a => rows.filter(r => r.actividad === a).length) }]
-    },
-    options: { plugins: { legend: { position: 'bottom' } } }
-  });
+  // === Distribución por actividad ===
+  ensureChart('chartActividad', { type:'doughnut', data:{ labels:acts, datasets:[{data:acts.map(a=>rows.filter(r=>r.actividad===a).length)}] }, options:{ plugins:{legend:{position:'bottom'}} } });
 
   // === Garantía vs No garantía ===
   const g  = rows.filter(r => r.garantia === 'Sí').length;
   const ng = rows.filter(r => r.garantia === 'No').length;
-  ensureChart('chartGarantia', {
-    type: 'doughnut',
-    data: { labels: ['Garantía','No garantía'], datasets: [{ data: [g, ng] }] },
-    options: { plugins: { legend: { position: 'bottom' } } }
-  });
+  ensureChart('chartGarantia', { type:'doughnut', data:{ labels:['Garantía','No garantía'], datasets:[{data:[g,ng]}] }, options:{ plugins:{legend:{position:'bottom'}} } });
 
-  // === Ingresos por técnico ===
-  const rev = tecnicos.map(t =>
-    rows.reduce((sum, r) => sum + (r.tecnico === t && r.cobrado === 'Sí' ? (Number(r.monto)||0) : 0), 0)
-  );
+  // === Ingresos por asesor ===
+  const rev = asesores.map(a => rows.reduce((sum,r)=> sum + (r.tecnico===a && r.cobrado==='Sí' ? (Number(r.monto)||0) : 0), 0));
   ensureChart('chartRevenue', {
-    type: 'bar',
-    data: { labels: tecnicos, datasets: [{ label: 'MXN', data: rev }] },
-    options: {
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: (ctx) => formatMoney(ctx.parsed.y) } }
-      },
-      scales: {
-        y: { beginAtZero: true, ticks: { callback: (v) => formatMoney(v) } }
-      }
-    }
+    type:'bar',
+    data:{ labels:asesores, datasets:[{ label:'MXN', data:rev }] },
+    options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>formatMoney(ctx.parsed.y)}}}, scales:{ y:{beginAtZero:true, ticks:{callback:(v)=>formatMoney(v)}} } }
   });
 }
 
@@ -506,8 +500,67 @@ function renderTable(rows){
       <td class="py-2 px-3 whitespace-normal break-words">${r.telefono||''}</td>
       <td class="py-2 px-3 whitespace-normal break-words">${r.ciudad||''}</td>
       <td class="py-2 px-3 whitespace-normal break-words">${r.notas||''}</td>
+      <td class="py-2 px-3">
+        <button class="text-emerald-400 hover:underline mr-3 btn-link" data-edit="${r.id}">Editar</button>
+        <button class="text-red-400 hover:underline btn-link" data-del="${r.id}">Eliminar</button>
+      </td>
     </tr>
   `).join('');
+
+  // Listeners Editar / Eliminar
+  // Editar
+  tbody.querySelectorAll('button[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-edit');
+      const rec = rows.find(x => String(x.id) === String(id));
+      if(!rec){ return; }
+      const form = document.getElementById('form');
+      form.reset();
+      document.getElementById('editId').value = rec.id;
+      document.getElementById('rowId').value  = rec.id;
+
+      form.elements['fecha_inicio'].value = rec.fecha_inicio || '';
+      form.elements['hora_inicio'].value  = rec.hora_inicio  || '';
+      form.elements['fecha_fin'].value    = rec.fecha_fin    || '';
+      form.elements['hora_fin'].value     = rec.hora_fin     || '';
+      form.elements['tecnico'].value      = rec.tecnico      || '';
+      form.elements['actividad'].value    = rec.actividad    || '';
+      form.elements['modalidad'].value    = rec.modalidad    || '';
+      form.elements['cliente'].value      = rec.cliente || '';
+      form.elements['telefono'].value     = rec.telefono || '';
+      form.elements['ciudad'].value       = rec.ciudad || '';
+      form.elements['notas'].value        = rec.notas || '';
+      form.elements['lat'].value          = rec.lat ?? '';
+      form.elements['lng'].value          = rec.lng ?? '';
+      form.elements['cobrado'].value      = rec.cobrado || 'No';
+      form.elements['monto'].value        = rec.monto ?? 0;
+
+      setBanner('Modo edición activado. Guarda para actualizar este registro.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
+  // Eliminar
+  tbody.querySelectorAll('button[data-del]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.getAttribute('data-del');
+      if(!id) return;
+      if(!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
+
+      try{
+        const res = await fetch(SHEETS_ENDPOINT, {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-API-Key':API_TOKEN},
+          body: JSON.stringify({ action:'delete', id })
+        });
+        if(!res.ok) throw new Error('Error al eliminar');
+        await loadData(); renderAll();
+      }catch(e){
+        console.error(e);
+        setBanner('No se pudo eliminar. Revisa Apps Script.','error');
+      }
+    });
+  });
 }
 
 /* ========= Google Maps ========= */
@@ -537,29 +590,126 @@ function renderMarkers(rows){
   const bounds=new google.maps.LatLngBounds(); let any=false;
   rows.forEach(r=>{const lat=toNum(r.lat), lng=toNum(r.lng||r.long); if(lat==null||lng==null) return; const pos={lat,lng};
     const marker=new google.maps.Marker({position:pos,map:gmap,title:`${r.cliente||'Cliente'} — ${r.tecnico||''}`});
-    const html=`<div style="min-width:220px"><div><strong>${r.cliente||'Cliente'}</strong></div><div>${r.ciudad||''}</div><div>${r.actividad||''} · ${r.modalidad||''} · Garantía: ${r.garantia||''}</div><div>Por: ${r.tecnico||''}</div><div>${(r.fecha_inicio||'')} ${r.hora_inicio||''}</div>${r.cobrado==='Sí'?`<div><strong>Monto:</strong> ${formatMoney(Number(r.monto)||0)}</div>`:''}</div>`;
+    const html=`<div style="min-width:220px"><div><strong>${r.cliente||'Cliente'}</strong></div><div>${r.ciudad||''}</div><div>${r.actividad||''} · ${r.modalidad||''} · Garantía: ${r.garantia||''}</div><div>Asesor: ${r.tecnico||''}</div><div>${(r.fecha_inicio||'')} ${r.hora_inicio||''}</div>${r.cobrado==='Sí'?`<div><strong>Monto:</strong> ${formatMoney(Number(r.monto)||0)}</div>`:''}</div>`;
     const iw=new google.maps.InfoWindow({content:html}); marker.addListener('click',()=>iw.open({anchor:marker,map:gmap}));
     gmarkers.push(marker); bounds.extend(pos); any=true;});
   if(any){ if(gmarkers.length===1){gmap.setCenter(gmarkers[0].getPosition()); gmap.setZoom(14);} else {gmap.fitBounds(bounds,60);} }
 }
 
-// ===== CALENDARIO (FullCalendar) =====
+/* ========= CSV / PDF ========= */
+function exportCSV(rows){
+  const header=['id','fecha_inicio','hora_inicio','fecha_fin','hora_fin','tecnico','actividad','modalidad','garantia','cobrado','monto','cliente','telefono','ciudad','notas','lat','lng'];
+  const lines=[header.join(',')].concat(rows.map(r=> header.map(h=>{const v=(r[h]??'').toString().replaceAll('"','""'); return `"${v}"`;}).join(',')));
+  const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`mdc-servicio-${state.month}.csv`; a.click(); URL.revokeObjectURL(url);
+}
+async function exportPDF(){const {jsPDF}=window.jspdf; const node=document.body; const canvas=await html2canvas(node,{scale:2,useCORS:true}); const img=canvas.toDataURL('image/png'); const pdf=new jsPDF('p','mm','a4'); const W=pdf.internal.pageSize.getWidth(); const H=canvas.height*W/canvas.width; let pos=0,left=H; pdf.addImage(img,'PNG',0,pos,W,H); left-=pdf.internal.pageSize.getHeight(); while(left>0){pos=left-H; pdf.addPage(); pdf.addImage(img,'PNG',0,pos,W,H); left-=pdf.internal.pageSize.getHeight();} pdf.save(`MDC-Reporte-${state.month}.pdf`);}
 
-function activityColor(act){
-  switch (act) {
-    case 'Soporte de garantía':       return '#22c55e';
-    case 'Soporte fuera de garantía': return '#f59e0b';
-    case 'Instalación':               return '#3b82f6';
-    case 'Evento':                    return '#a855f7';
-    case 'Proyecto':                  return '#ef4444';
-    case 'Curso':                     return '#14b8a6';
-    case 'Vacaciones':                return '#94a3b8';
-    default:                          return '#9ca3af';
+/* ===== TeamViewer CSV ===== */
+async function loadTeamViewerCSV() {
+  try {
+    const res = await fetch('connectionreport.csv', { cache: 'no-store' });
+    if (!res.ok) throw new Error('CSV no encontrado');
+    const text = await res.text();
+    const { rows, meta } = parseCSV(text);
+    const headerMap = meta.headerMap;
+    const durKey = Object.keys(headerMap).find(k => k.includes('duration') || k.includes('time spent'));
+    const startKey = Object.keys(headerMap).find(k => k.includes('start') || k.includes('date') || k.includes('time'));
+    if (!durKey || !startKey) throw new Error('No se encontraron columnas de duración/fecha en el CSV');
+    const normalized = rows.map(r => {
+      const dRaw = r[headerMap[startKey]]?.trim();
+      const m = parseDay(dRaw);
+      const durRaw = r[headerMap[durKey]]?.trim();
+      const hours = parseDurationToHours(durRaw);
+      return (m && Number.isFinite(hours)) ? { date: m, durationHours: hours } : null;
+    }).filter(Boolean);
+    return normalized;
+  } catch (e) {
+    console.warn('TeamViewer CSV:', e);
+    showTVBanner('No se pudo leer connectionreport.csv. (Colócalo en /public y verifica encabezados).', true);
+    return [];
   }
 }
+function showTVBanner(msg, isError=false) {
+  const el = document.getElementById('tvBanner');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'text-xs mt-2 ' + (isError ? 'text-red-300' : 'text-slate-400');
+}
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length);
+  if (!lines.length) return { rows: [], meta: { headerMap: {} } };
+  const header = splitCSVLine(lines[0]);
+  const headerMap = Object.fromEntries(header.map((h, i) => [h.trim().toLowerCase(), i]));
+  const rows = lines.slice(1).map(line => splitCSVLine(line, header.length));
+  return { rows: rows.map(arr => arr), meta: { header, headerMap } };
+}
+function splitCSVLine(line, padTo) {
+  const out = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+    else if (ch === ',' && !inQ) { out.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  out.push(cur);
+  if (padTo && out.length < padTo) while (out.length < padTo) out.push('');
+  return out;
+}
+// Duration en MINUTOS -> HORAS
+function parseDurationToHours(s) {
+  if (!s) return 0;
+  const cleaned = String(s).toLowerCase().replace('min', '').trim().replace(',', '.');
+  const mins = Number(cleaned);
+  if (!Number.isFinite(mins)) return 0;
+  return mins / 60;
+}
+let tvChart = null;
+async function renderTeamViewerChart() {
+  const data = await loadTeamViewerCSV();
+  if (!data.length) { if (tvChart) { tvChart.destroy(); tvChart=null; } setTVKpis(0,0); return; }
+  showTVBanner('Datos cargados desde connectionreport.csv');
+  const [y, m] = state.month.split('-');
+  const monthData = data.filter(d => d.date.format('YYYY-MM') === `${y}-${m}`);
+  const dayMap = new Map();
+  monthData.forEach(d => {
+    const key = d.date.format('DD');
+    if (!dayMap.has(key)) dayMap.set(key, { count: 0, hours: 0 });
+    const agg = dayMap.get(key);
+    agg.count += 1;
+    agg.hours += d.durationHours;
+  });
+  const labels = Array.from(dayMap.keys()).sort((a,b)=>a.localeCompare(b));
+  const counts = labels.map(k => dayMap.get(k)?.count || 0);
+  const hours  = labels.map(k => Number((dayMap.get(k)?.hours || 0).toFixed(2)));
+  const totalConn = counts.reduce((a,b)=>a+b,0);
+  const totalHours = Number(hours.reduce((a,b)=>a+b,0).toFixed(2));
+  setTVKpis(totalConn, totalHours);
+  const ctx = document.getElementById('chartTV').getContext('2d');
+  if (tvChart) tvChart.destroy();
+  tvChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { type: 'bar',  label: 'Conexiones', data: counts, yAxisID: 'yCount' },
+      { type: 'line', label: 'Horas',       data: hours,  yAxisID: 'yHours', tension: 0.25 }
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:'bottom'}, tooltip:{mode:'index', intersect:false, callbacks:{
+        label:(ctx)=> ctx.dataset.yAxisID==='yHours'?`Horas: ${ctx.parsed.y}`:`Conexiones: ${ctx.parsed.y}`
+      }}},
+      scales:{ yCount:{position:'left',beginAtZero:true,ticks:{precision:0}}, yHours:{position:'right',beginAtZero:true} }
+    }
+  });
+}
+function setTVKpis(totalConn, totalHours) {
+  const elC = document.getElementById('kpiTvConn');
+  const elH = document.getElementById('kpiTvHours');
+  if (elC) elC.textContent = String(totalConn);
+  if (elH) elH.textContent = String(totalHours);
+}
 
+/* ========= CALENDARIO (FullCalendar) ========= */
 let calendarInst = null;
-
 function activityColor(act){
   switch (act) {
     case 'Soporte de garantía':       return '#22c55e';
@@ -572,39 +722,28 @@ function activityColor(act){
     default:                          return '#9ca3af';
   }
 }
-
 function buildISO(dateStr, timeStr, defTime){
   const md = parseDay(dateStr);
   if (!md) return null;
-  const t = (timeStr && String(timeStr).trim()) ? String(timeStr).trim() : defTime; // HH:mm
-  // Forzamos HH:mm
+  const t = (timeStr && String(timeStr).trim()) ? String(timeStr).trim() : defTime;
   const composed = dayjs(`${md.format('YYYY-MM-DD')} ${t}`, 'YYYY-MM-DD HH:mm', true);
   return composed.isValid() ? composed.format('YYYY-MM-DDTHH:mm') : `${md.format('YYYY-MM-DD')}T${defTime}`;
 }
-
 function renderCalendar(rows){
   const el = document.getElementById('calendar');
   if (!el) return;
-
-  // destruir si existe
   if (calendarInst) { calendarInst.destroy(); calendarInst = null; }
 
-  // construimos eventos robustos
   const events = rows.map(r => {
     const startISO = buildISO(r.fecha_inicio || r.fecha, r.hora_inicio, '09:00');
-    // Si no hay fecha_fin, usamos misma fecha; si no hay hora_fin, ponemos 18:00
     const endISO   = buildISO(r.fecha_fin   || r.fecha_inicio || r.fecha, r.hora_fin, '18:00');
-
-    if (!startISO) return null; // evento inválido
-
-    // Si end < start, empujamos fin a +1 hora
+    if (!startISO) return null;
     let startD = dayjs(startISO);
-    let endD   = endISO ? dayjs(endISO) : startD.add(1, 'hour');
-    if (!endD.isValid() || endD.isBefore(startD)) endD = startD.add(1, 'hour');
-
+    let endD   = endISO ? dayjs(endISO) : startD.add(1,'hour');
+    if (!endD.isValid() || endD.isBefore(startD)) endD = startD.add(1,'hour');
     return {
-      title: `${r.tecnico || ''} — ${r.actividad || r.modalidad || ''}`,
-      start: startD.format(), // ISO
+      title: `Asesor: ${r.tecnico || ''} — ${r.actividad || r.modalidad || ''}`,
+      start: startD.format(),
       end:   endD.format(),
       color: activityColor(r.actividad),
       extendedProps: {
@@ -617,16 +756,13 @@ function renderCalendar(rows){
     };
   }).filter(Boolean);
 
-  console.info('Calendario — eventos construidos:', events.length);
-
-  // fecha inicial desde el selector de mes
   const [yy, mm] = state.month.split('-');
   const initialDate = `${yy}-${mm}-01`;
 
   calendarInst = new FullCalendar.Calendar(el, {
     initialView: 'dayGridMonth',
     initialDate,
-    height: '95%',      // ocupa el 95% del alto disponible
+    height: '95%',
     expandRows: true,
     locale: 'es',
     firstDay: 1,
@@ -645,186 +781,14 @@ function renderCalendar(rows){
       info.el.title = tip;
     }
   });
-
   calendarInst.render();
 
-  // feedback si no hay eventos del mes
   if (events.length === 0) {
-    // opcional: mensaje sutil en el propio calendario
     const note = document.createElement('div');
     note.className = 'text-center text-sm text-slate-400 py-6';
     note.textContent = `Sin actividades para ${dayjs(initialDate).format('MMMM YYYY')}.`;
     el.appendChild(note);
   }
-}
-
-
-
-/* ========= CSV / PDF ========= */
-function exportCSV(rows){
-  const header=['fecha_inicio','hora_inicio','fecha_fin','hora_fin','tecnico','actividad','modalidad','garantia','cobrado','monto','cliente','telefono','ciudad','notas','lat','lng'];
-  const lines=[header.join(',')].concat(rows.map(r=> header.map(h=>{const v=(r[h]??'').toString().replaceAll('"','""'); return `"${v}"`;}).join(',')));
-  const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`mdc-servicio-${state.month}.csv`; a.click(); URL.revokeObjectURL(url);
-}
-async function exportPDF(){const {jsPDF}=window.jspdf; const node=document.body; const canvas=await html2canvas(node,{scale:2,useCORS:true}); const img=canvas.toDataURL('image/png'); const pdf=new jsPDF('p','mm','a4'); const W=pdf.internal.pageSize.getWidth(); const H=canvas.height*W/canvas.width; let pos=0,left=H; pdf.addImage(img,'PNG',0,pos,W,H); left-=pdf.internal.pageSize.getHeight(); while(left>0){pos=left-H; pdf.addPage(); pdf.addImage(img,'PNG',0,pos,W,H); left-=pdf.internal.pageSize.getHeight();} pdf.save(`MDC-Reporte-${state.month}.pdf`);}
-
-// ===== TeamViewer CSV =====
-
-// Lee /connectionreport.csv, detecta columnas y regresa filas con {date: Dayjs, durationHours: Number}
-async function loadTeamViewerCSV() {
-  try {
-    const res = await fetch('connectionreport.csv', { cache: 'no-store' });
-    if (!res.ok) throw new Error('CSV no encontrado');
-    const text = await res.text();
-
-    const { rows, meta } = parseCSV(text);
-    // Detectar columnas: Duration (hh:mm:ss) y Start/Date
-    const headerMap = meta.headerMap; // lowercased -> original index
-    const durKey = Object.keys(headerMap).find(k => k.includes('duration') || k.includes('time spent'));
-    const startKey = Object.keys(headerMap).find(k => k.includes('start') || k.includes('date') || k.includes('time'));
-
-    if (!durKey || !startKey) throw new Error('No se encontraron columnas de duración/fecha en el CSV');
-
-    // Normaliza
-    const normalized = rows.map(r => {
-      const dRaw = r[headerMap[startKey]]?.trim();
-      const m = parseDay(dRaw); // usa tu parser robusto
-      const durRaw = r[headerMap[durKey]]?.trim();
-      const hours = parseDurationToHours(durRaw);
-      return (m && Number.isFinite(hours)) ? { date: m, durationHours: hours } : null;
-    }).filter(Boolean);
-
-    return normalized;
-  } catch (e) {
-    console.warn('TeamViewer CSV:', e);
-    showTVBanner('No se pudo leer connectionreport.csv. (Colócalo en /public y verifica encabezados).', true);
-    return [];
-  }
-}
-
-function showTVBanner(msg, isError=false) {
-  const el = document.getElementById('tvBanner');
-  if (!el) return;
-  el.textContent = msg || '';
-  el.className = 'text-xs mt-2 ' + (isError ? 'text-red-300' : 'text-slate-400');
-}
-
-// CSV simple (sin comillas escapadas complejas). Para CSV de TeamViewer suele bastar.
-function parseCSV(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim().length);
-  if (!lines.length) return { rows: [], meta: { headerMap: {} } };
-  const header = splitCSVLine(lines[0]);
-  const headerMap = Object.fromEntries(header.map((h, i) => [h.trim().toLowerCase(), i]));
-  const rows = lines.slice(1).map(line => splitCSVLine(line, header.length));
-  return { rows: rows.map(arr => arr), meta: { header, headerMap } };
-}
-
-function splitCSVLine(line, padTo) {
-  // Soporte básico de comillas: "campo, con, comas"
-  const out = [];
-  let cur = '', inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQ && line[i+1] === '"') { cur += '"'; i++; } // escape ""
-      else inQ = !inQ;
-    } else if (ch === ',' && !inQ) {
-      out.push(cur); cur = '';
-    } else {
-      cur += ch;
-    }
-  }
-  out.push(cur);
-  if (padTo && out.length < padTo) {
-    while (out.length < padTo) out.push('');
-  }
-  return out;
-}
-
-function parseDurationToHours(s) {
-  // Acepta: "90", "90.5", "90,5", incluso "90 min"
-  if (!s) return 0;
-  const cleaned = String(s).toLowerCase().replace('min', '').trim().replace(',', '.');
-  const mins = Number(cleaned);
-  if (!Number.isFinite(mins)) return 0;
-  return mins / 60;
-}
-
-let tvChart = null;
-
-async function renderTeamViewerChart() {
-  const data = await loadTeamViewerCSV(); // [{date: dayjs, durationHours: n}]
-  if (!data.length) {
-    if (tvChart) { tvChart.destroy(); tvChart = null; }
-    // También limpia KPIs TV
-    setTVKpis(0, 0);
-    return;
-  }
-  showTVBanner('Datos cargados desde connectionreport.csv');
-
-  // Filtrar por mes seleccionado
-  const [y, m] = state.month.split('-');
-  const monthData = data.filter(d => d.date.format('YYYY-MM') === `${y}-${m}`);
-
-  // Agrupar por día
-  const dayMap = new Map(); // key DD -> {count, hours}
-  monthData.forEach(d => {
-    const key = d.date.format('DD');
-    if (!dayMap.has(key)) dayMap.set(key, { count: 0, hours: 0 });
-    const agg = dayMap.get(key);
-    agg.count += 1;
-    agg.hours += d.durationHours; // ya son horas (porque duration eran minutos)
-  });
-
-  const labels = Array.from(dayMap.keys()).sort((a,b)=>a.localeCompare(b));
-  const counts = labels.map(k => dayMap.get(k)?.count || 0);
-  const hours  = labels.map(k => Number((dayMap.get(k)?.hours || 0).toFixed(2)));
-
-  // KPIs: total conexiones y horas del mes
-  const totalConn = counts.reduce((a,b)=>a+b,0);
-  const totalHours = Number(hours.reduce((a,b)=>a+b,0).toFixed(2));
-  setTVKpis(totalConn, totalHours);
-
-  // Gráfica
-  const ctx = document.getElementById('chartTV').getContext('2d');
-  if (tvChart) tvChart.destroy();
-  tvChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { type: 'bar',  label: 'Conexiones', data: counts, yAxisID: 'yCount' },
-        { type: 'line', label: 'Horas',       data: hours,  yAxisID: 'yHours', tension: 0.25 }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: {
-          mode: 'index',
-          intersect: false,
-          callbacks: {
-            label: (ctx) => ctx.dataset.yAxisID === 'yHours'
-              ? `Horas: ${ctx.parsed.y}`
-              : `Conexiones: ${ctx.parsed.y}`
-          }
-        }
-      },
-      scales: {
-        yCount: { position: 'left', beginAtZero: true, ticks: { precision: 0 } },
-        yHours: { position: 'right', beginAtZero: true }
-      }
-    }
-  });
-}
-
-function setTVKpis(totalConn, totalHours) {
-  const elC = document.getElementById('kpiTvConn');
-  const elH = document.getElementById('kpiTvHours');
-  if (elC) elC.textContent = String(totalConn);
-  if (elH) elH.textContent = String(totalHours);
 }
 
 /* ========= Render ========= */
@@ -834,9 +798,7 @@ function renderAll(){
   renderCharts(rows);
   renderTable(rows);
   renderMarkers(rows);
-  // NUEVO: calendario
   renderCalendar(rows);
-  // NUEVO: render CSV TeamViewer
   renderTeamViewerChart();
 }
 
@@ -861,7 +823,8 @@ function bindUI(){
     else if (p.actividad === 'Soporte fuera de garantía') p.garantia = 'No';
     else p.garantia = '';
 
-    const start=dayjs(`${p.fecha_inicio} ${p.hora_inicio}`,'YYYY-MM-DD HH:mm'); const end=dayjs(`${p.fecha_fin} ${p.hora_fin}`,'YYYY-MM-DD HH:mm');
+    const start=dayjs(`${p.fecha_inicio} ${p.hora_inicio}`,'YYYY-MM-DD HH:mm');
+    const end=dayjs(`${p.fecha_fin} ${p.hora_fin}`,'YYYY-MM-DD HH:mm');
     if(!start.isValid()||!end.isValid()||end.isBefore(start)){setBanner('Revisa fechas/horas: el fin no puede ser antes que el inicio.','error'); return;}
     if(p.cobrado==='Sí'){p.monto=p.monto?Number(p.monto):0;} else {p.monto=0;}
     p.lat = document.getElementById('lat').value ? Number(document.getElementById('lat').value) : undefined;
@@ -869,6 +832,9 @@ function bindUI(){
 
     upsertClient(p.cliente,p.telefono);
     await saveRow(p); form.reset();
+    document.getElementById('editId').value = '';
+    document.getElementById('rowId').value  = '';
+    hideBanner();
   });
 }
 
