@@ -215,10 +215,22 @@
             <label class="text-xs text-slate-400">Monto (MXN)</label>
             <input id="monto" name="monto" type="number" step="0.01" min="0" placeholder="0.00" class="w-full px-3 py-2 rounded-lg formc"/>
           </div>
-          <div class="flex items-end">
-            <button class="w-full px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-medium" type="submit">Guardar</button>
+          <div class="flex items-end gap-2">
+            <button id="submitBtn" class="w-full px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-medium" type="submit">
+              Guardar
+            </button>
           </div>
         </div>
+
+<!-- Banda de estado de edición -->
+<div id="editBanner" class="hidden mt-2 flex items-center justify-between rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2">
+  <div class="text-amber-200 text-sm">
+    Estás editando el registro <span id="editIdLabel" class="font-semibold"></span>. Ajusta los campos y presiona <strong>Actualizar</strong>.
+  </div>
+  <button id="cancelEditBtn" type="button" class="px-2 py-1 text-xs rounded-md bg-slate-700 hover:bg-slate-600">
+    Cancelar edición
+  </button>
+</div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div><label class="text-xs text-slate-400">Lat</label><input name="lat" id="lat" type="number" step="any" class="w-full px-3 py-2 rounded-lg formc" readonly/></div>
@@ -291,7 +303,9 @@ let state = {
   filters: { asesor:"", actividad:"", modalidad:"", garantia:"", q:"" },
   charts: {},
   clientBook: {},
-  calendar: null
+  calendar: null,
+  editId: null,
+  canEdit: false, // se vuelve true tras validar el token una vez  
 };
 
 /* ========= UI helpers ========= */
@@ -907,102 +921,158 @@ function bindUI(){
 
   document.getElementById('btnExportCSV').addEventListener('click',()=>exportCSV(getFiltered()));
   document.getElementById('exportPdfBtn').addEventListener('click',exportPDF);
+  document.getElementById('cancelEditBtn')?.addEventListener('click', () => {
+  exitEditMode();
+  });
 
   const cobSel=document.getElementById('cobrado'), monInp=document.getElementById('monto');
   function toggleMonto(){const yes=cobSel?.value==='Sí'; if(monInp){monInp.disabled=!yes; if(!yes) monInp.value='';}}
   cobSel?.addEventListener('change',toggleMonto); toggleMonto();
 
-  const form=document.getElementById('form');
-  form.addEventListener('submit',async (e)=>{
-    e.preventDefault(); 
-    const fd=new FormData(form); 
-    const p=Object.fromEntries(fd.entries());
+const form=document.getElementById('form');
+form.addEventListener('submit',async (e)=>{
+  e.preventDefault(); 
+  const fd=new FormData(form); 
+  const p=Object.fromEntries(fd.entries());
 
-    if (p.actividad === 'Soporte de garantía') p.garantia = 'Sí';
-    else if (p.actividad === 'Soporte fuera de garantía') p.garantia = 'No';
-    else p.garantia = '';
+  // Derivar garantía desde actividad
+  if (p.actividad === 'Soporte de garantía') p.garantia = 'Sí';
+  else if (p.actividad === 'Soporte fuera de garantía') p.garantia = 'No';
+  else p.garantia = '';
 
-    const start=dayjs(`${p.fecha_inicio} ${p.hora_inicio}`,'YYYY-MM-DD HH:mm');
-    const end=dayjs(`${p.fecha_fin} ${p.hora_fin}`,'YYYY-MM-DD HH:mm');
-    if(!start.isValid()||!end.isValid()||end.isBefore(start)){setBanner('Revisa fechas/horas: el fin no puede ser antes que el inicio.','error'); return;}
-    if(p.cobrado==='Sí'){p.monto=p.monto?Number(p.monto):0;} else {p.monto=0;}
-    p.lat = document.getElementById('lat').value ? Number(document.getElementById('lat').value) : undefined;
-    p.lng = document.getElementById('lng').value ? Number(document.getElementById('lng').value) : undefined;
+  // Validar fechas/horas (si hay horas deben formar fecha-hora válidas)
+  const start=dayjs(`${p.fecha_inicio} ${p.hora_inicio||'00:00'}`,'YYYY-MM-DD HH:mm');
+  const end=dayjs(`${p.fecha_fin} ${p.hora_fin||'23:59'}`,'YYYY-MM-DD HH:mm');
+  if(!start.isValid()||!end.isValid()||end.isBefore(start)){
+    setBanner('Revisa fechas/horas: el fin no puede ser antes que el inicio.','error'); 
+    return;
+  }
 
-    upsertClient(p.cliente,p.telefono);
+  if(p.cobrado==='Sí'){p.monto=p.monto?Number(p.monto):0;} else {p.monto=0;}
+  p.lat = document.getElementById('lat').value ? Number(document.getElementById('lat').value) : undefined;
+  p.lng = document.getElementById('lng').value ? Number(document.getElementById('lng').value) : undefined;
 
-    try{
+  upsertClient(p.cliente,p.telefono);
+
+  try{
+    if (state.editId != null) {
+      // ACTUALIZAR
+      await updateRow(state.editId, p);
+      exitEditMode();
+    } else {
+      // CREAR
       await createRow(p);
-      await loadData();
-      hideBanner();
-      renderAll();
-      form.reset();
-    }catch(err){
-      console.error(err);
-      setBanner('Error al guardar. Revisa tu Apps Script/endpoint.','error');
     }
-  });
+    await loadData();
+    hideBanner();
+    renderAll();
+    form.reset();
+  }catch(err){
+    console.error(err);
+    setBanner('Error al guardar/actualizar. Revisa tu Apps Script/endpoint.','error');
+  }
+});
+}
+
+function setEditingUI(on, id=null) {
+  const editBanner = document.getElementById('editBanner');
+  const submitBtn  = document.getElementById('submitBtn');
+  const idLabel    = document.getElementById('editIdLabel');
+
+  if (on) {
+    editBanner?.classList.remove('hidden');
+    if (idLabel) idLabel.textContent = `#${id}`;
+    if (submitBtn) {
+      submitBtn.textContent = 'Actualizar';
+      submitBtn.classList.remove('bg-emerald-500','hover:bg-emerald-600');
+      submitBtn.classList.add('bg-indigo-500','hover:bg-indigo-600');
+    }
+  } else {
+    editBanner?.classList.add('hidden');
+    if (idLabel) idLabel.textContent = '';
+    if (submitBtn) {
+      submitBtn.textContent = 'Guardar';
+      submitBtn.classList.remove('bg-indigo-500','hover:bg-indigo-600');
+      submitBtn.classList.add('bg-emerald-500','hover:bg-emerald-600');
+    }
+  }
+}
+
+function fillFormFromRow(r) {
+  const set = (name, val) => { const el = document.querySelector(`[name="${name}"]`); if (el) el.value = (val ?? ''); };
+
+  set('fecha_inicio', r.fecha_inicio || '');
+  set('hora_inicio',  timeFromAny(r.hora_inicio));
+  set('fecha_fin',    r.fecha_fin   || '');
+  set('hora_fin',     timeFromAny(r.hora_fin));
+  set('asesor',       r.asesor || r.tecnico || '');
+  set('actividad',    r.actividad || '');
+  set('modalidad',    r.modalidad || '');
+  set('cliente',      r.cliente || '');
+  set('telefono',     r.telefono || '');
+  set('ciudad',       r.ciudad || '');
+  set('cobrado',      r.cobrado || 'No');
+  set('monto',        Number(r.monto||0));
+  set('lat',          r.lat ?? '');
+  set('lng',          r.lng ?? '');
+  const notas = document.querySelector('[name="notas"]');
+  if (notas) notas.value = r.notas || '';
+
+  // Habilita/deshabilita monto
+  const cobSel=document.getElementById('cobrado'), monInp=document.getElementById('monto');
+  if (cobSel && monInp) {
+    const yes = cobSel.value === 'Sí';
+    monInp.disabled = !yes;
+    if (!yes && !r.monto) monInp.value = '';
+  }
+}
+
+// Normaliza horas que vengan como Date/ISO/Excel-origin a "HH:mm"
+function timeFromAny(v) {
+  if (!v) return '';
+  // Si viene como "1899-12-30T20:36:36.000Z" (hora Excel) o ISO cualquiera:
+  const m = dayjs(v);
+  if (m.isValid()) return m.format('HH:mm');
+  // Si ya viene en "H:mm" o "HH:mm"
+  const mm = dayjs(String(v), ['HH:mm','H:mm'], true);
+  if (mm.isValid()) return mm.format('HH:mm');
+  // Último recurso: vacío
+  return '';
+}
+
+function enterEditMode(row) {
+  state.editId = Number(row.id);
+  setEditingUI(true, state.editId);
+  fillFormFromRow(row);
+  // Desplaza la vista al formulario para editar cómodo
+  document.getElementById('form')?.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function exitEditMode() {
+  state.editId = null;
+  setEditingUI(false);
+  // No borramos el formulario (puedes dejar lo capturado), si quieres:
+  // document.getElementById('form')?.reset();
 }
 
 /* ========= Edit/Delete Handlers ========= */
-function assertToken(){
+function assertTokenOnce() {
+  if (state.canEdit) return true;
   const t = prompt('Ingresa el token de edición:');
-  if (t === null) return null;
-  if (t !== EDIT_TOKEN){ alert('Token incorrecto'); return null; }
-  return t;
+  if (t === null) return false;
+  if (t !== EDIT_TOKEN){ alert('Token incorrecto'); return false; }
+  state.canEdit = true;
+  return true;
 }
+
 async function onEditRow(id){
   if (id==null){ alert('Este registro no tiene ID. No se puede editar.'); return; }
-  if (!assertToken()) return;
+  if (!assertTokenOnce()) return;
 
   const row = state.rows.find(r=>Number(r.id)===Number(id));
   if (!row){ alert('No se encontró el registro en memoria.'); return; }
 
-  const patch = {};
-  const campos = [
-    ['asesor','Asesor actual'],
-    ['actividad','Actividad'],
-    ['modalidad','Modalidad (Remoto/Presencial)'],
-    ['garantia','Garantía (Sí/No)'],
-    ['cobrado','Cobrado (Sí/No)'],
-    ['monto','Monto (MXN)'],
-    ['cliente','Cliente'],
-    ['telefono','Teléfono'],
-    ['ciudad','Ciudad'],
-    ['notas','Notas'],
-    ['fecha_inicio','Fecha inicio (YYYY-MM-DD)'],
-    ['hora_inicio','Hora inicio (HH:mm)'],
-    ['fecha_fin','Fecha fin (YYYY-MM-DD)'],
-    ['hora_fin','Hora fin (HH:mm)'],
-    ['lat','Lat'],
-    ['lng','Lng'],
-  ];
-
-  for (const [k,label] of campos){
-    const cur = row[k] ?? '';
-    const val = prompt(`${label}:`, String(cur));
-    if (val===null) { /* cancel editar campo */ }
-    else {
-      if (k==='monto') patch[k] = Number(val)||0;
-      else if (k==='lat' || k==='lng') patch[k] = val===''? undefined : Number(val);
-      else patch[k] = val;
-    }
-  }
-
-  // Derivar garantía de actividad si procede
-  if (patch.actividad) {
-    if (patch.actividad==='Soporte de garantía') patch.garantia='Sí';
-    else if (patch.actividad==='Soporte fuera de garantía') patch.garantia='No';
-  }
-
-  try{
-    await updateRow(id, patch);
-    await loadData();
-    renderAll();
-  }catch(e){
-    console.error(e);
-    alert('Error al actualizar');
-  }
+  enterEditMode(row);
 }
 async function onDeleteRow(id){
   if (id==null){ alert('Este registro no tiene ID. No se puede eliminar.'); return; }
