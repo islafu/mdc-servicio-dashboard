@@ -47,15 +47,10 @@
     /* Altura del contenedor del calendario */
     #calendar { height: 820px; }
 
-    /* Fuerza a FullCalendar a usar todo el alto del contenedor */
+    /* Fuerza a FullCalendar a usar el alto del contenedor */
     .fc .fc-view-harness { height: 100% !important; }
-    .fc .fc-scroller-harness, 
+    .fc .fc-scroller-harness,
     .fc .fc-scroller-liquid-absolute { height: 100% !important; }
-
-    /* Bordes/textos (oscuro) opcional */
-    .fc-theme-standard .fc-scrollgrid { border-color: rgba(255,255,255,0.12); }
-    .fc .fc-daygrid-day-number { color: #e5e7eb; }
-    .fc .fc-col-header-cell-cushion { color: #cbd5e1; }
   </style>
 </head>
 <body class="h-full">
@@ -715,64 +710,84 @@ function setTVKpis(totalConn, totalHours) {
 }
 
   /* ========= Calendario ========= */
-    let fcCalendar = null;
+  let fcCalendar = null;
 
-    function pickColor(act) {
-      const map = {
-        'Soporte de garantía': '#22c55e',
-        'Soporte fuera de garantía': '#f59e0b',
-        'Instalación': '#38bdf8',
-        'Evento': '#a78bfa',
-        'Proyecto': '#f472b6',
-        'Curso': '#2dd4bf',
-        'Vacaciones': '#94a3b8'
+  function pickColor(act) {
+    const map = {
+      'Soporte de garantía': '#22c55e',
+      'Soporte fuera de garantía': '#f59e0b',
+      'Instalación': '#38bdf8',
+      'Evento': '#a78bfa',
+      'Proyecto': '#f472b6',
+      'Curso': '#2dd4bf',
+      'Vacaciones': '#94a3b8'
+    };
+    return map[act] || '#64748b';
+  }
+
+  function buildCalendarEvents(rows) {
+    return rows.map(r => ({
+      title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`,
+      start: `${r.fecha_inicio}T${r.hora_inicio || '00:00'}`,
+      end:   `${r.fecha_fin}T${r.hora_fin || '23:59'}`,
+      color: pickColor(r.actividad),
+    }));
+  }
+
+  // Espera hasta que #calendar tenga alto > 0
+  function waitForNonZeroHeight(el, timeoutMs = 3000) {
+    return new Promise((resolve, reject) => {
+      const t0 = performance.now();
+      const tick = () => {
+        const h = el.clientHeight || el.offsetHeight;
+        if (h > 0) return resolve(h);
+        if (performance.now() - t0 > timeoutMs) return reject(new Error('calendar has zero height'));
+        requestAnimationFrame(tick);
       };
-      return map[act] || '#64748b';
-    }
-
-    function buildCalendarEvents(rows) {
-      return rows.map(r => ({
-        title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`,
-        start: `${r.fecha_inicio}T${r.hora_inicio || '00:00'}`,
-        end:   `${r.fecha_fin}T${r.hora_fin || '23:59'}`,
-        color: pickColor(r.actividad),
-      }));
-    }
-
-    function renderCalendar() {
-      const el = document.getElementById('calendar');
-      if (!el) return;
-
-      const events = buildCalendarEvents(getFiltered());
-
-      if (fcCalendar) { fcCalendar.destroy(); fcCalendar = null; }
-
-      fcCalendar = new FullCalendar.Calendar(el, {
-        initialView: 'dayGridMonth',
-        locale: 'es',
-        height: '100%',
-        headerToolbar: {
-          left: 'prev,next today',
-          center: 'title',
-          right: 'dayGridMonth,timeGridWeek,timeGridDay'
-        },
-        events
-      });
-
-      // Render después de que el navegador pinte el layout
-      requestAnimationFrame(() => {
-        fcCalendar.render();
-        fcCalendar.updateSize();
-        // Segundo ajuste por si el contenedor cambia tras gráficos/mapa
-        setTimeout(() => fcCalendar.updateSize(), 200);
-      });
-    }
-
-    // Opcional: si cambias de pestaña o redimensionas, recalcula
-    window.addEventListener('resize', () => fcCalendar?.updateSize());
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) fcCalendar?.updateSize();
+      tick();
     });
+  }
+
+  async function renderCalendar() {
+    const el = document.getElementById('calendar');
+    if (!el) return;
+
+    // Asegura que el contenedor ya tenga alto
+    try { await waitForNonZeroHeight(el, 3000); } catch (_) {}
+
+    const events = buildCalendarEvents(getFiltered());
+
+    if (fcCalendar) { fcCalendar.destroy(); fcCalendar = null; }
+
+    fcCalendar = new FullCalendar.Calendar(el, {
+      // Usa altura fija desde la config de FC (coincide con tu CSS 820px)
+      height: 820,
+      expandRows: true,
+      initialView: 'dayGridMonth',
+      // Ponemos el mes seleccionado como fecha inicial para evitar rarezas
+      initialDate: (state?.month ? `${state.month}-01` : undefined),
+      locale: 'es',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      },
+      events
+    });
+
+    // Render y doble updateSize por si gráficos/mapa alteran layout
+    requestAnimationFrame(() => {
+      fcCalendar.render();
+      fcCalendar.updateSize();
+      setTimeout(() => fcCalendar.updateSize(), 200);
+    });
+  }
+
+  // Recalcular al redimensionar/volver a la pestaña
+  window.addEventListener('resize', () => fcCalendar && fcCalendar.updateSize());
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && fcCalendar) fcCalendar.updateSize();
+  });
 
 
 /* ========= Render ========= */
