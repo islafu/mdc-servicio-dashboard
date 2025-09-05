@@ -709,88 +709,105 @@ function setTVKpis(totalConn, totalHours) {
   if (elH) elH.textContent = String(totalHours);
 }
 
-  /* ========= Calendario ========= */
-  let fcCalendar = null;
+/* ========= Calendario ========= */
+let fcCalendar = null;
 
-  function pickColor(act) {
-    const map = {
-      'Soporte de garantía': '#22c55e',
-      'Soporte fuera de garantía': '#f59e0b',
-      'Instalación': '#38bdf8',
-      'Evento': '#a78bfa',
-      'Proyecto': '#f472b6',
-      'Curso': '#2dd4bf',
-      'Vacaciones': '#94a3b8'
-    };
-    return map[act] || '#64748b';
-  }
+function pickColor(act) {
+  const map = {
+    'Soporte de garantía': '#22c55e',
+    'Soporte fuera de garantía': '#f59e0b',
+    'Instalación': '#38bdf8',
+    'Evento': '#a78bfa',
+    'Proyecto': '#f472b6',
+    'Curso': '#2dd4bf',
+    'Vacaciones': '#94a3b8'
+  };
+  return map[act] || '#64748b';
+}
 
-  function buildCalendarEvents(rows) {
-    return rows.map(r => ({
-      title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`,
-      start: `${r.fecha_inicio}T${r.hora_inicio || '00:00'}`,
-      end:   `${r.fecha_fin}T${r.hora_fin || '23:59'}`,
+// Forma un rango ISO seguro a partir de las columnas de la fila
+function makeISO(startDate, startTime, endDate, endTime) {
+  const sDate = parseDay(startDate);
+  if (!sDate) return null;
+
+  const start = dayjs(
+    `${sDate.format('YYYY-MM-DD')} ${startTime || '00:00'}`,
+    'YYYY-MM-DD HH:mm',
+    true
+  );
+
+  const eBase = parseDay(endDate) || sDate;
+  const end = dayjs(
+    `${eBase.format('YYYY-MM-DD')} ${endTime || '23:59'}`,
+    'YYYY-MM-DD HH:mm',
+    true
+  );
+
+  const s = start.isValid() ? start : sDate.startOf('day');
+  let e = end.isValid() ? end : s.add(1, 'hour');
+  if (e.isBefore(s)) e = s.add(1, 'hour');
+
+  return {
+    startISO: s.format('YYYY-MM-DDTHH:mm:ss'),
+    endISO:   e.format('YYYY-MM-DDTHH:mm:ss'),
+  };
+}
+
+// Construye eventos válidos; descarta filas sin inicio
+function buildCalendarEvents(rows) {
+  const evs = [];
+  for (const r of rows) {
+    const stamp = makeISO(r.fecha_inicio, r.hora_inicio, r.fecha_fin, r.hora_fin);
+    if (!stamp) continue;
+    evs.push({
+      id:    r.id != null ? String(r.id) : undefined,
+      title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`.trim(),
+      start: stamp.startISO,
+      end:   stamp.endISO,
       color: pickColor(r.actividad),
-    }));
-  }
-
-  // Espera hasta que #calendar tenga alto > 0
-  function waitForNonZeroHeight(el, timeoutMs = 3000) {
-    return new Promise((resolve, reject) => {
-      const t0 = performance.now();
-      const tick = () => {
-        const h = el.clientHeight || el.offsetHeight;
-        if (h > 0) return resolve(h);
-        if (performance.now() - t0 > timeoutMs) return reject(new Error('calendar has zero height'));
-        requestAnimationFrame(tick);
-      };
-      tick();
     });
   }
+  return evs;
+}
 
-  async function renderCalendar() {
-    const el = document.getElementById('calendar');
-    if (!el) return;
+function renderCalendar() {
+  const el = document.getElementById('calendar');
+  if (!el) return;
 
-    // Asegura que el contenedor ya tenga alto
-    try { await waitForNonZeroHeight(el, 3000); } catch (_) {}
+  // Usa todo el histórico; el mes visible lo fija initialDate
+  const events = buildCalendarEvents(state.rows);
 
-    const filtered = getFiltered();
-    const sourceRows = filtered.length ? filtered : state.rows;
-    const events = buildCalendarEvents(sourceRows);
-
-
-    if (fcCalendar) { fcCalendar.destroy(); fcCalendar = null; }
-
-    fcCalendar = new FullCalendar.Calendar(el, {
-      // Usa altura fija desde la config de FC (coincide con tu CSS 820px)
-      height: 820,
-      expandRows: true,
-      initialView: 'dayGridMonth',
-      // Ponemos el mes seleccionado como fecha inicial para evitar rarezas
-      initialDate: (state?.month ? `${state.month}-01` : undefined),
-      locale: 'es',
-      headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay'
-      },
-      events
-    });
-
-    // Render y doble updateSize por si gráficos/mapa alteran layout
-    requestAnimationFrame(() => {
-      fcCalendar.render();
-      fcCalendar.updateSize();
-      setTimeout(() => fcCalendar.updateSize(), 200);
-    });
+  if (fcCalendar) {
+    fcCalendar.destroy();
+    fcCalendar = null;
   }
 
-  // Recalcular al redimensionar/volver a la pestaña
-  window.addEventListener('resize', () => fcCalendar && fcCalendar.updateSize());
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && fcCalendar) fcCalendar.updateSize();
+  fcCalendar = new FullCalendar.Calendar(el, {
+    initialView: 'dayGridMonth',
+    initialDate: state.month + '-01',
+    locale: 'es',
+    height: '100%',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,timeGridDay'
+    },
+    events
   });
+
+  requestAnimationFrame(() => {
+    fcCalendar.render();
+    fcCalendar.updateSize();
+    setTimeout(() => fcCalendar.updateSize(), 200);
+  });
+}
+
+// Ajusta si cambia tamaño/visibilidad
+window.addEventListener('resize', () => { if (fcCalendar) fcCalendar.updateSize(); });
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && fcCalendar) fcCalendar.updateSize();
+});
+
 
 
 /* ========= Render ========= */
