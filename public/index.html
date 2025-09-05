@@ -538,8 +538,8 @@ function renderTable(rows){
       <td class="py-2 px-3 whitespace-normal break-words">${r.ciudad||''}</td>
       <td class="py-2 px-3 whitespace-normal break-words">${r.notas||''}</td>
       <td class="py-2 px-3">
-        <button class="btn btn-primary text-xs" onclick="onEditRow(${r.id ?? 'null'})">Editar</button>
-        <button class="btn btn-danger text-xs" onclick="onDeleteRow(${r.id ?? 'null'})">Eliminar</button>
+        <button class="btn btn-primary text-lg" onclick="onEditRow(${r.id ?? 'null'})">✏️</button>
+        <button class="btn btn-danger text-lg" onclick="onDeleteRow(${r.id ?? 'null'})">🗑️</button>
       </td>
     </tr>
   `).join('');
