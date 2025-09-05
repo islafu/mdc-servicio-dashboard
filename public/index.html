@@ -14,11 +14,6 @@
   <script>dayjs.extend(window.dayjs_plugin_isoWeek);dayjs.extend(window.dayjs_plugin_customParseFormat);</script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 
-  <!-- FullCalendar (calendario) -->
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
-
   <!-- Google Maps (Maps + Places) -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&callback=initMap"></script>
 
@@ -36,7 +31,12 @@
     select.formc option{color:#000}
     .chart-h{height:300px}
     .chart-h-lg{height:320px}
-    .btn-link{cursor:pointer}
+    /* Calendario */
+    #calendar{height:820px;}
+    #calendar .cal-inner{height:95%;}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:.5rem}
+    .cal-cell{border:1px solid rgba(255,255,255,.06);border-radius:.5rem;padding:.5rem;min-height:100px;overflow:auto}
+    .badge{display:inline-block;padding:.15rem .4rem;border-radius:.4rem;font-size:.7rem;white-space:nowrap}
   </style>
 </head>
 <body class="h-full">
@@ -47,7 +47,7 @@
       <img src="logo-mdc.png" alt="MDC Digital" class="h-10">
       <div>
         <h1 class="text-2xl font-semibold">MDC Digital — Reporte de Actividades Asesores CAD-CAM</h1>
-        <p class="text-sm text-slate-400">Captura · KPIs · Mapas · Calendario · PDF</p>
+        <p class="text-sm text-slate-400">Captura · KPIs · Mapas · PDF</p>
       </div>
     </div>
     <div class="flex flex-wrap gap-2 items-center">
@@ -59,7 +59,7 @@
   <div id="banner" class="hidden card p-3 mb-4 text-sm"></div>
 
   <!-- KPIs -->
-  <section id="kpis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+  <section id="kpis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 mb-6">
     <div class="card p-4"><div class="text-slate-400 text-xs">Total registros</div><div id="kpiTotal" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs"><span class="dot bg-emerald-400"></span>Soporte</div><div id="kpiSoporte" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs"><span class="dot bg-sky-400"></span>Instalaciones</div><div id="kpiInst" class="text-3xl font-semibold mt-1">0</div></div>
@@ -73,7 +73,7 @@
   <section class="card p-4 mb-6">
     <h2 class="text-lg font-medium mb-3">Filtros</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-      <select id="fTecnico" class="px-3 py-2 rounded-lg formc">
+      <select id="fAsesor" class="px-3 py-2 rounded-lg formc">
         <option value="">Todos los asesores</option>
         <option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option><option>Gabriel</option>
       </select>
@@ -110,17 +110,6 @@
     <h3 class="mb-2">Ingresos por asesor (MXN)</h3>
     <div class="chart-h-lg"><canvas id="chartRevenue"></canvas></div>
   </section>
-
-  <!-- CALENDARIO -->
-  <section class="card p-4 mb-6" style="height: 820px;">
-    <div class="flex items-center justify-between mb-2">
-      <h3>Calendario de actividades</h3>
-      <div class="text-xs text-slate-400">Vista mensual · colores por actividad</div>
-    </div>
-    <div id="calendar" class="rounded-xl overflow-hidden h-full"></div>
-  </section>
-
-  <!-- TEAMVIEWER -->
   <section class="card p-4 mb-6">
     <h3 class="mb-2">TeamViewer — Conexiones y horas (CSV)</h3>
     <div class="text-xs text-slate-400 mb-3">
@@ -136,7 +125,7 @@
       <h3>Mapa de cobertura</h3>
       <div class="text-xs text-slate-400">Tip: escribe dirección, usa tu GPS o haz clic en el mapa.</div>
     </div>
-    <div id="map" class="w-full rounded-xl" style="height:420px"></div>
+    <div id="map" class="w-full rounded-xl"></div>
   </section>
 
   <!-- CAPTURAR (arriba) -->
@@ -144,10 +133,6 @@
     <div class="card p-4">
       <h3 class="mb-2">Capturar actividad</h3>
       <form id="form" class="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-min">
-        <!-- ocultos para edición/folio -->
-        <input type="hidden" id="editId" name="editId" />
-        <input type="hidden" id="rowId"  name="id" />
-
         <div><label class="text-xs text-slate-400">Inicio — fecha</label><input name="fecha_inicio" type="date" required class="w-full px-3 py-2 rounded-lg formc"/></div>
         <div><label class="text-xs text-slate-400">Inicio — hora</label><input name="hora_inicio" type="time" required class="w-full px-3 py-2 rounded-lg formc"/></div>
         <div><label class="text-xs text-slate-400">Fin — fecha</label><input name="fecha_fin" type="date" required class="w-full px-3 py-2 rounded-lg formc"/></div>
@@ -155,7 +140,7 @@
 
         <div>
           <label class="text-xs text-slate-400">Asesor</label>
-          <select name="tecnico" required class="w-full px-3 py-2 rounded-lg formc">
+          <select name="asesor" required class="w-full px-3 py-2 rounded-lg formc">
             <option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option><option>Gabriel</option>
           </select>
         </div>
@@ -245,11 +230,29 @@
             <th class="py-2 px-3">Teléfono</th>
             <th class="py-2 px-3">Ciudad</th>
             <th class="py-2 px-3">Notas</th>
-            <th class="py-2 px-3">Acciones</th>
           </tr>
         </thead>
         <tbody id="tbody" class="divide-y divide-white/10 text-sm"></tbody>
       </table>
+    </div>
+  </section>
+
+  <!-- CALENDARIO -->
+  <section class="card p-4 mb-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3>Calendario de actividades</h3>
+      <div class="text-xs text-slate-400">Vista mensual · colores por actividad</div>
+    </div>
+    <div id="calendar" class="rounded-xl overflow-hidden">
+      <div class="cal-inner flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div id="calTitle" class="text-sm text-slate-300"></div>
+        </div>
+        <div class="grid grid-cols-7 text-center text-xs text-slate-400">
+          <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+        </div>
+        <div id="calGrid" class="cal-grid"></div>
+      </div>
     </div>
   </section>
 
@@ -262,21 +265,19 @@
 <script>
 /* ========= CONFIG ========= */
 const SHEETS_ENDPOINT = "/.netlify/functions/sheets";
-const API_TOKEN = "42673"; // Token para edición/eliminación
 
-/* ========= DEMO (fallback si no hay hoja o falla) ========= */
+/* ========= DEMO (fallback) ========= */
 const demoData = [
-  {id:"d1",fecha_inicio:"2025-08-02",hora_inicio:"09:00",fecha_fin:"2025-08-02",hora_fin:"10:15",tecnico:"Israel",actividad:"Soporte de garantía",modalidad:"Remoto",garantia:"Sí",cliente:"Clínica Sonrisa Feliz",telefono:"3312345678",ciudad:"Guadalajara, JAL",notas:"Actualización de software",lat:20.6736,lng:-103.344,cobrado:"Sí",monto:1200},
-  {id:"d2",fecha_inicio:"2025-08-03",hora_inicio:"11:30",fecha_fin:"2025-08-03",hora_fin:"14:00",tecnico:"Selene",actividad:"Instalación",modalidad:"Presencial",garantia:"",cliente:"Dental Zapopan",telefono:"3323456789",ciudad:"Zapopan, JAL",notas:"Calibración fresadora",lat:20.7236,lng:-103.389,cobrado:"No",monto:0},
-  {id:"d3",fecha_inicio:"2025-08-05",hora_inicio:"08:15",fecha_fin:"2025-08-05",hora_fin:"09:00",tecnico:"Diego",actividad:"Proyecto",modalidad:"Remoto",garantia:"",cliente:"Sonrisas del Bajío",telefono:"4771234567",ciudad:"León, GTO",notas:"Integración CAD/CAM",lat:21.1221,lng:-101.68,cobrado:"Sí",monto:800},
-  {id:"d4",fecha_inicio:"2025-08-08",hora_inicio:"10:00",fecha_fin:"2025-08-08",hora_fin:"13:00",tecnico:"Yared",actividad:"Curso",modalidad:"Presencial",garantia:"",cliente:"Colegio Odontológico",telefono:"",ciudad:"Torreón, COAH",notas:"Entrenamiento fresadora",lat:25.54,lng:-103.40,cobrado:"Sí",monto:20000},
-  {id:"d5",fecha_inicio:"2025-08-10",hora_inicio:"09:00",fecha_fin:"2025-08-10",hora_fin:"11:00",tecnico:"Gabriel",actividad:"Soporte fuera de garantía",modalidad:"Remoto",garantia:"No",cliente:"Odonto Norte",telefono:"",ciudad:"Monterrey, NL",notas:"Sesión remota",lat:25.6866,lng:-100.3161,cobrado:"No",monto:0}
+  {fecha_inicio:"2025-08-02",hora_inicio:"09:00",fecha_fin:"2025-08-02",hora_fin:"10:15",asesor:"Israel",actividad:"Soporte de garantía",modalidad:"Remoto",garantia:"Sí",cliente:"Clínica Sonrisa Feliz",telefono:"3312345678",ciudad:"Guadalajara, JAL",notas:"Actualización de software",lat:20.6736,lng:-103.344,cobrado:"Sí",monto:1200},
+  {fecha_inicio:"2025-08-03",hora_inicio:"11:30",fecha_fin:"2025-08-03",hora_fin:"14:00",asesor:"Selene",actividad:"Instalación",modalidad:"Presencial",garantia:"",cliente:"Dental Zapopan",telefono:"3323456789",ciudad:"Zapopan, JAL",notas:"Calibración fresadora",lat:20.7236,lng:-103.389,cobrado:"No",monto:0},
+  {fecha_inicio:"2025-08-05",hora_inicio:"08:15",fecha_fin:"2025-08-05",hora_fin:"09:00",asesor:"Diego",actividad:"Proyecto",modalidad:"Remoto",garantia:"",cliente:"Sonrisas del Bajío",telefono:"4771234567",ciudad:"León, GTO",notas:"Integración CAD/CAM",lat:21.1221,lng:-101.68,cobrado:"Sí",monto:800},
+  {fecha_inicio:"2025-08-08",hora_inicio:"10:00",fecha_fin:"2025-08-08",hora_fin:"13:00",asesor:"Yared",actividad:"Curso",modalidad:"Presencial",garantia:"",cliente:"Colegio Odontológico",telefono:"",ciudad:"Torreón, COAH",notas:"Entrenamiento fresadora",lat:25.54,lng:-103.40,cobrado:"Sí",monto:20000}
 ];
 
 let state = {
   rows: [],
   month: dayjs().format('YYYY-MM'),
-  filters: { tecnico:"", actividad:"", modalidad:"", garantia:"", q:"" },
+  filters: { asesor:"", actividad:"", modalidad:"", garantia:"", q:"" },
   charts: {},
   clientBook: {},
 };
@@ -299,7 +300,7 @@ function parseDay(d){
   if (Object.prototype.toString.call(d)==='[object Date]'){const m=dayjs(d);return m.isValid()?m:null;}
   const s=String(d).trim();
   let m=dayjs(s,['YYYY-MM-DD','DD/MM/YYYY','D/M/YYYY','YYYY/MM/DD'],true);
-  if(!m.isValid()) m=dayjs(s); // fallback ISO
+  if(!m.isValid()) m=dayjs(s); // fallback (ISO)
   return m.isValid()?m:null;
 }
 function formatMoney(n){try{return n.toLocaleString('es-MX',{style:'currency',currency:'MXN'});}catch(e){return '$'+(n||0).toFixed(2);}}
@@ -307,7 +308,7 @@ function formatMoney(n){try{return n.toLocaleString('es-MX',{style:'currency',cu
 /* ========= Load/Save ========= */
 async function loadData(){
   try{
-    const res=await fetch(SHEETS_ENDPOINT,{headers:{'X-API-Key':API_TOKEN}});
+    const res=await fetch(SHEETS_ENDPOINT);
     if(!res.ok) throw new Error('No se pudo leer el endpoint');
     const data=await res.json();
     const arr=(Array.isArray(data)?data:[]).map(normalizeRowFromSheet);
@@ -319,22 +320,24 @@ async function loadData(){
   rebuildClientBook(); populateClientDatalist();
 }
 function normalizeRowFromSheet(r){
-  const rawActividad = r.actividad || r.Actividad || '';
-  const rawModalidad = r.modalidad || r.Modalidad || (['Remoto','Presencial'].includes(r.tipo)? r.tipo : '');
-  const garantiaDerivada =
-    rawActividad==='Soporte de garantía' ? 'Sí' :
-    rawActividad==='Soporte fuera de garantía' ? 'No' :
-    (r.garantia || r.Garantia || r.Garantía || '');
+  // Compatibilidad asesor/tecnico al leer
+  const asesor = r.asesor || r.Asesor || r.tecnico || r.Técnico || r.Tecnico || '';
+  const modalidad = r.modalidad || r.Modalidad || (['Remoto','Presencial'].includes(r.tipo)? r.tipo : '');
+  let garantia = r.garantia || r.Garantia || r.Garantía || '';
+  if (!garantia && r.actividad) {
+    if (r.actividad === 'Soporte de garantía') garantia = 'Sí';
+    else if (r.actividad === 'Soporte fuera de garantía') garantia = 'No';
+  }
   return {
-    id: r.id || r.ID || r.Id || r.Folio || r.folio || '',
+    id: r.id ?? r.ID ?? '',
     fecha_inicio: r.fecha_inicio || r['fecha inicio'] || r.fecha || '',
     hora_inicio:  r.hora_inicio  || r['hora inicio']  || '',
     fecha_fin:    r.fecha_fin    || r['fecha fin']    || r.fecha || '',
     hora_fin:     r.hora_fin     || r['hora fin']     || '',
-    tecnico:      r.tecnico || r.Asesor || r.Técnico || r.Tecnico || '',
-    actividad:    rawActividad,
-    modalidad:    rawModalidad,
-    garantia:     garantiaDerivada,
+    asesor,
+    actividad:    r.actividad || r.Actividad || '',
+    modalidad,
+    garantia,
     cliente:      r.cliente || r.Cliente || '',
     telefono:     r.telefono || r.Teléfono || r.Telefono || '',
     ciudad:       r.ciudad || r.Ciudad || '',
@@ -347,45 +350,13 @@ function normalizeRowFromSheet(r){
 }
 async function saveRow(p){
   try{
-    const isUpdate = !!p.editId;
-    // Si es alta, genera id
-    if (!p.id && !isUpdate) p.id = (crypto?.randomUUID?.() || ('id_' + Date.now()));
-    if (isUpdate) p.id = p.editId;
-
-    const body = {
-      action: isUpdate ? 'update' : 'insert',
-      data: {
-        id: p.id,
-        fecha_inicio: p.fecha_inicio,
-        hora_inicio:  p.hora_inicio,
-        fecha_fin:    p.fecha_fin,
-        hora_fin:     p.hora_fin,
-        tecnico:      p.tecnico,
-        actividad:    p.actividad,
-        modalidad:    p.modalidad,
-        garantia:     p.garantia || '',
-        cliente:      p.cliente,
-        telefono:     p.telefono,
-        ciudad:       p.ciudad,
-        notas:        p.notas,
-        lat:          p.lat,
-        lng:          p.lng,
-        cobrado:      p.cobrado,
-        monto:        Number(p.monto || 0),
-      }
-    };
-
-    const res=await fetch(SHEETS_ENDPOINT,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-API-Key':API_TOKEN},
-      body: JSON.stringify(body)
-    });
+    const res=await fetch(SHEETS_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
     if(!res.ok) throw new Error('Error al guardar');
     await loadData(); hideBanner(); renderAll();
   }catch(err){console.error(err); setBanner('Error al guardar. Revisa tu Apps Script/endpoint.','error');}
 }
 
-/* ========= Client autocomplete (local) ========= */
+/* ========= Client autocomplete ========= */
 function loadClientBookLS(){try{const raw=localStorage.getItem('mdc_client_book');return raw?JSON.parse(raw):{};}catch(e){return {};}
 }
 function saveClientBookLS(){localStorage.setItem('mdc_client_book',JSON.stringify(state.clientBook));}
@@ -400,12 +371,12 @@ function populateClientDatalist(){
 
 /* ========= Filters ========= */
 function getFiltered(){
-  const {tecnico,actividad,modalidad,garantia,q}=state.filters; const [y,m]=state.month.split('-');
+  const {asesor,actividad,modalidad,garantia,q}=state.filters; const [y,m]=state.month.split('-');
   return state.rows.filter(r=>{
     const md=parseDay(r.fecha_inicio||r.fecha);
     const inMonth = md && md.format('YYYY-MM')===`${y}-${m}`;
     if(!inMonth) return false;
-    if(tecnico && r.tecnico!==tecnico) return false;
+    if(asesor && r.asesor!==asesor) return false;
     if(actividad && r.actividad!==actividad) return false;
     if(modalidad && r.modalidad!==modalidad) return false;
     if(garantia && r.garantia!==garantia) return false;
@@ -437,44 +408,41 @@ function ensureChart(id,config){
 }
 function renderCharts(rows){
   const asesores = ['Israel','Selene','Diego','Yared','Gabriel'];
-  const acts = ['Soporte de garantía','Soporte fuera de garantía','Instalación','Evento','Proyecto','Curso','Vacaciones'];
+  const acts = [
+    'Soporte de garantía','Soporte fuera de garantía','Instalación','Evento','Proyecto','Curso','Vacaciones'
+  ];
 
-  // === Actividades por asesor (STACKED por tipo de actividad) ===
+  // Stacked por actividad
   const datasetsStack = acts.map(act => ({
     label: act,
-    data: asesores.map(a => rows.filter(r => r.tecnico === a && r.actividad === act).length)
+    data: asesores.map(a => rows.filter(r => r.asesor === a && r.actividad === act).length),
   }));
   ensureChart('chartTechCount', {
-    type: 'bar',
-    data: { labels: asesores, datasets: datasetsStack },
-    options: {
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: { mode: 'index', intersect: false, callbacks: { footer: (items)=>'Total: '+items.reduce((s,i)=>s+i.parsed.y,0) } }
-      },
-      scales: { x:{stacked:true,grid:{display:true}}, y:{stacked:true,beginAtZero:true,grid:{display:true}} }
-    }
+    type:'bar', data:{ labels: asesores, datasets: datasetsStack },
+    options:{ plugins:{legend:{position:'bottom'},tooltip:{mode:'index',intersect:false,callbacks:{footer:(items)=>'Total: '+items.reduce((s,i)=>s+i.parsed.y,0)}}},
+      scales:{ x:{stacked:true,grid:{display:true}}, y:{stacked:true,beginAtZero:true,grid:{display:true}} } }
   });
 
-  // === Remoto vs Presencial ===
   const rem = rows.filter(r => r.modalidad === 'Remoto').length;
   const pre = rows.filter(r => r.modalidad === 'Presencial').length;
   ensureChart('chartRemPre', { type:'doughnut', data:{ labels:['Remoto','Presencial'], datasets:[{data:[rem,pre]}] }, options:{ plugins:{legend:{position:'bottom'}} } });
 
-  // === Distribución por actividad ===
-  ensureChart('chartActividad', { type:'doughnut', data:{ labels:acts, datasets:[{data:acts.map(a=>rows.filter(r=>r.actividad===a).length)}] }, options:{ plugins:{legend:{position:'bottom'}} } });
+  ensureChart('chartActividad', {
+    type:'doughnut',
+    data:{ labels:acts, datasets:[{ data: acts.map(a => rows.filter(r => r.actividad===a).length) }] },
+    options:{ plugins:{legend:{position:'bottom'}} }
+  });
 
-  // === Garantía vs No garantía ===
   const g  = rows.filter(r => r.garantia === 'Sí').length;
   const ng = rows.filter(r => r.garantia === 'No').length;
   ensureChart('chartGarantia', { type:'doughnut', data:{ labels:['Garantía','No garantía'], datasets:[{data:[g,ng]}] }, options:{ plugins:{legend:{position:'bottom'}} } });
 
-  // === Ingresos por asesor ===
-  const rev = asesores.map(a => rows.reduce((sum,r)=> sum + (r.tecnico===a && r.cobrado==='Sí' ? (Number(r.monto)||0) : 0), 0));
+  const rev = asesores.map(a => rows.reduce((sum,r)=> sum + (r.asesor===a && r.cobrado==='Sí' ? (Number(r.monto)||0) : 0), 0));
   ensureChart('chartRevenue', {
     type:'bar',
-    data:{ labels:asesores, datasets:[{ label:'MXN', data:rev }] },
-    options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>formatMoney(ctx.parsed.y)}}}, scales:{ y:{beginAtZero:true, ticks:{callback:(v)=>formatMoney(v)}} } }
+    data:{ labels: asesores, datasets:[{ label:'MXN', data: rev }] },
+    options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=> formatMoney(ctx.parsed.y)}}},
+              scales:{ y:{beginAtZero:true,ticks:{callback:(v)=> formatMoney(v)}} } }
   });
 }
 
@@ -490,7 +458,7 @@ function renderTable(rows){
     <tr>
       <td class="py-2 px-3">${fmt(r.fecha_inicio,r.hora_inicio)}</td>
       <td class="py-2 px-3">${fmt(r.fecha_fin,r.hora_fin)}</td>
-      <td class="py-2 px-3">${r.tecnico||''}</td>
+      <td class="py-2 px-3">${r.asesor||''}</td>
       <td class="py-2 px-3">${r.actividad||''}</td>
       <td class="py-2 px-3">${r.modalidad||''}</td>
       <td class="py-2 px-3">${r.garantia||''}</td>
@@ -500,67 +468,8 @@ function renderTable(rows){
       <td class="py-2 px-3 whitespace-normal break-words">${r.telefono||''}</td>
       <td class="py-2 px-3 whitespace-normal break-words">${r.ciudad||''}</td>
       <td class="py-2 px-3 whitespace-normal break-words">${r.notas||''}</td>
-      <td class="py-2 px-3">
-        <button class="text-emerald-400 hover:underline mr-3 btn-link" data-edit="${r.id}">Editar</button>
-        <button class="text-red-400 hover:underline btn-link" data-del="${r.id}">Eliminar</button>
-      </td>
     </tr>
   `).join('');
-
-  // Listeners Editar / Eliminar
-  // Editar
-  tbody.querySelectorAll('button[data-edit]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const id = btn.getAttribute('data-edit');
-      const rec = rows.find(x => String(x.id) === String(id));
-      if(!rec){ return; }
-      const form = document.getElementById('form');
-      form.reset();
-      document.getElementById('editId').value = rec.id;
-      document.getElementById('rowId').value  = rec.id;
-
-      form.elements['fecha_inicio'].value = rec.fecha_inicio || '';
-      form.elements['hora_inicio'].value  = rec.hora_inicio  || '';
-      form.elements['fecha_fin'].value    = rec.fecha_fin    || '';
-      form.elements['hora_fin'].value     = rec.hora_fin     || '';
-      form.elements['tecnico'].value      = rec.tecnico      || '';
-      form.elements['actividad'].value    = rec.actividad    || '';
-      form.elements['modalidad'].value    = rec.modalidad    || '';
-      form.elements['cliente'].value      = rec.cliente || '';
-      form.elements['telefono'].value     = rec.telefono || '';
-      form.elements['ciudad'].value       = rec.ciudad || '';
-      form.elements['notas'].value        = rec.notas || '';
-      form.elements['lat'].value          = rec.lat ?? '';
-      form.elements['lng'].value          = rec.lng ?? '';
-      form.elements['cobrado'].value      = rec.cobrado || 'No';
-      form.elements['monto'].value        = rec.monto ?? 0;
-
-      setBanner('Modo edición activado. Guarda para actualizar este registro.');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  });
-
-  // Eliminar
-  tbody.querySelectorAll('button[data-del]').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const id = btn.getAttribute('data-del');
-      if(!id) return;
-      if(!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
-
-      try{
-        const res = await fetch(SHEETS_ENDPOINT, {
-          method:'POST',
-          headers:{'Content-Type':'application/json','X-API-Key':API_TOKEN},
-          body: JSON.stringify({ action:'delete', id })
-        });
-        if(!res.ok) throw new Error('Error al eliminar');
-        await loadData(); renderAll();
-      }catch(e){
-        console.error(e);
-        setBanner('No se pudo eliminar. Revisa Apps Script.','error');
-      }
-    });
-  });
 }
 
 /* ========= Google Maps ========= */
@@ -589,8 +498,8 @@ function renderMarkers(rows){
   if(!gmap) return; clearMarkers();
   const bounds=new google.maps.LatLngBounds(); let any=false;
   rows.forEach(r=>{const lat=toNum(r.lat), lng=toNum(r.lng||r.long); if(lat==null||lng==null) return; const pos={lat,lng};
-    const marker=new google.maps.Marker({position:pos,map:gmap,title:`${r.cliente||'Cliente'} — ${r.tecnico||''}`});
-    const html=`<div style="min-width:220px"><div><strong>${r.cliente||'Cliente'}</strong></div><div>${r.ciudad||''}</div><div>${r.actividad||''} · ${r.modalidad||''} · Garantía: ${r.garantia||''}</div><div>Asesor: ${r.tecnico||''}</div><div>${(r.fecha_inicio||'')} ${r.hora_inicio||''}</div>${r.cobrado==='Sí'?`<div><strong>Monto:</strong> ${formatMoney(Number(r.monto)||0)}</div>`:''}</div>`;
+    const marker=new google.maps.Marker({position:pos,map:gmap,title:`${r.cliente||'Cliente'} — ${r.asesor||''}`});
+    const html=`<div style="min-width:220px"><div><strong>${r.cliente||'Cliente'}</strong></div><div>${r.ciudad||''}</div><div>${r.actividad||''} · ${r.modalidad||''} · Garantía: ${r.garantia||''}</div><div>Por: ${r.asesor||''}</div><div>${(r.fecha_inicio||'')} ${r.hora_inicio||''}</div>${r.cobrado==='Sí'?`<div><strong>Monto:</strong> ${formatMoney(Number(r.monto)||0)}</div>`:''}</div>`;
     const iw=new google.maps.InfoWindow({content:html}); marker.addListener('click',()=>iw.open({anchor:marker,map:gmap}));
     gmarkers.push(marker); bounds.extend(pos); any=true;});
   if(any){ if(gmarkers.length===1){gmap.setCenter(gmarkers[0].getPosition()); gmap.setZoom(14);} else {gmap.fitBounds(bounds,60);} }
@@ -598,7 +507,7 @@ function renderMarkers(rows){
 
 /* ========= CSV / PDF ========= */
 function exportCSV(rows){
-  const header=['id','fecha_inicio','hora_inicio','fecha_fin','hora_fin','tecnico','actividad','modalidad','garantia','cobrado','monto','cliente','telefono','ciudad','notas','lat','lng'];
+  const header=['fecha_inicio','hora_inicio','fecha_fin','hora_fin','asesor','actividad','modalidad','garantia','cobrado','monto','cliente','telefono','ciudad','notas','lat','lng'];
   const lines=[header.join(',')].concat(rows.map(r=> header.map(h=>{const v=(r[h]??'').toString().replaceAll('"','""'); return `"${v}"`;}).join(',')));
   const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`mdc-servicio-${state.month}.csv`; a.click(); URL.revokeObjectURL(url);
 }
@@ -615,13 +524,15 @@ async function loadTeamViewerCSV() {
     const durKey = Object.keys(headerMap).find(k => k.includes('duration') || k.includes('time spent'));
     const startKey = Object.keys(headerMap).find(k => k.includes('start') || k.includes('date') || k.includes('time'));
     if (!durKey || !startKey) throw new Error('No se encontraron columnas de duración/fecha en el CSV');
+
     const normalized = rows.map(r => {
       const dRaw = r[headerMap[startKey]]?.trim();
       const m = parseDay(dRaw);
       const durRaw = r[headerMap[durKey]]?.trim();
-      const hours = parseDurationToHours(durRaw);
+      const hours = parseDurationToHours(durRaw); // minutos -> horas
       return (m && Number.isFinite(hours)) ? { date: m, durationHours: hours } : null;
     }).filter(Boolean);
+
     return normalized;
   } catch (e) {
     console.warn('TeamViewer CSV:', e);
@@ -647,15 +558,17 @@ function splitCSVLine(line, padTo) {
   const out = []; let cur = '', inQ = false;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
-    if (ch === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
-    else if (ch === ',' && !inQ) { out.push(cur); cur = ''; }
+    if (ch === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (ch === ',' && !inQ) { out.push(cur); cur = ''; }
     else { cur += ch; }
   }
   out.push(cur);
-  if (padTo && out.length < padTo) while (out.length < padTo) out.push('');
+  if (padTo && out.length < padTo) { while (out.length < padTo) out.push(''); }
   return out;
 }
-// Duration en MINUTOS -> HORAS
+// "90", "90.5", "90,5", "90 min" => horas
 function parseDurationToHours(s) {
   if (!s) return 0;
   const cleaned = String(s).toLowerCase().replace('min', '').trim().replace(',', '.');
@@ -666,10 +579,12 @@ function parseDurationToHours(s) {
 let tvChart = null;
 async function renderTeamViewerChart() {
   const data = await loadTeamViewerCSV();
-  if (!data.length) { if (tvChart) { tvChart.destroy(); tvChart=null; } setTVKpis(0,0); return; }
+  if (!data.length) { if (tvChart) { tvChart.destroy(); tvChart = null; } setTVKpis(0, 0); return; }
   showTVBanner('Datos cargados desde connectionreport.csv');
+
   const [y, m] = state.month.split('-');
   const monthData = data.filter(d => d.date.format('YYYY-MM') === `${y}-${m}`);
+
   const dayMap = new Map();
   monthData.forEach(d => {
     const key = d.date.format('DD');
@@ -678,26 +593,30 @@ async function renderTeamViewerChart() {
     agg.count += 1;
     agg.hours += d.durationHours;
   });
+
   const labels = Array.from(dayMap.keys()).sort((a,b)=>a.localeCompare(b));
   const counts = labels.map(k => dayMap.get(k)?.count || 0);
   const hours  = labels.map(k => Number((dayMap.get(k)?.hours || 0).toFixed(2)));
+
   const totalConn = counts.reduce((a,b)=>a+b,0);
   const totalHours = Number(hours.reduce((a,b)=>a+b,0).toFixed(2));
   setTVKpis(totalConn, totalHours);
+
   const ctx = document.getElementById('chartTV').getContext('2d');
   if (tvChart) tvChart.destroy();
   tvChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [
-      { type: 'bar',  label: 'Conexiones', data: counts, yAxisID: 'yCount' },
-      { type: 'line', label: 'Horas',       data: hours,  yAxisID: 'yHours', tension: 0.25 }
-    ]},
+    data: {
+      labels,
+      datasets: [
+        { type: 'bar',  label: 'Conexiones', data: counts, yAxisID: 'yCount' },
+        { type: 'line', label: 'Horas',       data: hours,  yAxisID: 'yHours', tension: 0.25 }
+      ]
+    },
     options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{position:'bottom'}, tooltip:{mode:'index', intersect:false, callbacks:{
-        label:(ctx)=> ctx.dataset.yAxisID==='yHours'?`Horas: ${ctx.parsed.y}`:`Conexiones: ${ctx.parsed.y}`
-      }}},
-      scales:{ yCount:{position:'left',beginAtZero:true,ticks:{precision:0}}, yHours:{position:'right',beginAtZero:true} }
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' }, tooltip: { mode: 'index', intersect: false } },
+      scales: { yCount: { position: 'left', beginAtZero: true, ticks: { precision: 0 } }, yHours: { position: 'right', beginAtZero: true } }
     }
   });
 }
@@ -708,86 +627,62 @@ function setTVKpis(totalConn, totalHours) {
   if (elH) elH.textContent = String(totalHours);
 }
 
-/* ========= CALENDARIO (FullCalendar) ========= */
-let calendarInst = null;
-function activityColor(act){
-  switch (act) {
-    case 'Soporte de garantía':       return '#22c55e';
-    case 'Soporte fuera de garantía': return '#f59e0b';
-    case 'Instalación':               return '#3b82f6';
-    case 'Evento':                    return '#a855f7';
-    case 'Proyecto':                  return '#ef4444';
-    case 'Curso':                     return '#14b8a6';
-    case 'Vacaciones':                return '#94a3b8';
-    default:                          return '#9ca3af';
-  }
-}
-function buildISO(dateStr, timeStr, defTime){
-  const md = parseDay(dateStr);
-  if (!md) return null;
-  const t = (timeStr && String(timeStr).trim()) ? String(timeStr).trim() : defTime;
-  const composed = dayjs(`${md.format('YYYY-MM-DD')} ${t}`, 'YYYY-MM-DD HH:mm', true);
-  return composed.isValid() ? composed.format('YYYY-MM-DDTHH:mm') : `${md.format('YYYY-MM-DD')}T${defTime}`;
-}
+/* ========= Calendario ========= */
 function renderCalendar(rows){
-  const el = document.getElementById('calendar');
-  if (!el) return;
-  if (calendarInst) { calendarInst.destroy(); calendarInst = null; }
+  const wrap = document.getElementById('calGrid');
+  const title = document.getElementById('calTitle');
+  wrap.innerHTML = '';
+  const [y,m] = state.month.split('-'); // YYYY-MM
+  const first = dayjs(`${y}-${m}-01`);
+  title.textContent = first.format('MMMM YYYY');
 
-  const events = rows.map(r => {
-    const startISO = buildISO(r.fecha_inicio || r.fecha, r.hora_inicio, '09:00');
-    const endISO   = buildISO(r.fecha_fin   || r.fecha_inicio || r.fecha, r.hora_fin, '18:00');
-    if (!startISO) return null;
-    let startD = dayjs(startISO);
-    let endD   = endISO ? dayjs(endISO) : startD.add(1,'hour');
-    if (!endD.isValid() || endD.isBefore(startD)) endD = startD.add(1,'hour');
-    return {
-      title: `Asesor: ${r.tecnico || ''} — ${r.actividad || r.modalidad || ''}`,
-      start: startD.format(),
-      end:   endD.format(),
-      color: activityColor(r.actividad),
-      extendedProps: {
-        cliente: r.cliente || '',
-        ciudad:  r.ciudad || '',
-        notas:   r.notas  || '',
-        modalidad: r.modalidad || '',
-        garantia:  r.garantia  || ''
-      }
-    };
-  }).filter(Boolean);
+  // Primer día (lunes = 1… domingo = 7)
+  const startDow = (first.day() + 6) % 7 + 1;
+  const daysInMonth = first.daysInMonth();
 
-  const [yy, mm] = state.month.split('-');
-  const initialDate = `${yy}-${mm}-01`;
+  // Pre-celdas vacías hasta el lunes
+  for(let i=1;i<startDow;i++){
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell opacity-30';
+    wrap.appendChild(cell);
+  }
 
-  calendarInst = new FullCalendar.Calendar(el, {
-    initialView: 'dayGridMonth',
-    initialDate,
-    height: '95%',
-    expandRows: true,
-    locale: 'es',
-    firstDay: 1,
-    headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
-    events,
-    eventDidMount: (info) => {
-      const p = info.event.extendedProps;
-      const tip = [
-        info.event.title,
-        p.cliente ? `Cliente: ${p.cliente}` : '',
-        p.ciudad  ? `Ciudad: ${p.ciudad}`   : '',
-        p.modalidad ? `Modalidad: ${p.modalidad}` : '',
-        p.garantia  ? `Garantía: ${p.garantia}`   : '',
-        p.notas   ? `Notas: ${p.notas}`     : ''
-      ].filter(Boolean).join('\n');
-      info.el.title = tip;
-    }
+  const monthRows = rows.filter(r => {
+    const md = parseDay(r.fecha_inicio);
+    return md && md.format('YYYY-MM') === `${y}-${m}`;
   });
-  calendarInst.render();
 
-  if (events.length === 0) {
-    const note = document.createElement('div');
-    note.className = 'text-center text-sm text-slate-400 py-6';
-    note.textContent = `Sin actividades para ${dayjs(initialDate).format('MMMM YYYY')}.`;
-    el.appendChild(note);
+  const colorByAct = (act)=>{
+    if(act==='Soporte de garantía') return 'bg-emerald-500/20 border border-emerald-400/30';
+    if(act==='Soporte fuera de garantía') return 'bg-rose-500/20 border border-rose-400/30';
+    if(act==='Instalación') return 'bg-sky-500/20 border border-sky-400/30';
+    if(act==='Evento') return 'bg-amber-500/20 border border-amber-400/30';
+    if(act==='Proyecto') return 'bg-fuchsia-500/20 border border-fuchsia-400/30';
+    if(act==='Curso') return 'bg-indigo-500/20 border border-indigo-400/30';
+    if(act==='Vacaciones') return 'bg-slate-500/20 border border-slate-400/30';
+    return 'bg-white/10 border border-white/10';
+  };
+
+  for(let d=1; d<=daysInMonth; d++){
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell';
+    const dayHeader = document.createElement('div');
+    dayHeader.className = 'text-xs text-slate-400 mb-1';
+    dayHeader.textContent = String(d).padStart(2,'0');
+    cell.appendChild(dayHeader);
+
+    // items del día
+    const dayStr = `${y}-${m}-${String(d).padStart(2,'0')}`;
+    const items = monthRows.filter(r => (r.fecha_inicio === dayStr));
+    items.forEach(r=>{
+      const tag = document.createElement('div');
+      tag.className = `badge ${colorByAct(r.actividad)} mb-1`;
+      tag.title = `${r.asesor||''} · ${r.modalidad||''} · ${r.cliente||''}`;
+      tag.textContent = `${r.asesor||''} — ${r.actividad||''}`;
+      cell.appendChild(tag);
+    });
+
+    wrap.appendChild(cell);
   }
 }
 
@@ -798,13 +693,13 @@ function renderAll(){
   renderCharts(rows);
   renderTable(rows);
   renderMarkers(rows);
-  renderCalendar(rows);
   renderTeamViewerChart();
+  renderCalendar(rows);
 }
 
 /* ========= Bind ========= */
 function bindUI(){
-  document.getElementById('fTecnico').addEventListener('change',e=>{state.filters.tecnico=e.target.value; renderAll();});
+  document.getElementById('fAsesor').addEventListener('change',e=>{state.filters.asesor=e.target.value; renderAll();});
   document.getElementById('fActividad').addEventListener('change',e=>{state.filters.actividad=e.target.value; renderAll();});
   document.getElementById('fModalidad').addEventListener('change',e=>{state.filters.modalidad=e.target.value; renderAll();});
   document.getElementById('fGarantia').addEventListener('change',e=>{state.filters.garantia=e.target.value; renderAll();});
@@ -823,8 +718,7 @@ function bindUI(){
     else if (p.actividad === 'Soporte fuera de garantía') p.garantia = 'No';
     else p.garantia = '';
 
-    const start=dayjs(`${p.fecha_inicio} ${p.hora_inicio}`,'YYYY-MM-DD HH:mm');
-    const end=dayjs(`${p.fecha_fin} ${p.hora_fin}`,'YYYY-MM-DD HH:mm');
+    const start=dayjs(`${p.fecha_inicio} ${p.hora_inicio}`,'YYYY-MM-DD HH:mm'); const end=dayjs(`${p.fecha_fin} ${p.hora_fin}`,'YYYY-MM-DD HH:mm');
     if(!start.isValid()||!end.isValid()||end.isBefore(start)){setBanner('Revisa fechas/horas: el fin no puede ser antes que el inicio.','error'); return;}
     if(p.cobrado==='Sí'){p.monto=p.monto?Number(p.monto):0;} else {p.monto=0;}
     p.lat = document.getElementById('lat').value ? Number(document.getElementById('lat').value) : undefined;
@@ -832,9 +726,6 @@ function bindUI(){
 
     upsertClient(p.cliente,p.telefono);
     await saveRow(p); form.reset();
-    document.getElementById('editId').value = '';
-    document.getElementById('rowId').value  = '';
-    hideBanner();
   });
 }
 
