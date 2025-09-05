@@ -44,13 +44,13 @@
     .btn-danger:hover{background:rgba(239,68,68,.1)}
     .btn-primary{border-color:rgba(16,185,129,.5)}
     .btn-primary:hover{background:rgba(16,185,129,.15)}
-    /* Altura del contenedor del calendario */
-    #calendar { height: 820px; }
+  /* Altura del contenedor del calendario */
+  #calendar { height: 820px; min-height: 820px; }
 
-    /* Fuerza a FullCalendar a usar el alto del contenedor */
-    .fc .fc-view-harness { height: 100% !important; }
-    .fc .fc-scroller-harness,
-    .fc .fc-scroller-liquid-absolute { height: 100% !important; }
+  /* Obliga a que la vista ocupe el alto del contenedor (resta la barra superior) */
+  .fc .fc-view-harness { height: calc(100% - 46px) !important; min-height: 600px; }
+  .fc .fc-scroller-harness,
+  .fc .fc-scroller-liquid-absolute { height: 100% !important; }
   </style>
 </head>
 <body class="h-full">
@@ -774,19 +774,20 @@ function renderCalendar() {
   const el = document.getElementById('calendar');
   if (!el) return;
 
-  // Usa todo el histórico; el mes visible lo fija initialDate
+  // Usa TODO el arreglo para eventos (no sólo el filtrado), y fija initialDate con el selector de mes.
   const events = buildCalendarEvents(state.rows);
 
-  if (fcCalendar) {
-    fcCalendar.destroy();
-    fcCalendar = null;
-  }
+  if (fcCalendar) { fcCalendar.destroy(); fcCalendar = null; }
 
   fcCalendar = new FullCalendar.Calendar(el, {
     initialView: 'dayGridMonth',
     initialDate: state.month + '-01',
     locale: 'es',
-    height: '100%',
+    // Fuerza tamaños
+    height: '100%',          // ocupa todo el alto del #calendar
+    contentHeight: 'auto',   // calcula contenido automáticamente
+    expandRows: true,        // llena alto vertical con filas
+    handleWindowResize: true,
     headerToolbar: {
       left: 'prev,next today',
       center: 'title',
@@ -795,11 +796,10 @@ function renderCalendar() {
     events
   });
 
-  requestAnimationFrame(() => {
-    fcCalendar.render();
-    fcCalendar.updateSize();
-    setTimeout(() => fcCalendar.updateSize(), 200);
-  });
+  // Render y dos ajustes de tamaño (inmediato y diferido)
+  fcCalendar.render();
+  fcCalendar.updateSize();
+  setTimeout(() => fcCalendar.updateSize(), 200);
 }
 
 // Ajusta si cambia tamaño/visibilidad
