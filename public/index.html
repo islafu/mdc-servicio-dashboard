@@ -703,41 +703,31 @@ function setTVKpis(totalConn, totalHours) {
 }
 
 /* ========= Calendario ========= */
-function renderCalendar(rows){
-  const calEl=document.getElementById('calendar');
-  if(!calEl) return;
-  const [y,m]=state.month.split('-');
-  const inMonth=rows.filter(r=>{
-    const d=parseDay(r.fecha_inicio||r.fecha);
-    return d && d.format('YYYY-MM')===`${y}-${m}`;
-  });
-  const events=inMonth.map(r=>({
-    id:r.id||undefined,
-    title:`${r.actividad||''} — ${r.asesor||''}`,
-    start:r.fecha_inicio?`${r.fecha_inicio}T${r.hora_inicio||'00:00'}`:undefined,
-    end:r.fecha_fin?`${r.fecha_fin}T${r.hora_fin||'23:59'}`:undefined
-  })).filter(e=>e.start);
+  async function renderCalendar() {
+    const el = document.getElementById('calendar');
+    if (!el) return;
 
-  const firstDay=dayjs(`${state.month}-01`).toDate();
-  if(state.calendar){
-    state.calendar.removeAllEvents();
-    events.forEach(ev=>state.calendar.addEvent(ev));
-    state.calendar.gotoDate(firstDay);
-  }else{
-    state.calendar=new FullCalendar.Calendar(calEl,{
-      initialView:'dayGridMonth',
-      height:'100%',
-      headerToolbar:{left:'prev,next today',center:'title',right:''},
-      firstDay:1,
-      locale:'es',
+    const events = getFiltered().map(r => ({
+      title: `${r.actividad || 'Actividad'} — ${r.asesor || ''}`,
+      start: `${r.fecha_inicio}T${r.hora_inicio || '00:00'}`,
+      end:   `${r.fecha_fin}T${r.hora_fin || '23:59'}`,
+      color: pickColor(r.actividad),
+    }));
+
+    const cal = new FullCalendar.Calendar(el, {
+      initialView: 'dayGridMonth',
+      locale: 'es',
+      height: '100%',
       events,
-      eventDisplay:'block',
-      dayMaxEventRows:true
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      }
     });
-    state.calendar.render();
-    state.calendar.gotoDate(firstDay);
+
+    cal.render();
   }
-}
 
 /* ========= Render ========= */
 function renderAll(){
