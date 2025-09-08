@@ -339,11 +339,12 @@ function formatMoney(n){try{return n.toLocaleString('es-MX',{style:'currency',cu
 /* ========= Load/Save ========= */
 async function loadData(){
   try{
-    const res=await fetch(SHEETS_ENDPOINT,{cache:'no-store'});
+    const res = await fetch(SHEETS_ENDPOINT, { cache:'no-store' });
     if(!res.ok) throw new Error('No se pudo leer el endpoint');
-    const data=await res.json();
-    const arr=(Array.isArray(data)?data:[]).map(normalizeRowFromSheet);
-    if (arr.length) {
+    const data = await res.json();
+    const arr  = (Array.isArray(data)? data: []).map(normalizeRowFromSheet);
+
+    if (arr.length){
       state.rows = arr;
       hideBanner();
     } else {
@@ -351,78 +352,125 @@ async function loadData(){
       setBanner('Tu hoja está vacía. Mostrando datos DEMO.');
     }
   }catch(err){
-    console.error(err); state.rows=demoData.slice(); setBanner('No se pudo conectar con el Sheet. Mostrando datos DEMO.','error');
+    console.error(err);
+    state.rows = demoData.slice();
+    setBanner('No se pudo conectar con el Sheet. Mostrando datos DEMO.','error');
   }
-  rebuildClientBook(); populateClientDatalist();
+  rebuildClientBook();
+  populateClientDatalist();
+}
+
+/* -- Normalizadores de fecha/hora desde Apps Script / Sheets -- */
+function normDate(s){
+  if(!s) return '';
+  // si viene como "2025-09-01T06:00:00.000Z"
+  const m = dayjs(s);
+  if (m.isValid()) return m.format('YYYY-MM-DD');
+  // si ya viene "YYYY-MM-DD" lo regresamos tal cual
+  const m2 = dayjs(String(s), ['YYYY-MM-DD','YYYY/M/D','D/M/YYYY','DD/MM/YYYY'], true);
+  return m2.isValid()? m2.format('YYYY-MM-DD') : '';
+}
+function normTime(s){
+  if(!s) return '';
+  // Si es tipo "1899-12-30T20:36:36.000Z" -> tomamos HH:mm local
+  const m = dayjs(s);
+  if (m.isValid()) return m.format('HH:mm');
+  // Si ya es "HH:mm"
+  if (/^\d{1,2}:\d{2}$/.test(String(s).trim())) return s.trim();
+  return '';
 }
 
 function normalizeRowFromSheet(r){
-  // Asesor / Técnico (compatibilidad)
-  const asesor = r.asesor || r.Asesor || r.tecnico || r.Técnico || r.Tecnico || '';
-  // Actividad / Modalidad
+  // Mapear claves flexibles
+  const asesor    = r.asesor || r.Asesor || r.tecnico || r.Técnico || r.Tecnico || '';
   const actividad = r.actividad || r.Actividad || '';
   const modalidad = r.modalidad || r.Modalidad || (['Remoto','Presencial'].includes(r.tipo)? r.tipo : '');
-  // Garantía derivada según actividad si no viene
+
+  // Garantía derivada si no viene explícita
   const garantiaDerivada =
     actividad==='Soporte de garantía' ? 'Sí' :
     actividad==='Soporte fuera de garantía' ? 'No' :
     (r.garantia || r.Garantia || r.Garantía || '');
-  // ID: puede venir como texto/num
+
+  // ID
   const id = r.id!==undefined && r.id!==null && r.id!=='' ? Number(r.id) : undefined;
+
+  // Fechas/Horas: normalizar cualquier ISO/serial de Sheets
+  const fIni = normDate(r.fecha_inicio || r['fecha inicio'] || r.fecha);
+  const hIni = normTime(r.hora_inicio  || r['hora inicio']);
+  const fFin = normDate(r.fecha_fin    || r['fecha fin']   || r.fecha);
+  const hFin = normTime(r.hora_fin     || r['hora fin']);
 
   return {
     id,
-    fecha_inicio: r.fecha_inicio || r['fecha inicio'] || r.fecha || '',
-    hora_inicio:  r.hora_inicio  || r['hora inicio']  || '',
-    fecha_fin:    r.fecha_fin    || r['fecha fin']    || r.fecha || '',
-    hora_fin:     r.hora_fin     || r['hora fin']     || '',
+    fecha_inicio: fIni,
+    hora_inicio : hIni,
+    fecha_fin   : fFin || fIni,
+    hora_fin    : hFin,
     asesor,
     actividad,
     modalidad,
-    garantia:     garantiaDerivada,
-    cliente:      r.cliente || r.Cliente || '',
-    telefono:     r.telefono || r.Teléfono || r.Telefono || '',
-    ciudad:       r.ciudad || r.Ciudad || '',
-    notas:        r.notas || r.Notas || '',
-    lat:          r.lat? Number(r.lat): undefined,
-    lng:          r.lng? Number(r.lng): undefined,
-    cobrado:      r.cobrado || r.Cobrado || 'No',
-    monto:        r.monto? Number(r.monto) : 0,
+    garantia: garantiaDerivada,
+    cliente:   r.cliente || r.Cliente || '',
+    telefono:  r.telefono || r.Teléfono || r.Telefono || '',
+    ciudad:    r.ciudad || r.Ciudad || '',
+    notas:     r.notas || r.Notas || '',
+    lat:       r.lat!=null ? Number(r.lat) : undefined,
+    lng:       r.lng!=null ? Number(r.lng) : undefined,
+    cobrado:   r.cobrado || r.Cobrado || 'No',
+    monto:     r.monto!=null ? Number(r.monto) : 0,
   };
 }
 
 async function createRow(payload){
-  const res = await fetch(SHEETS_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'create', token: EDIT_TOKEN, data: payload})});
+  const res = await fetch(SHEETS_ENDPOINT, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ op:'create', token: EDIT_TOKEN, data: payload })
+  });
   if(!res.ok) throw new Error('Error al guardar');
   return res.json();
 }
 async function updateRow(id, patch){
-  const res = await fetch(SHEETS_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'update', token: EDIT_TOKEN, id, data: patch})});
+  const res = await fetch(SHEETS_ENDPOINT, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ op:'update', token: EDIT_TOKEN, id, data: patch })
+  });
   if(!res.ok) throw new Error('Error al actualizar');
   return res.json();
 }
 async function deleteRow(id){
-  const res = await fetch(SHEETS_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'delete', token: EDIT_TOKEN, id})});
+  const res = await fetch(SHEETS_ENDPOINT, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ op:'delete', token: EDIT_TOKEN, id })
+  });
   if(!res.ok) throw new Error('Error al eliminar');
   return res.json();
 }
 
 /* ========= Client autocomplete (local) ========= */
-function loadClientBookLS(){try{const raw=localStorage.getItem('mdc_client_book');return raw?JSON.parse(raw):{};}catch(e){return {};}
-}
+function loadClientBookLS(){try{const raw=localStorage.getItem('mdc_client_book');return raw?JSON.parse(raw):{};}catch(e){return {};} }
 function saveClientBookLS(){localStorage.setItem('mdc_client_book',JSON.stringify(state.clientBook));}
-function upsertClient(nombre,tel){if(!nombre)return; state.clientBook[nombre]=tel||state.clientBook[nombre]||''; saveClientBookLS(); populateClientDatalist();}
-function rebuildClientBook(){state.clientBook=loadClientBookLS(); state.rows.forEach(r=>{if(r.cliente){upsertClient(r.cliente,r.telefono)}});}
+function upsertClient(nombre,tel){ if(!nombre)return; state.clientBook[nombre]=tel||state.clientBook[nombre]||''; saveClientBookLS(); populateClientDatalist(); }
+function rebuildClientBook(){ state.clientBook=loadClientBookLS(); state.rows.forEach(r=>{ if(r.cliente){ upsertClient(r.cliente,r.telefono) } }); }
 function populateClientDatalist(){
-  const dl=document.getElementById('dlClientes'); const names=Object.keys(state.clientBook).sort();
+  const dl=document.getElementById('dlClientes'); if(!dl) return;
+  const names=Object.keys(state.clientBook).sort();
   dl.innerHTML=names.map(n=>`<option value="${n}"></option>`).join('');
-  const clienteInput=document.getElementById('cliente'); const telInput=document.getElementById('telefono');
-  clienteInput?.addEventListener('change',()=>{const name=clienteInput.value; if(name&&state.clientBook[name]){telInput.value=state.clientBook[name];}});
+  const clienteInput=document.getElementById('cliente');
+  const telInput=document.getElementById('telefono');
+  clienteInput?.addEventListener('change',()=>{
+    const name=clienteInput.value;
+    if(name&&state.clientBook[name]) telInput.value=state.clientBook[name];
+  });
 }
 
 /* ========= Filters ========= */
 function getFiltered(){
-  const {asesor,actividad,modalidad,garantia,q}=state.filters; const [y,m]=state.month.split('-');
+  const {asesor,actividad,modalidad,garantia,q}=state.filters||{asesor:'',actividad:'',modalidad:'',garantia:'',q:''};
+  const [y,m]=state.month.split('-');
   return state.rows.filter(r=>{
     const md=parseDay(r.fecha_inicio||r.fecha);
     const inMonth = md && md.format('YYYY-MM')===`${y}-${m}`;
@@ -441,7 +489,7 @@ function renderKPIs(rows){
   const total=rows.length;
   const soporte=rows.filter(r=> r.actividad==='Soporte de garantía' || r.actividad==='Soporte fuera de garantía').length;
   const instal=rows.filter(r=> r.actividad==='Instalación').length;
-  const otros =rows.filter(r=> ['Evento','Proyecto','Curso'].includes(r.actividad)).length;
+  const otros =rows.filter(r=> ['Evento','Proyecto','Curso','Vacaciones'].includes(r.actividad)).length;
   const cob=rows.reduce((a,r)=>a+(r.cobrado==='Sí'?(Number(r.monto)||0):0),0);
   document.getElementById('kpiTotal').innerText=total;
   document.getElementById('kpiSoporte').innerText=soporte;
@@ -450,31 +498,21 @@ function renderKPIs(rows){
   document.getElementById('kpiCobrado').innerText=formatMoney(cob);
 }
 function ensureChart(id,config){
-  const ctx=document.getElementById(id).getContext('2d');
-  if(state.charts[id]) state.charts[id].destroy();
+  const ctx=document.getElementById(id)?.getContext('2d'); if(!ctx) return;
+  if(state.charts?.[id]) state.charts[id].destroy();
   config.options = config.options || {};
   config.options.responsive = true;
   config.options.maintainAspectRatio = false;
+  state.charts = state.charts || {};
   state.charts[id]=new Chart(ctx,config);
 }
 function renderCharts(rows){
   const asesores = ['Israel','Selene','Diego','Yared','Gabriel'];
-  const acts = [
-    'Soporte de garantía',
-    'Soporte fuera de garantía',
-    'Instalación',
-    'Evento',
-    'Proyecto',
-    'Curso',
-    'Vacaciones'
-  ];
+  const acts = ['Soporte de garantía','Soporte fuera de garantía','Instalación','Evento','Proyecto','Curso','Vacaciones'];
 
-  // Actividades por asesor (STACKED por actividad)
   const datasetsStack = acts.map(act => ({
     label: act,
-    data: asesores.map(a =>
-      rows.filter(r => r.asesor === a && r.actividad === act).length
-    )
+    data: asesores.map(a => rows.filter(r => r.asesor === a && r.actividad === act).length)
   }));
   ensureChart('chartTechCount', {
     type: 'bar',
@@ -489,7 +527,6 @@ function renderCharts(rows){
     }
   });
 
-  // Remoto vs Presencial
   const rem = rows.filter(r => r.modalidad === 'Remoto').length;
   const pre = rows.filter(r => r.modalidad === 'Presencial').length;
   ensureChart('chartRemPre', {
@@ -498,14 +535,12 @@ function renderCharts(rows){
     options: { plugins: { legend: { position: 'bottom' } } }
   });
 
-  // Distribución por actividad
   ensureChart('chartActividad', {
     type: 'doughnut',
     data: { labels: acts, datasets: [{ data: acts.map(a => rows.filter(r => r.actividad === a).length) }] },
     options: { plugins: { legend: { position: 'bottom' } } }
   });
 
-  // Garantía vs No
   const g  = rows.filter(r => r.garantia === 'Sí').length;
   const ng = rows.filter(r => r.garantia === 'No').length;
   ensureChart('chartGarantia', {
@@ -514,7 +549,6 @@ function renderCharts(rows){
     options: { plugins: { legend: { position: 'bottom' } } }
   });
 
-  // Ingresos por asesor
   const rev = asesores.map(a =>
     rows.reduce((sum, r) => sum + (r.asesor === a && r.cobrado === 'Sí' ? (Number(r.monto)||0) : 0), 0)
   );
@@ -530,7 +564,7 @@ function renderCharts(rows){
 
 /* ========= Table ========= */
 function renderTable(rows){
-  const tbody=document.getElementById('tbody');
+  const tbody=document.getElementById('tbody'); if(!tbody) return;
   function fmt(d,t){
     const base=parseDay(d); if(!base) return '';
     if(t){const m=dayjs(`${base.format('YYYY-MM-DD')} ${t}`,'YYYY-MM-DD HH:mm',true); return m.isValid()?m.format('DD/MM/YYYY HH:mm'):base.format('DD/MM/YYYY');}
@@ -543,14 +577,8 @@ function renderTable(rows){
       <td class="py-2 px-3 nowrap">${fmt(r.fecha_fin,r.hora_fin)}</td>
       <td class="py-2 px-3">${r.asesor||''}</td>
       <td class="py-2 px-3">${r.actividad||''}</td>
-      <td class="py-2 px-3">${r.modalidad||''}</td>
-      <td class="py-2 px-3">${r.garantia||''}</td>
-      <td class="py-2 px-3">${r.cobrado||'No'}</td>
-      <td class="py-2 px-3">${r.cobrado==='Sí'?formatMoney(Number(r.monto)||0):''}</td>
       <td class="py-2 px-3 whitespace-normal break-words">${r.cliente||''}</td>
-      <td class="py-2 px-3 whitespace-normal break-words">${r.telefono||''}</td>
       <td class="py-2 px-3 whitespace-normal break-words">${r.ciudad||''}</td>
-      <td class="py-2 px-3 whitespace-normal break-words">${r.notas||''}</td>
       <td class="py-2 px-3">
         <button class="btn btn-primary text-lg" onclick="onEditRow(${r.id ?? 'null'})">✏️</button>
         <button class="btn btn-danger text-lg" onclick="onDeleteRow(${r.id ?? 'null'})">🗑️</button>
@@ -566,17 +594,12 @@ async function initMap(){
   await ensureGoogleReady();
   geocoder=new google.maps.Geocoder();
   gmap=new google.maps.Map(document.getElementById('map'),{center:{lat:22.0,lng:-102.0},zoom:5,mapTypeControl:false,streetViewControl:false});
-  gmap.addListener('click',(e)=>{setClickMarker(e.latLng); document.getElementById('lat').value=e.latLng.lat().toFixed(6); document.getElementById('lng').value=e.latLng.lng().toFixed(6);});
+  gmap.addListener('click',(e)=>{setClickMarker(e.latLng); document.getElementById('lat')&&(document.getElementById('lat').value=e.latLng.lat().toFixed(6)); document.getElementById('lng')&&(document.getElementById('lng').value=e.latLng.lng().toFixed(6));});
   const input=document.getElementById('direccion');
   if(input){
     placeAutocomplete=new google.maps.places.Autocomplete(input,{fields:['geometry']});
-    placeAutocomplete.addListener('place_changed',()=>{const place=placeAutocomplete.getPlace(); if(place?.geometry){const pos=place.geometry.location; gmap.setCenter(pos); gmap.setZoom(14); setClickMarker(pos); document.getElementById('lat').value=pos.lat().toFixed(6); document.getElementById('lng').value=pos.lng().toFixed(6);} });
+    placeAutocomplete.addListener('place_changed',()=>{const place=placeAutocomplete.getPlace(); if(place?.geometry){const pos=place.geometry.location; gmap.setCenter(pos); gmap.setZoom(14); setClickMarker(pos); document.getElementById('lat')&&(document.getElementById('lat').value=pos.lat().toFixed(6)); document.getElementById('lng')&&(document.getElementById('lng').value=pos.lng().toFixed(6));} });
   }
-  const btn=document.getElementById('btnUbicacion');
-  btn?.addEventListener('click',()=>{ if(!navigator.geolocation){setBanner('Tu dispositivo no permite geolocalización','error');return;}
-    navigator.geolocation.getCurrentPosition(p=>{const {latitude,longitude}=p.coords; const pos={lat:latitude,lng:longitude}; gmap.setCenter(pos); gmap.setZoom(15); setClickMarker(pos); document.getElementById('lat').value=latitude.toFixed(6); document.getElementById('lng').value=longitude.toFixed(6);},
-      err=>setBanner('No se pudo leer tu ubicación ('+err.message+')','error'));
-  });
 }
 function setClickMarker(latLng){ if(clickMarker) clickMarker.setMap(null); clickMarker=new google.maps.Marker({position:latLng,map:gmap,animation:google.maps.Animation.DROP}); }
 function toNum(n){const v=Number(n); return Number.isFinite(v)?v:null;}
@@ -598,20 +621,26 @@ function exportCSV(rows){
   const lines=[header.join(',')].concat(rows.map(r=> header.map(h=>{const v=(r[h]??'').toString().replaceAll('"','""'); return `"${v}"`;}).join(',')));
   const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`mdc-servicio-${state.month}.csv`; a.click(); URL.revokeObjectURL(url);
 }
-async function exportPDF(){const {jsPDF}=window.jspdf; const node=document.body; const canvas=await html2canvas(node,{scale:2,useCORS:true}); const img=canvas.toDataURL('image/png'); const pdf=new jsPDF('p','mm','a4'); const W=pdf.internal.pageSize.getWidth(); const H=canvas.height*W/canvas.width; let pos=0,left=H; pdf.addImage(img,'PNG',0,pos,W,H); left-=pdf.internal.pageSize.getHeight(); while(left>0){pos=left-H; pdf.addPage(); pdf.addImage(img,'PNG',0,pos,W,H); left-=pdf.internal.pageSize.getHeight();} pdf.save(`MDC-Reporte-${state.month}.pdf`);}
 
-/* ===== TeamViewer CSV ===== */
+/* ===== TeamViewer CSV (conexiones y horas) ===== */
 async function loadTeamViewerCSV() {
   try {
     const res = await fetch('connectionreport.csv', { cache: 'no-store' });
     if (!res.ok) throw new Error('CSV no encontrado');
     const text = await res.text();
     const { rows, meta } = parseCSV(text);
-    const headerMap = meta.headerMap;
-    const durKey = Object.keys(headerMap).find(k => k.includes('duration') || k.includes('time spent') || k.includes('minutes'));
-    const startKey = Object.keys(headerMap).find(k => k.includes('start') || k.includes('date') || k.includes('time'));
+
+    // Intenta detectar columnas de fecha-inicio y duración
+    const headerMap = meta.headerMap; // { headerLower: index }
+    const durKey = Object.keys(headerMap).find(k =>
+      k.includes('duration') || k.includes('time spent') || k.includes('minutes') || k.includes('mins')
+    );
+    const startKey = Object.keys(headerMap).find(k =>
+      k.includes('start') || k.includes('date') || k.includes('time')
+    );
     if (!durKey || !startKey) throw new Error('No se encontraron columnas de duración/fecha en el CSV');
 
+    // Normaliza filas: { date: dayjs, durationHours: number }
     const normalized = rows.map(r => {
       const dRaw = r[headerMap[startKey]]?.trim();
       const m = parseDay(dRaw);
@@ -627,12 +656,15 @@ async function loadTeamViewerCSV() {
     return [];
   }
 }
+
 function showTVBanner(msg, isError=false) {
   const el = document.getElementById('tvBanner');
   if (!el) return;
   el.textContent = msg || '';
   el.className = 'text-xs mt-2 ' + (isError ? 'text-red-300' : 'text-slate-400');
 }
+
+/* --- Parser CSV simple (soporta comillas) --- */
 function parseCSV(text) {
   const lines = text.split(/\r?\n/).filter(l => l.trim().length);
   if (!lines.length) return { rows: [], meta: { headerMap: {} } };
@@ -655,6 +687,8 @@ function splitCSVLine(line, padTo) {
   if (padTo && out.length < padTo) { while (out.length < padTo) out.push(''); }
   return out;
 }
+
+/* --- Normaliza duraciones: "15" / "15 min" / "15,5" => horas --- */
 function parseDurationToHours(s) {
   if (!s) return 0;
   const cleaned = String(s).toLowerCase().replace('min', '').trim().replace(',', '.');
@@ -662,6 +696,16 @@ function parseDurationToHours(s) {
   if (!Number.isFinite(mins)) return 0;
   return mins / 60;
 }
+
+/* --- KPIs superiores de TV --- */
+function setTVKpis(totalConn, totalHours) {
+  const elC = document.getElementById('kpiTvConn');
+  const elH = document.getElementById('kpiTvHours');
+  if (elC) elC.textContent = String(totalConn);
+  if (elH) elH.textContent = String(totalHours.toFixed(2));
+}
+
+/* --- Render de la gráfica --- */
 let tvChart = null;
 async function renderTeamViewerChart() {
   const data = await loadTeamViewerCSV();
@@ -671,8 +715,12 @@ async function renderTeamViewerChart() {
     return;
   }
   showTVBanner('Datos cargados desde connectionreport.csv');
+
+  // Filtra por mes activo
   const [y, m] = state.month.split('-');
   const monthData = data.filter(d => d.date.format('YYYY-MM') === `${y}-${m}`);
+
+  // Agrega por día
   const dayMap = new Map();
   monthData.forEach(d => {
     const key = d.date.format('DD');
@@ -681,15 +729,18 @@ async function renderTeamViewerChart() {
     agg.count += 1;
     agg.hours += d.durationHours;
   });
+
   const labels = Array.from(dayMap.keys()).sort((a,b)=>a.localeCompare(b));
   const counts = labels.map(k => dayMap.get(k)?.count || 0);
   const hours  = labels.map(k => Number((dayMap.get(k)?.hours || 0).toFixed(2)));
 
-  const totalConn = counts.reduce((a,b)=>a+b,0);
+  const totalConn  = counts.reduce((a,b)=>a+b,0);
   const totalHours = Number(hours.reduce((a,b)=>a+b,0).toFixed(2));
   setTVKpis(totalConn, totalHours);
 
-  const ctx = document.getElementById('chartTV').getContext('2d');
+  const ctx = document.getElementById('chartTV')?.getContext('2d');
+  if (!ctx) return;
+
   if (tvChart) tvChart.destroy();
   tvChart = new Chart(ctx, {
     type: 'bar',
@@ -706,8 +757,10 @@ async function renderTeamViewerChart() {
       plugins: {
         legend: { position: 'bottom' },
         tooltip: { mode: 'index', intersect: false,
-          callbacks: { label: (ctx) => ctx.dataset.yAxisID === 'yHours'
-              ? `Horas: ${ctx.parsed.y}` : `Conexiones: ${ctx.parsed.y}` } }
+          callbacks: { label: (ctx) =>
+            ctx.dataset.yAxisID === 'yHours'
+              ? `Horas: ${ctx.parsed.y}`
+              : `Conexiones: ${ctx.parsed.y}` } }
       },
       scales: {
         yCount: { position: 'left', beginAtZero: true, ticks: { precision: 0 } },
@@ -716,365 +769,192 @@ async function renderTeamViewerChart() {
     }
   });
 }
-function setTVKpis(totalConn, totalHours) {
-  const elC = document.getElementById('kpiTvConn');
-  const elH = document.getElementById('kpiTvHours');
-  if (elC) elC.textContent = String(totalConn);
-  if (elH) elH.textContent = String(totalHours);
-}
 
-// ========= Calendario =========
+
+/* ===== Calendario ===== */
 let fcCalendar = null;
-
-// Colores por tipo de actividad
-function pickColor(act) {
-  const map = {
-    'Soporte de garantía': '#22c55e',
-    'Soporte fuera de garantía': '#f59e0b',
-    'Instalación': '#38bdf8',
-    'Evento': '#a78bfa',
-    'Proyecto': '#f472b6',
-    'Curso': '#2dd4bf',
-    'Vacaciones': '#94a3b8'
+function pickColor(act){
+  const map={
+    'Soporte de garantía':'#22c55e',
+    'Soporte fuera de garantía':'#f59e0b',
+    'Instalación':'#38bdf8',
+    'Evento':'#a78bfa',
+    'Proyecto':'#f472b6',
+    'Curso':'#2dd4bf',
+    'Vacaciones':'#94a3b8'
   };
   return map[act] || '#64748b';
 }
-
-/** 
- * Normaliza fecha que pueda venir como:
- * - "YYYY-MM-DD"
- * - "2025-09-01T06:00:00.000Z"  (ISO de Sheets)
- * Devuelve "YYYY-MM-DD" o null.
- */
-function normalizeDate(raw) {
-  if (!raw) return null;
-  // Si viene ISO con "T"
-  if (typeof raw === 'string' && raw.includes('T')) {
-    const m = dayjs(raw);
-    return m.isValid() ? m.format('YYYY-MM-DD') : null;
-  }
-  // Si viene Date de Apps Script
-  if (Object.prototype.toString.call(raw) === '[object Date]') {
-    const m = dayjs(raw);
-    return m.isValid() ? m.format('YYYY-MM-DD') : null;
-  }
-  // Caso cuerda simple "YYYY-MM-DD" (o variantes)
-  const m = dayjs(String(raw).trim(), ['YYYY-MM-DD','YYYY/M/D','YYYY-M-D'], true);
-  if (m.isValid()) return m.format('YYYY-MM-DD');
-
-  // Último recurso
-  const m2 = dayjs(String(raw).trim());
-  return m2.isValid() ? m2.format('YYYY-MM-DD') : null;
+function parseLocalDateTime(dateStr, timeStr){
+  const hasTime = timeStr && String(timeStr).trim() !== '';
+  if (!dateStr) return null;
+  const d = normDate(dateStr);               // asegura YYYY-MM-DD
+  const t = hasTime ? normTime(timeStr) : '';
+  const s = hasTime ? `${d} ${t}` : d;
+  const formats = hasTime
+    ? ['YYYY-MM-DD HH:mm','YYYY-MM-DD H:mm']
+    : ['YYYY-MM-DD'];
+  let m = dayjs(s, formats, true);
+  if (!m.isValid()) m = dayjs(s); // último recurso
+  return m.isValid()? m : null;
 }
-
-/**
- * Normaliza horas que pueden venir como:
- * - "HH:mm"
- * - Date con base 1899-12-30/31 (Google Sheets)
- * - ISO tipo "1899-12-30T13:36:36.000Z"
- * Devuelve "HH:mm" o null.
- */
-function normalizeTime(raw) {
-  if (!raw) return null;
-
-  // Date real (Apps Script envía a veces Date para horas)
-  if (Object.prototype.toString.call(raw) === '[object Date]') {
-    const m = dayjs(raw);
-    return m.isValid() ? m.format('HH:mm') : null;
-  }
-
-  const s = String(raw).trim();
-
-  // ISO con fecha base 1899-12-30 / 1899-12-31
-  if (s.includes('1899-12-30') || s.includes('1899-12-31') || s.includes('T')) {
-    const m = dayjs(s);
-    return m.isValid() ? m.format('HH:mm') : null;
-  }
-
-  // Directo "HH:mm" (o "H:mm")
-  const m = dayjs(`2000-01-01 ${s}`, ['YYYY-MM-DD HH:mm','YYYY-MM-DD H:mm'], true);
-  if (m.isValid()) return m.format('HH:mm');
-
-  return null;
-}
-
-/**
- * Crea eventos para FullCalendar:
- * - Si hay hora inicio sin fin => asumimos +1h
- * - Si no hay horas => evento all-day (end = start + 1 día)
- */
-function buildCalendarEvents(rows) {
-  const events = [];
-
-  rows.forEach(r => {
-    const dStart = normalizeDate(r.fecha_inicio);
-    const dEndRaw = normalizeDate(r.fecha_fin || r.fecha_inicio);
-
-    const tStart = normalizeTime(r.hora_inicio);
-    const tEnd   = normalizeTime(r.hora_fin);
-
-    if (!dStart) {
-      console.warn('Evento con inicio inválido, se omite:', r);
-      return;
-    }
-
-    // all-day si NO hay horas
-    const isAllDay = !(tStart || tEnd);
-
-    // Construye start y end como Dayjs
-    let start = isAllDay
-      ? dayjs(dStart, 'YYYY-MM-DD', true)
-      : dayjs(`${dStart} ${tStart || '00:00'}`, 'YYYY-MM-DD HH:mm', true);
-
-    if (!start.isValid()) {
-      console.warn('Start inválido tras normalizar:', { dStart, tStart, r });
-      return;
-    }
-
-    let end;
-    if (isAllDay) {
-      end = start.add(1, 'day'); // FullCalendar requiere end exclusivo
-    } else if (tEnd) {
-      const dEnd = dEndRaw || dStart;
-      end = dayjs(`${dEnd} ${tEnd}`, 'YYYY-MM-DD HH:mm', true);
-      if (!end.isValid()) {
-        // fallback: +1 hora
-        end = start.add(1, 'hour');
-      }
+function buildCalendarEvents(rows){
+  const events=[];
+  rows.forEach(r=>{
+    const hasStartTime = r.hora_inicio && String(r.hora_inicio).trim() !== '';
+    const hasEndTime   = r.hora_fin    && String(r.hora_fin).trim()   !== '';
+    const start = parseLocalDateTime(r.fecha_inicio, hasStartTime ? r.hora_inicio : null);
+    if(!start) return;
+    let end=null;
+    if (hasEndTime){
+      end = parseLocalDateTime(r.fecha_fin || r.fecha_inicio, r.hora_fin);
+    } else if (hasStartTime){
+      end = start.add(1,'hour');
     } else {
-      // Hay hora de inicio pero no fin => +1h
-      end = start.add(1, 'hour');
+      end = parseLocalDateTime(r.fecha_inicio,null)?.add(1,'day');
     }
-
+    const allDay = !(hasStartTime || hasEndTime);
     events.push({
-      title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`,
+      title: `${r.actividad||'Actividad'} — ${r.asesor||r.tecnico||''}`,
       start: start.toDate(),
-      end: end.toDate(),
-      allDay: isAllDay,
+      end:   end ? end.toDate() : undefined,
+      allDay,
       color: pickColor(r.actividad),
     });
   });
-
-  console.log('[Calendar] eventos construidos:', events.length, events.slice(0,3));
   return events;
 }
-
-function renderCalendar() {
-  const el = document.getElementById('calendar');
-  if (!el) return;
-
+function renderCalendar(){
+  const el=document.getElementById('calendar'); if(!el) return;
   const events = buildCalendarEvents(getFiltered());
-
-  if (fcCalendar) { fcCalendar.destroy(); fcCalendar = null; }
-
-  fcCalendar = new FullCalendar.Calendar(el, {
-    initialView: 'dayGridMonth',
-    locale: 'es',
-    timeZone: 'local',
-    height: '100%',
-    expandRows: true,
-    headerToolbar: {
-      left: 'prev,next today',
-      center: 'title',
-      right: 'dayGridMonth,timeGridWeek,timeGridDay'
-    },
+  if (fcCalendar){ fcCalendar.destroy(); fcCalendar=null; }
+  fcCalendar = new FullCalendar.Calendar(el,{
+    initialView:'dayGridMonth',
+    locale:'es',
+    timeZone:'local',
+    height:'100%',
+    expandRows:true,
+    headerToolbar:{ left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,timeGridDay' },
     events
   });
-
-  requestAnimationFrame(() => {
-    fcCalendar.render();
-    fcCalendar.updateSize();
-    setTimeout(() => fcCalendar.updateSize(), 200);
-  });
+  requestAnimationFrame(()=>{ fcCalendar.render(); fcCalendar.updateSize(); setTimeout(()=>fcCalendar.updateSize(),200); });
 }
-
-// Recalcular tamaño en cambios de ventana/visibilidad
-window.addEventListener('resize', () => fcCalendar?.updateSize());
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) fcCalendar?.updateSize();
-});
+window.addEventListener('resize',()=>fcCalendar?.updateSize());
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) fcCalendar?.updateSize(); });
 
 /* ========= Render ========= */
 function renderAll(){
-  const rows=getFiltered();
+  const rows = getFiltered();
   renderKPIs(rows);
   renderCharts(rows);
   renderTable(rows);
   renderMarkers(rows);
-  renderTeamViewerChart();
+  renderTeamViewerChart();   // <-- ESTA LÍNEA
   renderCalendar();
 }
 
+
 /* ========= Bind ========= */
 function bindUI(){
-  const fAsesor = document.getElementById('fAsesor');
-  const fActividad = document.getElementById('fActividad');
-  const fModalidad = document.getElementById('fModalidad');
-  const fGarantia = document.getElementById('fGarantia');
-  const fBusqueda = document.getElementById('fBusqueda');
+  const fAsesor=document.getElementById('fAsesor');
+  const fActividad=document.getElementById('fActividad');
+  const fModalidad=document.getElementById('fModalidad');
+  const fGarantia=document.getElementById('fGarantia');
+  const fBusqueda=document.getElementById('fBusqueda');
 
-  fAsesor.addEventListener('change',e=>{state.filters.asesor=e.target.value; renderAll();});
-  fActividad.addEventListener('change',e=>{state.filters.actividad=e.target.value; renderAll();});
-  fModalidad.addEventListener('change',e=>{state.filters.modalidad=e.target.value; renderAll();});
-  fGarantia.addEventListener('change',e=>{state.filters.garantia=e.target.value; renderAll();});
-  fBusqueda.addEventListener('input',e=>{state.filters.q=e.target.value; renderAll();});
+  fAsesor?.addEventListener('change',e=>{state.filters.asesor=e.target.value; renderAll();});
+  fActividad?.addEventListener('change',e=>{state.filters.actividad=e.target.value; renderAll();});
+  fModalidad?.addEventListener('change',e=>{state.filters.modalidad=e.target.value; renderAll();});
+  fGarantia?.addEventListener('change',e=>{state.filters.garantia=e.target.value; renderAll();});
+  fBusqueda?.addEventListener('input',e=>{state.filters.q=e.target.value; renderAll();});
 
-  document.getElementById('btnExportCSV').addEventListener('click',()=>exportCSV(getFiltered()));
-  document.getElementById('exportPdfBtn').addEventListener('click',exportPDF);
-  document.getElementById('cancelEditBtn')?.addEventListener('click', () => {
-  exitEditMode();
-  });
+  document.getElementById('btnExportCSV')?.addEventListener('click',()=>exportCSV(getFiltered()));
+  document.getElementById('exportPdfBtn')?.addEventListener('click',exportPDF);
 
-  const cobSel=document.getElementById('cobrado'), monInp=document.getElementById('monto');
+  // Monto habilitado solo si cobrado = Sí
+  const cobSel=document.getElementById('cobrado') || document.querySelector('select[name="cobrado"]');
+  const monInp=document.getElementById('monto') || document.querySelector('input[name="monto"]');
   function toggleMonto(){const yes=cobSel?.value==='Sí'; if(monInp){monInp.disabled=!yes; if(!yes) monInp.value='';}}
   cobSel?.addEventListener('change',toggleMonto); toggleMonto();
 
-const form=document.getElementById('form');
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(form);
-  let p = Object.fromEntries(fd.entries());
+  // Submit (crear / actualizar)
+  const form=document.getElementById('form');
+  form?.addEventListener('submit',onSubmitForm);
+}
 
-  // Asegurar valores por defecto
-  p.garantia =
-    p.actividad === 'Soporte de garantía' ? 'Sí' :
-    p.actividad === 'Soporte fuera de garantía' ? 'No' : (p.garantia || '');
+/* ========= Edición (modo en formulario) ========= */
+let editingId = null;
 
-  if (p.cobrado === 'Sí') {
-    p.monto = p.monto ? Number(p.monto) : 0;
-  } else {
-    p.monto = 0;
+function setEditBanner(id){
+  const b=document.getElementById('editStatus'); const btn=document.getElementById('btnCancelEdit');
+  if(!b||!btn) return;
+  if(id){
+    b.textContent=`Estás editando el registro #${id}. Ajusta los campos y presiona Actualizar.`;
+    b.classList.remove('hidden'); btn.classList.remove('hidden');
+  }else{
+    b.classList.add('hidden'); btn.classList.add('hidden');
   }
+}
+document.getElementById('btnCancelEdit')?.addEventListener('click',()=>{
+  editingId=null; setEditBanner(null);
+  document.getElementById('form')?.reset();
+});
 
-  p.lat = document.getElementById('lat').value ? Number(document.getElementById('lat').value) : undefined;
-  p.lng = document.getElementById('lng').value ? Number(document.getElementById('lng').value) : undefined;
+function fillFormFromRow(r){
+  const form=document.getElementById('form'); if(!form) return;
+  const map = {
+    id:'id', fecha_inicio:'fecha_inicio', hora_inicio:'hora_inicio',
+    fecha_fin:'fecha_fin', hora_fin:'hora_fin', asesor:'asesor',
+    actividad:'actividad', modalidad:'modalidad', cliente:'cliente',
+    telefono:'telefono', ciudad:'ciudad', notas:'notas',
+    cobrado:'cobrado', monto:'monto'
+  };
+  Object.keys(map).forEach(k=>{
+    if(form[map[k]]!=null && r[k]!=null) form[map[k]].value = r[k];
+  });
+}
 
-  // === Diferenciar entre crear y actualizar ===
-  try {
-    if (state.editId) {
-      // 🚩 Actualizar
-      await updateRow(state.editId, p);
-      state.editId = null;
-      document.getElementById('form').reset();
-      setBanner('Registro actualizado correctamente');
-    } else {
-      // 🚩 Crear
+async function onSubmitForm(e){
+  e.preventDefault();
+  const form=e.target;
+  const fd=new FormData(form);
+  const p=Object.fromEntries(fd.entries());
+
+  // Normalizar y derivar
+  p.fecha_inicio = normDate(p.fecha_inicio);
+  p.fecha_fin    = normDate(p.fecha_fin || p.fecha_inicio);
+  p.hora_inicio  = normTime(p.hora_inicio);
+  p.hora_fin     = normTime(p.hora_fin);
+  if (p.actividad==='Soporte de garantía') p.garantia='Sí';
+  else if (p.actividad==='Soporte fuera de garantía') p.garantia='No';
+  else p.garantia='';
+  p.monto = p.cobrado==='Sí' ? Number(p.monto||0) : 0;
+
+  try{
+    if (editingId){
+      await updateRow(editingId, p);
+    }else{
       await createRow(p);
-      setBanner('Registro creado correctamente');
     }
     await loadData();
     renderAll();
-  } catch (err) {
+    form.reset();
+    editingId=null; setEditBanner(null);
+  }catch(err){
     console.error(err);
-    setBanner('Error al guardar. Revisa tu Apps Script/endpoint.', 'error');
-  }
-});
-}
-
-function setEditingUI(on, id=null) {
-  const editBanner = document.getElementById('editBanner');
-  const submitBtn  = document.getElementById('submitBtn');
-  const idLabel    = document.getElementById('editIdLabel');
-
-  if (on) {
-    editBanner?.classList.remove('hidden');
-    if (idLabel) idLabel.textContent = `#${id}`;
-    if (submitBtn) {
-      submitBtn.textContent = 'Actualizar';
-      submitBtn.classList.remove('bg-emerald-500','hover:bg-emerald-600');
-      submitBtn.classList.add('bg-indigo-500','hover:bg-indigo-600');
-    }
-  } else {
-    editBanner?.classList.add('hidden');
-    if (idLabel) idLabel.textContent = '';
-    if (submitBtn) {
-      submitBtn.textContent = 'Guardar';
-      submitBtn.classList.remove('bg-indigo-500','hover:bg-indigo-600');
-      submitBtn.classList.add('bg-emerald-500','hover:bg-emerald-600');
-    }
+    setBanner('Error al guardar. Revisa tu Apps Script/endpoint.','error');
   }
 }
 
-function fillFormFromRow(r) {
-  const set = (name, val) => { const el = document.querySelector(`[name="${name}"]`); if (el) el.value = (val ?? ''); };
-
-  set('fecha_inicio', r.fecha_inicio || '');
-  set('hora_inicio',  timeFromAny(r.hora_inicio));
-  set('fecha_fin',    r.fecha_fin   || '');
-  set('hora_fin',     timeFromAny(r.hora_fin));
-  set('asesor',       r.asesor || r.tecnico || '');
-  set('actividad',    r.actividad || '');
-  set('modalidad',    r.modalidad || '');
-  set('cliente',      r.cliente || '');
-  set('telefono',     r.telefono || '');
-  set('ciudad',       r.ciudad || '');
-  set('cobrado',      r.cobrado || 'No');
-  set('monto',        Number(r.monto||0));
-  set('lat',          r.lat ?? '');
-  set('lng',          r.lng ?? '');
-  const notas = document.querySelector('[name="notas"]');
-  if (notas) notas.value = r.notas || '';
-
-  // Habilita/deshabilita monto
-  const cobSel=document.getElementById('cobrado'), monInp=document.getElementById('monto');
-  if (cobSel && monInp) {
-    const yes = cobSel.value === 'Sí';
-    monInp.disabled = !yes;
-    if (!yes && !r.monto) monInp.value = '';
-  }
-}
-
-// Normaliza horas que vengan como Date/ISO/Excel-origin a "HH:mm"
-function timeFromAny(v) {
-  if (!v) return '';
-  // Si viene como "1899-12-30T20:36:36.000Z" (hora Excel) o ISO cualquiera:
-  const m = dayjs(v);
-  if (m.isValid()) return m.format('HH:mm');
-  // Si ya viene en "H:mm" o "HH:mm"
-  const mm = dayjs(String(v), ['HH:mm','H:mm'], true);
-  if (mm.isValid()) return mm.format('HH:mm');
-  // Último recurso: vacío
-  return '';
-}
-
-function enterEditMode(row) {
-  state.editId = Number(row.id);
-  setEditingUI(true, state.editId);
-  fillFormFromRow(row);
-  // Desplaza la vista al formulario para editar cómodo
-  document.getElementById('form')?.scrollIntoView({ behavior:'smooth', block:'start' });
-}
-
-function exitEditMode() {
-  state.editId = null;
-  setEditingUI(false);
-  // No borramos el formulario (puedes dejar lo capturado), si quieres:
-  // document.getElementById('form')?.reset();
-}
-
-/* ========= Edit/Delete Handlers ========= */
-function assertTokenOnce() {
-  if (state.canEdit) return true;
-  const t = prompt('Ingresa el token de edición:');
-  if (t === null) return false;
-  if (t !== EDIT_TOKEN){ alert('Token incorrecto'); return false; }
-  state.canEdit = true;
-  return true;
-}
-
-async function onEditRow(id){
-  if (id==null){ alert('Este registro no tiene ID. No se puede editar.'); return; }
-  if (!assertTokenOnce()) return;
-
-  const row = state.rows.find(r=>Number(r.id)===Number(id));
-  if (!row){ alert('No se encontró el registro en memoria.'); return; }
-
-  enterEditMode(row);
+function onEditRow(id){
+  const r = state.rows.find(x=> Number(x.id)===Number(id));
+  if(!r){ alert('No se encontró el registro.'); return; }
+  editingId = id;
+  fillFormFromRow(r);
+  setEditBanner(id);
 }
 async function onDeleteRow(id){
-  if (id==null){ alert('Este registro no tiene ID. No se puede eliminar.'); return; }
-  if (!assertToken()) return;
-  if (!confirm(`¿Eliminar registro ID ${id}?`)) return;
+  if(!confirm(`¿Eliminar registro #${id}?`)) return;
   try{
     await deleteRow(id);
     await loadData();
@@ -1086,12 +966,12 @@ async function onDeleteRow(id){
 }
 
 /* ========= Init ========= */
-(async function(){ 
-  lucide.createIcons(); 
-  initMonthSelect(); 
-  bindUI(); 
-  await loadData(); 
-  renderAll(); 
+(async function(){
+  lucide.createIcons?.();
+  initMonthSelect();
+  bindUI();
+  await loadData();
+  renderAll();
 })();
 window.initMap = initMap;
 </script>
