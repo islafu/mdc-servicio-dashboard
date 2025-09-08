@@ -466,32 +466,45 @@ function normalizeRowFromSheet(r){
   };
 }
 
+async function sheetsPost(payload) {
+  const res = await fetch(SHEETS_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  // lee como texto y luego intenta parsear JSON (sin romper si no es JSON)
+  let text = '';
+  try { text = await res.text(); } catch (_) {}
+
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (_) { /* respuesta no-JSON */ }
+
+  // Si HTTP no es 2xx => error real
+  if (!res.ok) {
+    const msg = `HTTP ${res.status} ${res.statusText}` + (text ? ` · ${text.slice(0,180)}` : '');
+    throw new Error(msg);
+  }
+
+  // Si la API devuelve convención de error en cuerpo
+  if (data && (data.error || data.status === 'error' || data.ok === false)) {
+    throw new Error(data.error || 'API respondió error');
+  }
+
+  // Devolver algo útil siempre
+  return data ?? { ok: true, raw: text };
+}
+
 async function createRow(payload){
-  const res = await fetch(SHEETS_ENDPOINT, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ op:'create', token: EDIT_TOKEN, data: payload })
-  });
-  if(!res.ok) throw new Error('Error al guardar');
-  return res.json();
+  return sheetsPost({ op:'create', token: EDIT_TOKEN, data: payload });
 }
+
 async function updateRow(id, patch){
-  const res = await fetch(SHEETS_ENDPOINT, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ op:'update', token: EDIT_TOKEN, id, data: patch })
-  });
-  if(!res.ok) throw new Error('Error al actualizar');
-  return res.json();
+  return sheetsPost({ op:'update', token: EDIT_TOKEN, id, data: patch });
 }
+
 async function deleteRow(id){
-  const res = await fetch(SHEETS_ENDPOINT, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ op:'delete', token: EDIT_TOKEN, id })
-  });
-  if(!res.ok) throw new Error('Error al eliminar');
-  return res.json();
+  return sheetsPost({ op:'delete', token: EDIT_TOKEN, id });
 }
 
 /* ========= Client autocomplete (local) ========= */
