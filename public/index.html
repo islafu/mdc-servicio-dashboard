@@ -622,6 +622,35 @@ function exportCSV(rows){
   const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`mdc-servicio-${state.month}.csv`; a.click(); URL.revokeObjectURL(url);
 }
 
+// --- Exportar a PDF (reponer) ---
+async function exportPDF(){
+  try{
+    const { jsPDF } = window.jspdf;
+    const node = document.body;             // puedes cambiar a un wrapper si prefieres
+    const canvas = await html2canvas(node, { scale: 2, useCORS: true });
+    const img = canvas.toDataURL('image/png');
+
+    const pdf = new jsPDF('p','mm','a4');
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgH  = canvas.height * pageW / canvas.width;
+
+    let y = 0;
+    pdf.addImage(img, 'PNG', 0, y, pageW, imgH);
+    let remaining = imgH - pageH;
+    while (remaining > 0) {
+      pdf.addPage();
+      y -= pageH;
+      pdf.addImage(img, 'PNG', 0, y, pageW, imgH);
+      remaining -= pageH;
+    }
+    pdf.save(`MDC-Reporte-${state.month}.pdf`);
+  }catch(err){
+    console.error('PDF error:', err);
+    setBanner('No se pudo exportar el PDF.', 'error');
+  }
+}
+
 /* ===== TeamViewer CSV (conexiones y horas) ===== */
 async function loadTeamViewerCSV() {
   try {
@@ -861,6 +890,9 @@ function bindUI(){
   const fModalidad=document.getElementById('fModalidad');
   const fGarantia=document.getElementById('fGarantia');
   const fBusqueda=document.getElementById('fBusqueda');
+  const pdfBtn = document.getElementById('exportPdfBtn');
+  pdfBtn?.addEventListener('click', exportPDF);
+
 
   fAsesor?.addEventListener('change',e=>{state.filters.asesor=e.target.value; renderAll();});
   fActividad?.addEventListener('change',e=>{state.filters.actividad=e.target.value; renderAll();});
