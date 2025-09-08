@@ -308,6 +308,50 @@ let state = {
   canEdit: false, // se vuelve true tras validar el token una vez  
 };
 
+// === Helpers edición / banner ===
+function setEditBanner(show, id) {
+  const el = document.getElementById('banner');
+  if (!el) return;
+  if (show) {
+    el.classList.remove('hidden');
+    el.className = 'card p-3 mb-4 text-sm border-emerald-400/40 text-emerald-200';
+    el.innerText = `Estás editando el registro ID ${id}. Modifica y presiona "Guardar" para actualizar, o recarga/cancela para salir del modo edición.`;
+  } else {
+    hideBanner();
+  }
+}
+
+function resetFormAndState() {
+  const form = document.getElementById('form');
+  if (form) form.reset();
+  state.editingId = null;
+  setEditBanner(false);
+}
+
+// Si quieres convertir fecha/hora a los inputs (best effort)
+function toISODate(s) {
+  const m = parseDay(s);
+  return m ? m.format('YYYY-MM-DD') : '';
+}
+function toISOTime(s) {
+  const txt = String(s || '').trim();
+  // si viene "08:00:00" => "08:00"
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(txt)) return txt.slice(0,5);
+  return '';
+}
+
+// Token por acción (no por sesión)
+function assertToken(){
+  const t = prompt('Ingresa el token de edición:');
+  if (t === null) return null;           // canceló
+  if (t !== EDIT_TOKEN){ 
+    alert('Token incorrecto');
+    return null;
+  }
+  return t;
+}
+
+
 /* ========= UI helpers ========= */
 function setBanner(msg,type="info"){
   const el=document.getElementById('banner');
@@ -1012,34 +1056,74 @@ function renderAll(){
 
 /* ========= Bind ========= */
 function bindUI(){
-  const fAsesor=document.getElementById('fAsesor');
-  const fActividad=document.getElementById('fActividad');
-  const fModalidad=document.getElementById('fModalidad');
-  const fGarantia=document.getElementById('fGarantia');
-  const fBusqueda=document.getElementById('fBusqueda');
-  const pdfBtn = document.getElementById('exportPdfBtn');
-  pdfBtn?.addEventListener('click', exportPDF);
+  const fAsesor   = document.getElementById('fAsesor');
+  const fActividad= document.getElementById('fActividad');
+  const fModalidad= document.getElementById('fModalidad');
+  const fGarantia = document.getElementById('fGarantia');
+  const fBusqueda = document.getElementById('fBusqueda');
 
+  fAsesor.addEventListener('change',e=>{state.filters.asesor=e.target.value; renderAll();});
+  fActividad.addEventListener('change',e=>{state.filters.actividad=e.target.value; renderAll();});
+  fModalidad.addEventListener('change',e=>{state.filters.modalidad=e.target.value; renderAll();});
+  fGarantia.addEventListener('change',e=>{state.filters.garantia=e.target.value; renderAll();});
+  fBusqueda.addEventListener('input',e=>{state.filters.q=e.target.value; renderAll();});
 
-  fAsesor?.addEventListener('change',e=>{state.filters.asesor=e.target.value; renderAll();});
-  fActividad?.addEventListener('change',e=>{state.filters.actividad=e.target.value; renderAll();});
-  fModalidad?.addEventListener('change',e=>{state.filters.modalidad=e.target.value; renderAll();});
-  fGarantia?.addEventListener('change',e=>{state.filters.garantia=e.target.value; renderAll();});
-  fBusqueda?.addEventListener('input',e=>{state.filters.q=e.target.value; renderAll();});
+  document.getElementById('btnExportCSV').addEventListener('click',()=>exportCSV(getFiltered()));
+  document.getElementById('exportPdfBtn').addEventListener('click',exportPDF);
 
-  document.getElementById('btnExportCSV')?.addEventListener('click',()=>exportCSV(getFiltered()));
-  document.getElementById('exportPdfBtn')?.addEventListener('click',exportPDF);
-
-  // Monto habilitado solo si cobrado = Sí
-  const cobSel=document.getElementById('cobrado') || document.querySelector('select[name="cobrado"]');
-  const monInp=document.getElementById('monto') || document.querySelector('input[name="monto"]');
+  const cobSel=document.getElementById('cobrado'), monInp=document.getElementById('monto');
   function toggleMonto(){const yes=cobSel?.value==='Sí'; if(monInp){monInp.disabled=!yes; if(!yes) monInp.value='';}}
   cobSel?.addEventListener('change',toggleMonto); toggleMonto();
 
-  // Submit (crear / actualizar)
+  // === SUBMIT ===
   const form=document.getElementById('form');
-  form?.addEventListener('submit',onSubmitForm);
+  form.addEventListener('submit',async (e)=>{
+    e.preventDefault();
+    const fd=new FormData(form);
+    const p=Object.fromEntries(fd.entries());
+
+    // Derivar garantía
+    if (p.actividad === 'Soporte de garantía') p.garantia = 'Sí';
+    else if (p.actividad === 'Soporte fuera de garantía') p.garantia = 'No';
+    else p.garantia = '';
+
+    // Validación de tiempo
+    const start=dayjs(`${p.fecha_inicio} ${p.hora_inicio}`,'YYYY-MM-DD HH:mm');
+    const end  =dayjs(`${p.fecha_fin} ${p.hora_fin}`,'YYYY-MM-DD HH:mm');
+    if(!start.isValid()||!end.isValid()||end.isBefore(start)){
+      setBanner('Revisa fechas/horas: el fin no puede ser antes que el inicio.','error');
+      return;
+    }
+
+    // Monto
+    if(p.cobrado==='Sí'){p.monto=p.monto?Number(p.monto):0;} else {p.monto=0;}
+
+    // Coords
+    p.lat = document.getElementById('lat').value ? Number(document.getElementById('lat').value) : undefined;
+    p.lng = document.getElementById('lng').value ? Number(document.getElementById('lng').value) : undefined;
+
+    // Agenda local de clientes
+    upsertClient(p.cliente,p.telefono);
+
+    try{
+      if (state.editingId) {
+        // ACTUALIZAR requiere token
+        if (!assertToken()) return;
+        await updateRow(state.editingId, p);
+      } else {
+        // CREAR: no requiere token
+        await createRow(p);
+      }
+      await loadData();
+      renderAll();
+      resetFormAndState();   // <<< limpia SIEMPRE después de guardar/actualizar
+    }catch(err){
+      console.error(err);
+      setBanner('Error al guardar. Revisa tu Apps Script/endpoint.','error');
+    }
+  });
 }
+
 
 /* ========= Edición (modo en formulario) ========= */
 let editingId = null;
@@ -1105,17 +1189,52 @@ async function onSubmitForm(e){
   }
 }
 
-function onEditRow(id){
-  const r = state.rows.find(x=> Number(x.id)===Number(id));
-  if(!r){ alert('No se encontró el registro.'); return; }
-  editingId = id;
-  fillFormFromRow(r);
-  setEditBanner(id);
+async function onEditRow(id){
+  if (id==null){ alert('Este registro no tiene ID.'); return; }
+  // Pedimos token por evento
+  if (!assertToken()) return;
+
+  const row = state.rows.find(r=>Number(r.id)===Number(id));
+  if (!row){ alert('No se encontró el registro.'); return; }
+
+  // Rellenar formulario
+  const form = document.getElementById('form');
+  form.querySelector('[name=fecha_inicio]').value = toISODate(row.fecha_inicio);
+  form.querySelector('[name=hora_inicio]').value  = toISOTime(row.hora_inicio);
+  form.querySelector('[name=fecha_fin]').value    = toISODate(row.fecha_fin || row.fecha_inicio);
+  form.querySelector('[name=hora_fin]').value     = toISOTime(row.hora_fin);
+  form.querySelector('[name=asesor]').value       = row.asesor || '';
+  form.querySelector('[name=actividad]').value    = row.actividad || '';
+  form.querySelector('[name=modalidad]').value    = row.modalidad || '';
+  form.querySelector('[name=cliente]').value      = row.cliente || '';
+  form.querySelector('[name=telefono]').value     = row.telefono || '';
+  form.querySelector('[name=ciudad]').value       = row.ciudad || '';
+  form.querySelector('[name=notas]').value        = row.notas || '';
+  document.getElementById('lat').value            = (row.lat ?? '').toString();
+  document.getElementById('lng').value            = (row.lng ?? '').toString();
+
+  // Cobrado/monto
+  const cobSel = document.getElementById('cobrado');
+  const monInp = document.getElementById('monto');
+  cobSel.value = row.cobrado || 'No';
+  monInp.value = row.cobrado === 'Sí' ? (Number(row.monto)||0) : '';
+  monInp.disabled = row.cobrado !== 'Sí';
+
+  state.editingId = id;
+  setEditBanner(true, id);
+  form.scrollIntoView({behavior:'smooth', block:'start'});
 }
+
 async function onDeleteRow(id){
-  if(!confirm(`¿Eliminar registro #${id}?`)) return;
+  if (id==null){ alert('Este registro no tiene ID.'); return; }
+  // Token por evento
+  if (!assertToken()) return;
+  if (!confirm(`¿Eliminar registro ID ${id}?`)) return;
+
   try{
     await deleteRow(id);
+    // si estabas editando este mismo, limpia
+    if (state.editingId === id) resetFormAndState();
     await loadData();
     renderAll();
   }catch(e){
@@ -1123,6 +1242,7 @@ async function onDeleteRow(id){
     alert('Error al eliminar');
   }
 }
+
 
 /* ========= Init ========= */
 (async function(){
