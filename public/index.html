@@ -564,12 +564,17 @@ function renderCharts(rows){
 
 /* ========= Table ========= */
 function renderTable(rows){
-  const tbody=document.getElementById('tbody'); if(!tbody) return;
+  const tbody=document.getElementById('tbody');
+
   function fmt(d,t){
     const base=parseDay(d); if(!base) return '';
-    if(t){const m=dayjs(`${base.format('YYYY-MM-DD')} ${t}`,'YYYY-MM-DD HH:mm',true); return m.isValid()?m.format('DD/MM/YYYY HH:mm'):base.format('DD/MM/YYYY');}
+    if(t){
+      const m=dayjs(`${base.format('YYYY-MM-DD')} ${t}`,'YYYY-MM-DD HH:mm',true);
+      return m.isValid()?m.format('DD/MM/YYYY HH:mm'):base.format('DD/MM/YYYY');
+    }
     return base.format('DD/MM/YYYY');
   }
+
   tbody.innerHTML=rows.map(r=>`
     <tr>
       <td class="py-2 px-3">${r.id ?? ''}</td>
@@ -577,14 +582,136 @@ function renderTable(rows){
       <td class="py-2 px-3 nowrap">${fmt(r.fecha_fin,r.hora_fin)}</td>
       <td class="py-2 px-3">${r.asesor||''}</td>
       <td class="py-2 px-3">${r.actividad||''}</td>
+      <td class="py-2 px-3">${r.modalidad||''}</td>
+      <td class="py-2 px-3">${r.garantia||''}</td>
+      <td class="py-2 px-3">${r.cobrado||'No'}</td>
+      <td class="py-2 px-3">${r.cobrado==='Sí'?formatMoney(Number(r.monto)||0):''}</td>
       <td class="py-2 px-3 whitespace-normal break-words">${r.cliente||''}</td>
+      <td class="py-2 px-3 whitespace-normal break-words">${r.telefono||''}</td>
       <td class="py-2 px-3 whitespace-normal break-words">${r.ciudad||''}</td>
+      <td class="py-2 px-3 whitespace-normal break-words">${r.notas||''}</td>
       <td class="py-2 px-3">
-        <button class="btn btn-primary text-lg" onclick="onEditRow(${r.id ?? 'null'})">✏️</button>
-        <button class="btn btn-danger text-lg" onclick="onDeleteRow(${r.id ?? 'null'})">🗑️</button>
+        <button class="btn btn-primary text-lg" title="Editar"   onclick="onEditRow(${r.id ?? 'null'})">✏️</button>
+        <button class="btn btn-danger  text-lg" title="Eliminar" onclick="onDeleteRow(${r.id ?? 'null'})">🗑️</button>
       </td>
     </tr>
   `).join('');
+}
+
+/* ===== Helpers de formulario (limpieza/edición) ===== */
+function clearForm(){
+  const form = document.getElementById('form');
+  form.reset();
+  ['fecha_inicio','hora_inicio','fecha_fin','hora_fin','cliente','telefono','direccion','monto','lat','lng','notas']
+    .forEach(n => { const el = form.querySelector(`[name="${n}"]`) || document.getElementById(n); if (el) el.value = ''; });
+  ['asesor','actividad','modalidad','cobrado'].forEach(n=>{
+    const el = form.querySelector(`[name="${n}"]`); if (el) el.selectedIndex = 0;
+  });
+}
+
+function fillFormFromRow(row){
+  const f = document.getElementById('form');
+  if (!f || !row) return;
+  const set = (name,val)=>{ const el=f.querySelector(`[name="${name}"]`); if(el!=null) el.value=(val??''); };
+
+  set('fecha_inicio', row.fecha_inicio || '');
+  set('hora_inicio',  row.hora_inicio  || '');
+  set('fecha_fin',    row.fecha_fin    || '');
+  set('hora_fin',     row.hora_fin     || '');
+  set('asesor',       row.asesor       || '');
+  set('actividad',    row.actividad    || '');
+  set('modalidad',    row.modalidad    || '');
+  set('cliente',      row.cliente      || '');
+  set('telefono',     row.telefono     || '');
+  set('ciudad',       row.ciudad       || '');
+  set('notas',        row.notas        || '');
+  set('lat',          row.lat ?? '');
+  set('lng',          row.lng ?? '');
+  set('cobrado',      row.cobrado || 'No');
+  set('monto',        row.cobrado==='Sí' ? (row.monto ?? 0) : '');
+}
+
+/* ===== Token por evento (sin sesión) ===== */
+function assertToken(){
+  const t = prompt('Ingresa el token de edición:');
+  if (t===null) return false;
+  if (t!==EDIT_TOKEN){ alert('Token incorrecto'); return false; }
+  return true;
+}
+
+/* ========= Edit/Delete Handlers ========= */
+async function onEditRow(id){
+  if (id==null){ alert('Este registro no tiene ID.'); return; }
+  if (!assertToken()) return;
+
+  const row = state.rows.find(r=>Number(r.id)===Number(id));
+  if (!row){ alert('No se encontró el registro en memoria.'); return; }
+
+  // Ponemos el formulario en modo edición
+  state.editingId = id;
+  fillFormFromRow(row);
+
+  // Banner informativo + botón de cancelar edición
+  const banner = document.getElementById('banner');
+  if (banner){
+    banner.className = 'card p-3 mb-4 text-sm';
+    banner.innerHTML = `
+      Estás editando el registro <strong>#${id}</strong>.
+      Ajusta los campos y presiona <strong>Actualizar</strong> (botón Guardar).
+      <button id="btnCancelEdit" class="ml-2 btn">Cancelar edición</button>
+    `;
+    banner.classList.remove('hidden');
+    setTimeout(()=>{
+      document.getElementById('btnCancelEdit')?.addEventListener('click', ()=>{
+        state.editingId = null;
+        clearForm();
+        banner.classList.add('hidden');
+      });
+    },0);
+  }
+
+  // Cambiamos el submit para actualizar cuando haya editingId.
+  const form = document.getElementById('form');
+  if (!form._editHookAdded){
+    form._editHookAdded = true;
+    form.addEventListener('submit', async (e)=>{
+      // ESTE listener ya existe en tu código original;
+      // aquí solo aseguramos la rama de “update” si hay editingId.
+      // (Tu submit original ya debe construir el payload `p`)
+      // Asegúrate de que tu submit use algo así:
+      //
+      // if (state.editingId) { await updateRow(state.editingId, p); }
+      // else { await createRow(p); }
+      //
+      // y al finalizar:
+      //   state.editingId = null;
+      //   clearForm();
+      //   await loadData(); renderAll();
+      //
+      // No duplicamos la lógica aquí para no romper tu submit actual.
+    }, { capture: true });
+  }
+}
+
+async function onDeleteRow(id){
+  if (id==null){ alert('Este registro no tiene ID.'); return; }
+  if (!assertToken()) return;
+  if (!confirm(`¿Eliminar registro ID ${id}?`)) return;
+
+  try{
+    await deleteRow(id);
+    // Si estabas editando este mismo ID, sal del modo edición
+    if (state.editingId === id){
+      state.editingId = null;
+      clearForm();
+      document.getElementById('banner')?.classList.add('hidden');
+    }
+    await loadData();
+    renderAll();
+  }catch(e){
+    console.error(e);
+    alert('Error al eliminar');
+  }
 }
 
 /* ========= Google Maps ========= */
