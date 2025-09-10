@@ -52,6 +52,32 @@
   .fc .fc-scroller-harness,
   .fc .fc-scroller-liquid-absolute { height: 100% !important; }
   .fc-event { cursor: pointer; }
+  
+  /* Tabla estable: distribuye columnas por ancho declarado */
+  table.table-fixed { table-layout: fixed; width: 100%; }
+
+  /* Alinea arriba las celdas (para notas multi-línea) */
+  table.table-fixed th,
+  table.table-fixed td { vertical-align: top; }
+
+  /* Utilidades */
+  .td-trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .td-wrap  { white-space: normal; overflow-wrap: anywhere; }
+
+  /* Limita a 4 líneas sin plugin */
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4; /* Safari/Chrome */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+
+  /* recomendación estándar (VS Code warning) */
+  line-clamp: 4; /* aún experimental en algunos navegadores */
+}
+
+  /* Evita que los botones de Acciones salten de línea */
+  .td-actions { white-space: nowrap; }
+
   </style>
 </head>
 <body class="h-full">
@@ -254,7 +280,23 @@
           <button id="btnExportCSV" class="text-xs px-3 py-1 rounded-lg border border-white/10 hover:bg-white/5">Descargar CSV</button>
         </div>
       </div>
-      <table class="w-full text-sm table-auto border-collapse">
+      <table class="w-full text-sm table-fixed border-collapse">
+        <colgroup>
+          <col class="w-12">            <!-- ID -->
+          <col class="w-40">            <!-- Inicio -->
+          <col class="w-40">            <!-- Fin -->
+          <col class="w-32">            <!-- Asesor -->
+          <col class="w-40">            <!-- Actividad -->
+          <col class="w-32">            <!-- Modalidad -->
+          <col class="w-24">            <!-- Garantía -->
+          <col class="w-24">            <!-- Cobrado -->
+          <col class="w-28">            <!-- Monto -->
+          <col class="w-48">            <!-- Cliente -->
+          <col class="w-40">            <!-- Teléfono -->
+          <col class="w-56">            <!-- Ciudad -->
+          <col class="w-[30rem]">       <!-- Notas (ancha) -->
+          <col class="w-28">            <!-- Acciones (fija) -->
+        </colgroup>
         <thead>
           <tr class="text-left text-slate-400">
             <th class="py-2 px-3">ID</th>
@@ -664,22 +706,28 @@ function renderTable(rows){
     return base.format('DD/MM/YYYY');
   }
 
-  tbody.innerHTML=rows.map(r=>`
+  tbody.innerHTML = rows.map(r => `
     <tr>
-      <td class="py-2 px-3">${r.id ?? ''}</td>
-      <td class="py-2 px-3 nowrap">${fmt(r.fecha_inicio,r.hora_inicio)}</td>
-      <td class="py-2 px-3 nowrap">${fmt(r.fecha_fin,r.hora_fin)}</td>
-      <td class="py-2 px-3">${r.asesor||''}</td>
-      <td class="py-2 px-3">${r.actividad||''}</td>
-      <td class="py-2 px-3">${r.modalidad||''}</td>
-      <td class="py-2 px-3">${r.garantia||''}</td>
-      <td class="py-2 px-3">${r.cobrado||'No'}</td>
-      <td class="py-2 px-3">${r.cobrado==='Sí'?formatMoney(Number(r.monto)||0):''}</td>
-      <td class="py-2 px-3 whitespace-normal break-words">${r.cliente||''}</td>
-      <td class="py-2 px-3 whitespace-normal break-words">${r.telefono||''}</td>
-      <td class="py-2 px-3 whitespace-normal break-words">${r.ciudad||''}</td>
-      <td class="py-2 px-3 whitespace-normal break-words">${r.notas||''}</td>
+      <td class="py-2 px-3"><div class="td-trunc">${r.id ?? ''}</div></td>
+      <td class="py-2 px-3"><div class="td-trunc nowrap">${fmt(r.fecha_inicio,r.hora_inicio)}</div></td>
+      <td class="py-2 px-3"><div class="td-trunc nowrap">${fmt(r.fecha_fin,r.hora_fin)}</div></td>
+      <td class="py-2 px-3"><div class="td-trunc">${r.asesor||''}</div></td>
+      <td class="py-2 px-3"><div class="td-trunc">${r.actividad||''}</div></td>
+      <td class="py-2 px-3"><div class="td-trunc">${r.modalidad||''}</div></td>
+      <td class="py-2 px-3"><div class="td-trunc">${r.garantia||''}</div></td>
+      <td class="py-2 px-3"><div class="td-trunc">${r.cobrado||'No'}</div></td>
+      <td class="py-2 px-3"><div class="td-trunc">${r.cobrado==='Sí'?formatMoney(Number(r.monto)||0):''}</div></td>
+      <td class="py-2 px-3"><div class="td-trunc">${r.cliente||''}</div></td>
+      <td class="py-2 px-3"><div class="td-trunc">${r.telefono||''}</div></td>
+      <td class="py-2 px-3"><div class="td-wrap td-trunc">${r.ciudad||''}</div></td>
+
+      <!-- NOTAS: envuelve, permite saltos y limita a 4 líneas -->
       <td class="py-2 px-3">
+        <div class="td-wrap line-clamp-4 whitespace-pre-wrap">${r.notas||''}</div>
+      </td>
+
+      <!-- ACCIONES: ancho fijo y sin saltos -->
+      <td class="py-2 px-3 td-actions">
         <button class="btn btn-primary text-lg" title="Editar"   onclick="onEditRow(${r.id ?? 'null'})">✏️</button>
         <button class="btn btn-danger  text-lg" title="Eliminar" onclick="onDeleteRow(${r.id ?? 'null'})">🗑️</button>
       </td>
