@@ -340,17 +340,6 @@ function toISOTime(s) {
   return '';
 }
 
-// Token por acción (no por sesión)
-function assertToken(){
-  const t = prompt('Ingresa el token de edición:');
-  if (t === null) return null;           // canceló
-  if (t !== EDIT_TOKEN){ 
-    alert('Token incorrecto');
-    return null;
-  }
-  return t;
-}
-
 
 /* ========= UI helpers ========= */
 function setBanner(msg,type="info"){
@@ -1175,8 +1164,6 @@ function setupEventModalBindings() {
   });
 }*/
 
-// Llama esto una vez después de que el DOM esté listo (en tu init)
-setupEventModalBindings();
 
 /* ========= Render ========= */
 function renderAll(){
@@ -1480,7 +1467,6 @@ window.initMap = initMap;
         <button id="eventModalEdit" class="btn btn-primary text-sm">✏️ Editar</button>
         <button id="eventModalDelete" class="btn btn-danger text-sm">🗑️ Eliminar</button>
         <button id="eventModalClose" type="button" class="btn">Cerrar</button>
-        <div id="eventModalBackdrop" class="absolute inset-0 bg-black/60"></div>
       </div>
     </div>
   </div>
