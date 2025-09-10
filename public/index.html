@@ -51,6 +51,7 @@
   .fc .fc-view-harness { height: calc(100% - 46px) !important; min-height: 600px; }
   .fc .fc-scroller-harness,
   .fc .fc-scroller-liquid-absolute { height: 100% !important; }
+  .fc-event { cursor: pointer; }
   </style>
 </head>
 <body class="h-full">
@@ -282,7 +283,6 @@
     © MDC Dental — Reporte Mensual · Desarrollado por Israel Landa Fuentes
   </footer>
 </div>
-
 <script>
 /* ========= CONFIG ========= */
 const SHEETS_ENDPOINT = "/.netlify/functions/sheets";
@@ -379,6 +379,34 @@ function parseDay(d){
   return m.isValid()?m:null;
 }
 function formatMoney(n){try{return n.toLocaleString('es-MX',{style:'currency',currency:'MXN'});}catch(e){return '$'+(n||0).toFixed(2);}}
+
+/* ====== Modal helpers ====== */
+function modalShow() {
+  document.getElementById('eventModal').classList.remove('hidden');
+}
+function modalHide() {
+  document.getElementById('eventModal').classList.add('hidden');
+}
+function setModalText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text ?? '—';
+}
+// formato compacto “DD/MM/YYYY HH:mm” (o solo fecha si all-day)
+function fmtRangeForUI(start, end, allDay) {
+  const s = dayjs(start);
+  const e = end ? dayjs(end) : null;
+  if (allDay) {
+    const d1 = s.format('DD/MM/YYYY');
+    // end en allDay suele ser “día siguiente”; restamos 1 si aplica
+    const d2 = e ? e.subtract(1, 'day').format('DD/MM/YYYY') : d1;
+    return { ini: d1, fin: d2 };
+  }
+  return {
+    ini: s.format('DD/MM/YYYY HH:mm'),
+    fin: e ? e.format('DD/MM/YYYY HH:mm') : ''
+  };
+}
+
 
 /* ========= Load/Save ========= */
 async function loadData(){
@@ -1011,32 +1039,57 @@ function parseLocalDateTime(dateStr, timeStr){
   if (!m.isValid()) m = dayjs(s); // último recurso
   return m.isValid()? m : null;
 }
-function buildCalendarEvents(rows){
-  const events=[];
-  rows.forEach(r=>{
+function buildCalendarEvents(rows) {
+  const events = [];
+
+  rows.forEach(r => {
     const hasStartTime = r.hora_inicio && String(r.hora_inicio).trim() !== '';
     const hasEndTime   = r.hora_fin    && String(r.hora_fin).trim()   !== '';
+
     const start = parseLocalDateTime(r.fecha_inicio, hasStartTime ? r.hora_inicio : null);
-    if(!start) return;
-    let end=null;
-    if (hasEndTime){
-      end = parseLocalDateTime(r.fecha_fin || r.fecha_inicio, r.hora_fin);
-    } else if (hasStartTime){
-      end = start.add(1,'hour');
-    } else {
-      end = parseLocalDateTime(r.fecha_inicio,null)?.add(1,'day');
+    if (!start) {
+      console.warn('Evento con inicio inválido, se omite:', r);
+      return;
     }
+
+    let end = null;
+    if (hasEndTime) {
+      end = parseLocalDateTime(r.fecha_fin || r.fecha_inicio, r.hora_fin);
+    } else if (hasStartTime) {
+      end = start.add(1, 'hour');
+    } else {
+      end = parseLocalDateTime(r.fecha_inicio, null)?.add(1, 'day');
+    }
+
     const allDay = !(hasStartTime || hasEndTime);
+
     events.push({
-      title: `${r.actividad||'Actividad'} — ${r.asesor||r.tecnico||''}`,
+      id: r.id ?? undefined,
+      title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`,
       start: start.toDate(),
       end:   end ? end.toDate() : undefined,
       allDay,
       color: pickColor(r.actividad),
+      extendedProps: {
+        // para el modal
+        id: r.id,
+        asesor: r.asesor || r.tecnico || '',
+        actividad: r.actividad || '',
+        modalidad: r.modalidad || '',
+        garantia: r.garantia || '',
+        cobrado: r.cobrado || 'No',
+        monto: Number(r.monto) || 0,
+        cliente: r.cliente || '',
+        telefono: r.telefono || '',
+        ciudad: r.ciudad || '',
+        notas: r.notas || '',
+      }
     });
   });
+
   return events;
 }
+
 function renderCalendar(){
   const el=document.getElementById('calendar'); if(!el) return;
   const events = buildCalendarEvents(getFiltered());
@@ -1048,7 +1101,37 @@ function renderCalendar(){
     height:'100%',
     expandRows:true,
     headerToolbar:{ left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,timeGridDay' },
-    events
+    events,
+    eventClick: function(info) {
+      const ev = info.event;
+      const xp = ev.extendedProps || {};
+      const { ini, fin } = fmtRangeForUI(ev.start, ev.end, ev.allDay);
+
+      // Pinta datos
+      setModalText('em_id', xp.id ?? '—');
+      setModalText('em_asesor', xp.asesor);
+      setModalText('em_actividad', xp.actividad);
+      setModalText('em_modalidad', xp.modalidad);
+      setModalText('em_inicio', ini);
+      setModalText('em_fin', fin || '—');
+      setModalText('em_garantia', xp.garantia || (xp.actividad === 'Soporte de garantía' ? 'Sí' : xp.actividad === 'Soporte fuera de garantía' ? 'No' : '—'));
+      setModalText('em_cobrado', xp.cobrado);
+      setModalText('em_monto', formatMoney(xp.monto || 0));
+      setModalText('em_cliente', xp.cliente);
+      setModalText('em_telefono', xp.telefono);
+      setModalText('em_ciudad', xp.ciudad);
+      setModalText('em_notas', xp.notas);
+
+      // Acciones (usan tus funciones globales con token por evento)
+      const btnEdit = document.getElementById('eventModalEdit');
+      const btnDel  = document.getElementById('eventModalDelete');
+      const idNum = Number(xp.id);
+
+      btnEdit.onclick = () => { modalHide(); if (Number.isFinite(idNum)) onEditRow(idNum); };
+      btnDel.onclick  = () => { modalHide(); if (Number.isFinite(idNum)) onDeleteRow(idNum); };
+
+      modalShow();
+    },
   });
   requestAnimationFrame(()=>{ fcCalendar.render(); fcCalendar.updateSize(); setTimeout(()=>fcCalendar.updateSize(),200); });
 }
@@ -1136,6 +1219,16 @@ function bindUI(){
     }
   });
 }
+
+// Cierre modal (botones y fondo)
+['eventModalClose', 'eventModalClose2', 'eventModalBackdrop'].forEach(id => {
+  const el = document.getElementById(id);
+  el?.addEventListener('click', modalHide);
+});
+// Cerrar con ESC
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') modalHide();
+});
 
 
 /* ========= Edición (modo en formulario) ========= */
@@ -1267,5 +1360,91 @@ async function onDeleteRow(id){
 })();
 window.initMap = initMap;
 </script>
+
+<!-- ========== Modal detalle de evento ========== -->
+<div id="eventModal" class="fixed inset-0 z-[100] hidden">
+  <!-- backdrop -->
+  <div id="eventModalBackdrop" class="absolute inset-0 bg-black/60"></div>
+
+  <!-- card -->
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl card border border-white/10 rounded-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-white/10">
+        <h3 class="text-lg font-semibold">Detalle de actividad</h3>
+        <button id="eventModalClose" class="btn">✖</button>
+      </div>
+
+      <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div>
+          <div class="text-slate-400 text-xs">ID</div>
+          <div id="em_id" class="font-medium">—</div>
+        </div>
+        <div>
+          <div class="text-slate-400 text-xs">Asesor</div>
+          <div id="em_asesor" class="font-medium">—</div>
+        </div>
+
+        <div>
+          <div class="text-slate-400 text-xs">Actividad</div>
+          <div id="em_actividad" class="font-medium">—</div>
+        </div>
+        <div>
+          <div class="text-slate-400 text-xs">Modalidad</div>
+          <div id="em_modalidad" class="font-medium">—</div>
+        </div>
+
+        <div>
+          <div class="text-slate-400 text-xs">Inicio</div>
+          <div id="em_inicio" class="font-medium">—</div>
+        </div>
+        <div>
+          <div class="text-slate-400 text-xs">Fin</div>
+          <div id="em_fin" class="font-medium">—</div>
+        </div>
+
+        <div>
+          <div class="text-slate-400 text-xs">Garantía</div>
+          <div id="em_garantia" class="font-medium">—</div>
+        </div>
+        <div>
+          <div class="text-slate-400 text-xs">Cobrado</div>
+          <div id="em_cobrado" class="font-medium">—</div>
+        </div>
+
+        <div>
+          <div class="text-slate-400 text-xs">Monto</div>
+          <div id="em_monto" class="font-medium">—</div>
+        </div>
+
+        <div>
+          <div class="text-slate-400 text-xs">Cliente</div>
+          <div id="em_cliente" class="font-medium break-words">—</div>
+        </div>
+        <div>
+          <div class="text-slate-400 text-xs">Teléfono</div>
+          <div id="em_telefono" class="font-medium break-words">—</div>
+        </div>
+
+        <div class="sm:col-span-2">
+          <div class="text-slate-400 text-xs">Ciudad / Dirección</div>
+          <div id="em_ciudad" class="font-medium break-words">—</div>
+        </div>
+
+        <div class="sm:col-span-2">
+          <div class="text-slate-400 text-xs">Notas</div>
+          <div id="em_notas" class="font-medium whitespace-pre-wrap break-words">—</div>
+        </div>
+      </div>
+
+      <div class="px-5 py-4 border-t border-white/10 flex items-center justify-end gap-2">
+        <button id="eventModalEdit" class="btn btn-primary text-sm">✏️ Editar</button>
+        <button id="eventModalDelete" class="btn btn-danger text-sm">🗑️ Eliminar</button>
+        <button id="eventModalClose2" class="btn text-sm">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 </body>
 </html>
