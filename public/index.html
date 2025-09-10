@@ -1131,12 +1131,64 @@ function renderCalendar(){
       btnDel.onclick  = () => { modalHide(); if (Number.isFinite(idNum)) onDeleteRow(idNum); };
 
       modalShow();
+      openEventModal();
     },
   });
   requestAnimationFrame(()=>{ fcCalendar.render(); fcCalendar.updateSize(); setTimeout(()=>fcCalendar.updateSize(),200); });
 }
 window.addEventListener('resize',()=>fcCalendar?.updateSize());
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) fcCalendar?.updateSize(); });
+
+// ===== Modal helpers =====
+function getModalEl() {
+  return document.getElementById('eventModal');
+}
+
+function openEventModal() {
+  const modal = getModalEl();
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.classList.add('overflow-hidden');
+}
+
+function closeEventModal() {
+  const modal = getModalEl();
+  if (!modal) return;
+  modal.classList.add('hidden');
+  document.body.classList.remove('overflow-hidden');
+}
+
+// Enlaza cierres: botón "Cerrar", "X", backdrop y tecla ESC
+function setupEventModalBindings() {
+  const modal = getModalEl();
+  if (!modal) return;
+
+  // Botones explícitos por id
+  const btnClose = document.getElementById('eventModalClose');
+  const btnCloseX = document.getElementById('eventModalCloseX');
+  btnClose?.addEventListener('click', (e) => { e.preventDefault(); closeEventModal(); });
+  btnCloseX?.addEventListener('click', (e) => { e.preventDefault(); closeEventModal(); });
+
+  // Cualquier elemento con data-close-modal o data-close="modal"
+  modal.querySelectorAll('[data-close-modal], [data-close="modal"]').forEach(el => {
+    el.addEventListener('click', (e) => { e.preventDefault(); closeEventModal(); });
+  });
+
+  // Clic en el backdrop (fuera de la tarjeta)
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeEventModal();
+  });
+
+  // Tecla ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+      closeEventModal();
+    }
+  });
+}
+
+// Llama esto una vez después de que el DOM esté listo (en tu init)
+setupEventModalBindings();
 
 /* ========= Render ========= */
 function renderAll(){
@@ -1371,7 +1423,7 @@ window.initMap = initMap;
     <div class="w-full max-w-2xl card border border-white/10 rounded-2xl overflow-hidden">
       <div class="flex items-center justify-between px-5 py-3 border-b border-white/10">
         <h3 class="text-lg font-semibold">Detalle de actividad</h3>
-        <button id="eventModalClose" class="btn">✖</button>
+        <button id="eventModalCloseX" type="button" aria-label="Cerrar" class="absolute right-3 top-3">✖</button>
       </div>
 
       <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -1439,7 +1491,7 @@ window.initMap = initMap;
       <div class="px-5 py-4 border-t border-white/10 flex items-center justify-end gap-2">
         <button id="eventModalEdit" class="btn btn-primary text-sm">✏️ Editar</button>
         <button id="eventModalDelete" class="btn btn-danger text-sm">🗑️ Eliminar</button>
-        <button id="eventModalClose2" class="btn text-sm">Cerrar</button>
+        <button id="eventModalClose" type="button" class="btn">Cerrar</button>
       </div>
     </div>
   </div>
