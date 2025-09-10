@@ -308,6 +308,8 @@ let state = {
   canEdit: false, // se vuelve true tras validar el token una vez  
 };
 
+let HAS_LOADED_ONCE = false;
+
 // === Helpers edición / banner ===
 function setEditBanner(show, id) {
   const el = document.getElementById('banner');
@@ -392,28 +394,43 @@ function fmtRangeForUI(start, end, allDay) {
 
 
 /* ========= Load/Save ========= */
-async function loadData(){
-  try{
-    const res = await fetch(SHEETS_ENDPOINT, { cache:'no-store' });
-    if(!res.ok) throw new Error('No se pudo leer el endpoint');
+async function loadData() {
+  const prev = Array.isArray(state.rows) ? state.rows.slice() : [];
+  try {
+    const res = await fetch(SHEETS_ENDPOINT, { cache: 'no-store' });
+    if (!res.ok) throw new Error('No se pudo leer el endpoint');
     const data = await res.json();
-    const arr  = (Array.isArray(data)? data: []).map(normalizeRowFromSheet);
+    const arr = (Array.isArray(data) ? data : []).map(normalizeRowFromSheet);
 
-    if (arr.length){
+    if (arr.length) {
       state.rows = arr;
       hideBanner();
     } else {
-      state.rows = demoData.slice();
-      setBanner('Tu hoja está vacía. Mostrando datos DEMO.');
+      if (!HAS_LOADED_ONCE && prev.length === 0) {
+        state.rows = demoData.slice();
+        setBanner('Tu hoja está vacía. Mostrando datos DEMO.');
+      } else {
+        state.rows = prev; // conserva lo último
+        setBanner('La hoja está vacía. Se mantiene la vista anterior.', 'error');
+      }
     }
-  }catch(err){
+  } catch (err) {
     console.error(err);
-    state.rows = demoData.slice();
-    setBanner('No se pudo conectar con el Sheet. Mostrando datos DEMO.','error');
+    if (!HAS_LOADED_ONCE && prev.length === 0) {
+      state.rows = demoData.slice();
+      setBanner('No se pudo conectar con el Sheet. Mostrando datos DEMO.', 'error');
+    } else {
+      state.rows = prev; // conserva lo último
+      setBanner('Error de conexión. Se mantienen los datos ya cargados.', 'error');
+    }
+  } finally {
+    HAS_LOADED_ONCE = true;
+    rebuildClientBook();
+    populateClientDatalist();
   }
-  rebuildClientBook();
-  populateClientDatalist();
+  return state.rows;
 }
+
 
 /* -- Normalizadores de fecha/hora desde Apps Script / Sheets -- */
 function normDate(s){
@@ -477,34 +494,38 @@ function normalizeRowFromSheet(r){
   };
 }
 
-async function sheetsPost(payload) {
-  const res = await fetch(SHEETS_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+async function sheetsPost(payload, { timeoutMs = 15000 } = {}) {
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
 
-  // lee como texto y luego intenta parsear JSON (sin romper si no es JSON)
-  let text = '';
-  try { text = await res.text(); } catch (_) {}
+  let res, text = '', data = null;
+  try {
+    res = await fetch(SHEETS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal
+    });
 
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch (_) { /* respuesta no-JSON */ }
+    try { text = await res.text(); } catch(_) {}
+    try { data = text ? JSON.parse(text) : null; } catch(_) {}
 
-  // Si HTTP no es 2xx => error real
-  if (!res.ok) {
-    const msg = `HTTP ${res.status} ${res.statusText}` + (text ? ` · ${text.slice(0,180)}` : '');
-    throw new Error(msg);
+    if (!res.ok) {
+      const msg = `HTTP ${res.status} ${res.statusText}` + (text ? ` · ${text.slice(0,180)}` : '');
+      throw new Error(msg);
+    }
+    if (data && (data.error || data.status === 'error' || data.ok === false)) {
+      throw new Error(data.error || 'API respondió error');
+    }
+    return data ?? { ok: true, raw: text };
+  } catch (err) {
+    // Propaga con mensaje claro
+    throw new Error(`Fallo al comunicar con Sheets: ${err.message || err}`);
+  } finally {
+    clearTimeout(to);
   }
-
-  // Si la API devuelve convención de error en cuerpo
-  if (data && (data.error || data.status === 'error' || data.ok === false)) {
-    throw new Error(data.error || 'API respondió error');
-  }
-
-  // Devolver algo útil siempre
-  return data ?? { ok: true, raw: text };
 }
+
 
 async function createRow(payload){
   return sheetsPost({ op:'create', token: EDIT_TOKEN, data: payload });
@@ -1164,6 +1185,16 @@ function setupEventModalBindings() {
   });
 }*/
 
+function safeRenderAll(){
+  try {
+    renderAll();
+  } catch (e) {
+    console.error('Render error:', e);
+    setBanner('Hubo un error al refrescar la vista, pero tus datos siguen intactos.', 'error');
+  }
+}
+
+
 
 /* ========= Render ========= */
 function renderAll(){
@@ -1228,22 +1259,22 @@ function bindUI(){
     // Agenda local de clientes
     upsertClient(p.cliente,p.telefono);
 
-    try{
-      if (state.editingId) {
-        // ACTUALIZAR requiere token
-        if (!assertToken()) return;
-        await updateRow(state.editingId, p);
-      } else {
-        // CREAR: no requiere token
-        await createRow(p);
-      }
-      await loadData();
-      renderAll();
-      resetFormAndState();   // <<< limpia SIEMPRE después de guardar/actualizar
-    }catch(err){
-      console.error(err);
-      setBanner('Error al guardar. Revisa tu Apps Script/endpoint.','error');
-    }
+    try {
+  if (state.editingId) {
+    if (!assertToken()) return;
+    await updateRow(state.editingId, p);
+  } else {
+    await createRow(p);
+  }
+  await loadData();
+  resetFormAndState();
+  safeRenderAll();
+} catch (err) {
+  console.error(err);
+  setBanner('Error al guardar. Se mantienen los datos anteriores.', 'error');
+  // AUN ASÍ re-render para mantener viva la UI:
+  safeRenderAll();
+}
   });
 }
 
@@ -1364,16 +1395,17 @@ async function onDeleteRow(id){
   if (!assertToken()) return;
   if (!confirm(`¿Eliminar registro ID ${id}?`)) return;
 
-  try{
-    await deleteRow(id);
-    // si estabas editando este mismo, limpia
-    if (state.editingId === id) resetFormAndState();
-    await loadData();
-    renderAll();
-  }catch(e){
-    console.error(e);
-    alert('Error al eliminar');
-  }
+  try {
+  await deleteRow(id);
+  if (state.editingId === id) resetFormAndState();
+  await loadData();
+  safeRenderAll();
+} catch (e) {
+  console.error(e);
+  alert('Error al eliminar. Se mantiene el estado anterior.');
+  safeRenderAll();
+}
+
 }
 
 
