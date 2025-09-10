@@ -381,12 +381,6 @@ function parseDay(d){
 function formatMoney(n){try{return n.toLocaleString('es-MX',{style:'currency',currency:'MXN'});}catch(e){return '$'+(n||0).toFixed(2);}}
 
 /* ====== Modal helpers ====== */
-function modalShow() {
-  document.getElementById('eventModal').classList.remove('hidden');
-}
-function modalHide() {
-  document.getElementById('eventModal').classList.add('hidden');
-}
 function setModalText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text ?? '—';
@@ -1102,19 +1096,17 @@ function renderCalendar(){
     expandRows:true,
     headerToolbar:{ left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,timeGridDay' },
     events,
-    eventClick: function(info) {
-      const ev = info.event;
-      const xp = ev.extendedProps || {};
-      const { ini, fin } = fmtRangeForUI(ev.start, ev.end, ev.allDay);
+    eventClick: ({ event }) => {
+      const xp = event.extendedProps || {};
+      const { ini, fin } = fmtRangeForUI(event.start, event.end, event.allDay);
 
-      // Pinta datos
       setModalText('em_id', xp.id ?? '—');
       setModalText('em_asesor', xp.asesor);
       setModalText('em_actividad', xp.actividad);
       setModalText('em_modalidad', xp.modalidad);
       setModalText('em_inicio', ini);
       setModalText('em_fin', fin || '—');
-      setModalText('em_garantia', xp.garantia || (xp.actividad === 'Soporte de garantía' ? 'Sí' : xp.actividad === 'Soporte fuera de garantía' ? 'No' : '—'));
+      setModalText('em_garantia', xp.garantia || (xp.actividad==='Soporte de garantía'?'Sí':xp.actividad==='Soporte fuera de garantía'?'No':'—'));
       setModalText('em_cobrado', xp.cobrado);
       setModalText('em_monto', formatMoney(xp.monto || 0));
       setModalText('em_cliente', xp.cliente);
@@ -1122,17 +1114,13 @@ function renderCalendar(){
       setModalText('em_ciudad', xp.ciudad);
       setModalText('em_notas', xp.notas);
 
-      // Acciones (usan tus funciones globales con token por evento)
-      const btnEdit = document.getElementById('eventModalEdit');
-      const btnDel  = document.getElementById('eventModalDelete');
       const idNum = Number(xp.id);
+      document.getElementById('eventModalEdit').onclick  = () => { closeEventModal(); if (Number.isFinite(idNum)) onEditRow(idNum);  };
+      document.getElementById('eventModalDelete').onclick= () => { closeEventModal(); if (Number.isFinite(idNum)) onDeleteRow(idNum); };
 
-      btnEdit.onclick = () => { modalHide(); if (Number.isFinite(idNum)) onEditRow(idNum); };
-      btnDel.onclick  = () => { modalHide(); if (Number.isFinite(idNum)) onDeleteRow(idNum); };
-
-      modalShow();
       openEventModal();
-    },
+  }
+
   });
   requestAnimationFrame(()=>{ fcCalendar.render(); fcCalendar.updateSize(); setTimeout(()=>fcCalendar.updateSize(),200); });
 }
@@ -1158,7 +1146,7 @@ function closeEventModal() {
   document.body.classList.remove('overflow-hidden');
 }
 
-// Enlaza cierres: botón "Cerrar", "X", backdrop y tecla ESC
+/*// Enlaza cierres: botón "Cerrar", "X", backdrop y tecla ESC
 function setupEventModalBindings() {
   const modal = getModalEl();
   if (!modal) return;
@@ -1185,7 +1173,7 @@ function setupEventModalBindings() {
       closeEventModal();
     }
   });
-}
+}*/
 
 // Llama esto una vez después de que el DOM esté listo (en tu init)
 setupEventModalBindings();
@@ -1492,10 +1480,35 @@ window.initMap = initMap;
         <button id="eventModalEdit" class="btn btn-primary text-sm">✏️ Editar</button>
         <button id="eventModalDelete" class="btn btn-danger text-sm">🗑️ Eliminar</button>
         <button id="eventModalClose" type="button" class="btn">Cerrar</button>
+        <div id="eventModalBackdrop" class="absolute inset-0 bg-black/60"></div>
       </div>
     </div>
   </div>
 </div>
+<script>
+  // Ejecutar el setup cuando el DOM ya tiene el modal
+  window.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('eventModal');
+    if (!modal) return;
+
+    // Botones explícitos
+    document.getElementById('eventModalClose')?.addEventListener('click', (e)=>{ e.preventDefault(); closeEventModal(); });
+    document.getElementById('eventModalCloseX')?.addEventListener('click', (e)=>{ e.preventDefault(); closeEventModal(); });
+
+    // Backdrop
+    document.getElementById('eventModalBackdrop')?.addEventListener('click', () => closeEventModal());
+
+    // Delegado para cualquier data-close-modal
+    modal.querySelectorAll('[data-close-modal],[data-close="modal"]').forEach(el=>{
+      el.addEventListener('click', (e)=>{ e.preventDefault(); closeEventModal(); });
+    });
+
+    // Tecla ESC
+    document.addEventListener('keydown', (e)=>{
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeEventModal();
+    });
+  });
+</script>
 
 
 </body>
