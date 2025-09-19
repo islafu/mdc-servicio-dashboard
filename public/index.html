@@ -22,8 +22,7 @@
       console.warn('Usando Tailwind CDN fallback (compila styles.css para producción)');
     }
   })();
-</script>
-
+  </script>
 
   <!-- FullCalendar CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css">
@@ -62,7 +61,7 @@
       table-layout: auto;
       border-collapse: separate;
       border-spacing: 0;
-      width: max-content;      /* permite scroll horizontal si hace falta */
+      width: max-content;
       min-width: 100%;
     }
     #tbl thead th { position: sticky; top: 0; background: #0f172a; z-index: 1; }
@@ -106,17 +105,75 @@
     </div>
   </header>
 
-  <!-- KPIs CLÁSICOS (dejamos "Total registros" aquí) -->
+  <!-- CAPTURA -->
+  <section class="card p-4 mb-6">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-medium">Captura rápida</h2>
+      <div class="flex gap-2">
+        <button id="btnCaptToggle" class="btn">➕ Nuevo</button>
+        <button id="btnGeo" class="btn" title="Usar mi ubicación">📍 Geo</button>
+      </div>
+    </div>
+    <form id="frm" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <input class="formc px-3 py-2 rounded-lg" name="fecha_inicio" type="date" placeholder="Fecha inicio">
+      <input class="formc px-3 py-2 rounded-lg" name="hora_inicio" type="time" step="60" placeholder="Hora inicio">
+      <input class="formc px-3 py-2 rounded-lg" name="fecha_fin" type="date" placeholder="Fecha fin">
+      <input class="formc px-3 py-2 rounded-lg" name="hora_fin" type="time" step="60" placeholder="Hora fin">
+
+      <select class="formc px-3 py-2 rounded-lg" name="asesor">
+        <option value="">Asesor</option><option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option><option>Gabriel</option>
+      </select>
+      <select class="formc px-3 py-2 rounded-lg" name="actividad">
+        <option value="">Actividad</option>
+        <option>Soporte de garantía</option>
+        <option>Soporte fuera de garantía</option>
+        <option>Instalación</option>
+        <option>Evento</option>
+        <option>Proyecto</option>
+        <option>Curso</option>
+        <option>Vacaciones</option>
+      </select>
+      <select class="formc px-3 py-2 rounded-lg" name="modalidad">
+        <option value="">Modalidad</option><option>Remoto</option><option>Presencial</option>
+      </select>
+      <select class="formc px-3 py-2 rounded-lg" name="garantia">
+        <option value="">Garantía</option><option>Sí</option><option>No</option>
+      </select>
+
+      <select class="formc px-3 py-2 rounded-lg" name="cobrado">
+        <option value="No">Cobrado</option><option>Sí</option><option>No</option>
+      </select>
+      <input class="formc px-3 py-2 rounded-lg" name="monto" type="number" step="1" placeholder="Monto total (si usas total_cobrado)">
+      <input class="formc px-3 py-2 rounded-lg" name="mo_monto" type="number" step="1" placeholder="MO $">
+      <input class="formc px-3 py-2 rounded-lg" name="refacciones_monto" type="number" step="1" placeholder="Refacciones $">
+
+      <input class="formc px-3 py-2 rounded-lg" name="viaticos_monto" type="number" step="1" placeholder="Viáticos $">
+      <input class="formc px-3 py-2 rounded-lg" name="iva_monto" type="number" step="1" placeholder="IVA $">
+      <input class="formc px-3 py-2 rounded-lg" name="cliente" placeholder="Cliente">
+      <input class="formc px-3 py-2 rounded-lg" name="telefono" placeholder="Teléfono">
+
+      <input class="formc px-3 py-2 rounded-lg" name="ciudad" placeholder="Ciudad">
+      <input class="formc px-3 py-2 rounded-lg" name="lat" placeholder="Lat">
+      <input class="formc px-3 py-2 rounded-lg" name="lng" placeholder="Lng">
+      <input class="formc px-3 py-2 rounded-lg col-span-1 md:col-span-4" name="notas" placeholder="Notas">
+
+      <div class="col-span-1 md:col-span-4 flex gap-2 mt-1">
+        <button id="btnGuardar" class="btn btn-primary" type="submit">💾 Guardar</button>
+        <button id="btnCancelar" class="btn" type="button">Cancelar</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- KPIs CLÁSICOS -->
   <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
     <div class="card p-4"><div class="text-slate-400 text-xs">Total registros</div><div id="kpiC_total" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Soporte</div><div id="kpiC_soporte" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Instalaciones</div><div id="kpiC_inst" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Eventos/Proy./Cursos</div><div id="kpiC_eventos" class="text-3xl font-semibold mt-1">0</div></div>
-    <!-- Quitamos el KPI "Total cobrado" simple -->
     <div class="card p-4"><div class="text-slate-400 text-xs">Horas TeamViewer</div><div id="kpiC_tvhrs" class="text-3xl font-semibold mt-1">0</div></div>
   </section>
 
-  <!-- KPIs NUEVOS (dejamos "Total cobrado" desglosado; quitamos "Registros") -->
+  <!-- KPIs NUEVOS -->
   <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
     <div class="card p-4">
       <div class="text-slate-400 text-xs">Potencial no cobrado (garantía)</div>
@@ -295,7 +352,7 @@
 <!-- ===================== SCRIPTS ===================== -->
 <script>
 /* ====== CONFIG ====== */
-const API_URL = '/.netlify/functions/gas-proxy';  // proxy en Netlify
+const API_URL = '/.netlify/functions/gas-proxy';  // proxy en Netlify (usa GAS_URL)
 const EDIT_TOKEN = '42673';
 const TARIFA_GARANTIA = 1000; // $/hora
 const TARIFA_INTERNA_INST = 85; // $/hora
@@ -308,13 +365,38 @@ let CAL = null;
 /* ====== UTILS ====== */
 function $(q){ return document.querySelector(q); }
 function fmtMoney(n){ n = Number(n)||0; return n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}); }
-function minutosEntre(h1,h2){ if(!h1||!h2) return 0; const [a,b]=h1.split(':').map(Number),[c,d]=h2.split(':').map(Number); return (c*60+d)-(a*60+b); }
+function minutosEntre(h1,h2){ if(!h1||!h2) return 0; const [a,b]=String(h1).split(':').map(Number),[c,d]=String(h2).split(':').map(Number); return (c*60+d)-(a*60+b); }
 function parseBloques(str){ try{return JSON.parse(str||'[]')}catch{return []} }
 function horasTotalesFromBloques(bloques){ const mins=bloques.reduce((acc,b)=>acc+Math.max(0,minutosEntre(b.inicio,b.fin)-(Number(b.breakMin)||0)),0); return Math.round((mins/60)*100)/100; }
 function totalCobrado(r){ return ['mo_monto','refacciones_monto','viaticos_monto','iva_monto'].reduce((a,k)=>a+(Number(r[k])||0),0); }
 function isGarantia(r){ return String(r.garantia||'').trim().toLowerCase().startsWith('s'); }
 function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().includes('instal'); }
-function toISODate(d){ const m = dayjs(d,['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD'],true); return m.isValid()?m.format('YYYY-MM-DD'):null; }
+
+/* === Fecha/Hora helpers robustos === */
+function asDayjs(v){
+  if (v == null || v === '') return null;
+  if (v instanceof Date) return dayjs(v);
+  const s = String(v).trim();
+  if (!s) return null;
+  if (s.includes('T')) return dayjs(s); // ISO
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return dayjs(s,'YYYY-MM-DD',true);
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return dayjs(s,'DD/MM/YYYY',true);
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) return dayjs(`1899-12-31T${s}`);
+  return dayjs(s);
+}
+function fmtDateCell(v){
+  const d = asDayjs(v);
+  if (!d || !d.isValid()) return '';
+  if (d.year() <= 1901) return '';
+  return d.format('YYYY-MM-DD');
+}
+function fmtTimeCell(v){
+  const d = asDayjs(v);
+  if (!d || !d.isValid()) return '';
+  return d.format('HH:mm');
+}
+function pickDate(r, key1, key2){ return fmtDateCell(r[key1]) || fmtDateCell(r[key2]) || null; }
+function pickTime(r, key){ return fmtTimeCell(r[key]) || ''; }
 
 /* ====== API ====== */
 async function apiGet(){
@@ -323,6 +405,16 @@ async function apiGet(){
   const txt = await r.text();
   if (!r.ok) { console.error('API error', r.status, txt.slice(0,400)); throw new Error(`GET ${r.status}`); }
   if (!ct.includes('application/json')) { console.error('API NO JSON', ct, txt.slice(0,400)); throw new Error('API no devolvió JSON'); }
+  return JSON.parse(txt);
+}
+async function apiPost(payload){
+  const r = await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const txt = await r.text();
+  if (!r.ok) { console.error('POST error', r.status, txt.slice(0,400)); throw new Error(`POST ${r.status}`); }
   return JSON.parse(txt);
 }
 
@@ -364,16 +456,15 @@ function applyFilters(){
 
 /* ====== KPIs ====== */
 function renderKpis(){
-  // Clásicos
   const isSoporte = r => (r.actividad||'').toLowerCase().includes('soporte');
   const isInst    = r => (r.actividad||'').toLowerCase().includes('instal');
   const isEvento  = r => /(evento|proy|curso)/i.test(r.actividad||'');
+
   $('#kpiC_total').textContent    = FILTERED.length;
   $('#kpiC_soporte').textContent  = FILTERED.filter(isSoporte).length;
   $('#kpiC_inst').textContent     = FILTERED.filter(isInst).length;
   $('#kpiC_eventos').textContent  = FILTERED.filter(isEvento).length;
 
-  // Nuevos
   const sumPotGar = FILTERED.reduce((a,r)=> a + (Number(r.potencial_garantia)||0), 0);
   $('#kpiPotGarantia').textContent = fmtMoney(sumPotGar);
   const sumMo  = FILTERED.reduce((a,r)=> a + (Number(r.mo_monto)||0), 0);
@@ -402,12 +493,16 @@ function renderTable(){
   const tbody = $('#tbody'); tbody.innerHTML = '';
   FILTERED.forEach(r=>{
     const costoInst = isInstalacion(r) ? ((Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0)) : 0;
+
+    const inicioStr = [fmtDateCell(r.fecha_inicio), fmtTimeCell(r.hora_inicio)].filter(Boolean).join(' ');
+    const finStr    = [fmtDateCell(r.fecha_fin),   fmtTimeCell(r.hora_fin)].filter(Boolean).join(' ');
+
     const tr = document.createElement('tr');
     tr.className = 'border-t border-white/10';
     tr.innerHTML = `
       <td class="py-2 px-3">${r.id||''}</td>
-      <td class="py-2 px-3">${[r.fecha_inicio,r.hora_inicio].filter(Boolean).join(' ')}</td>
-      <td class="py-2 px-3">${[r.fecha_fin,r.hora_fin].filter(Boolean).join(' ')}</td>
+      <td class="py-2 px-3">${inicioStr}</td>
+      <td class="py-2 px-3">${finStr}</td>
       <td class="py-2 px-3">${r.asesor||''}</td>
       <td class="py-2 px-3">
         ${r.actividad||''}
@@ -463,28 +558,22 @@ function renderCalendar(){
 
   const events = [];
   (FILTERED||[]).forEach(r=>{
-    const act = r.actividad || 'Otro';
-    // Toma la primera fecha disponible
-    const dStart = toISODate(r.fecha_inicio) || toISODate(r.fecha_fin);
-    const dEnd   = toISODate(r.fecha_fin)    || toISODate(r.fecha_inicio);
-    if (!dStart) return; // sin fecha no pintamos
+    const dStart = pickDate(r,'fecha_inicio','fecha_fin');
+    if (!dStart) return;
+    const dEnd   = pickDate(r,'fecha_fin','fecha_inicio');
 
-    const hasTimes = !!((r.hora_inicio||'') || (r.hora_fin||''));
-    const start = hasTimes
-      ? `${dStart}T${(r.hora_inicio||'00:00')}`
-      : dStart;
+    const tStart = pickTime(r,'hora_inicio');
+    const tEnd   = pickTime(r,'hora_fin');
+    const hasTime = !!(tStart || tEnd);
 
-    // Si es allDay y dEnd = mismo día, FullCalendar quiere end exclusivo => +1 día
+    const start = hasTime ? `${dStart}T${tStart || '00:00'}` : dStart;
     let end;
-    if (dEnd) {
-      end = hasTimes
-        ? `${dEnd}T${(r.hora_fin||'00:00')}`
-        : dayjs(dEnd).add(1,'day').format('YYYY-MM-DD');
-    }
+    if (dEnd) end = hasTime ? `${dEnd}T${tEnd || '00:00'}` : dayjs(dEnd).add(1,'day').format('YYYY-MM-DD');
 
+    const act = r.actividad || 'Otro';
     events.push({
       title: `${act} — ${r.asesor||''}`,
-      start, end, allDay: !hasTimes,
+      start, end, allDay: !hasTime,
       backgroundColor: COLOR[act] || '#60a5fa',
       borderColor: COLOR[act] || '#60a5fa'
     });
@@ -501,9 +590,6 @@ function renderCalendar(){
     events
   });
   CAL.render();
-
-  // Debug opcional:
-  console.log('Calendar events:', events.length);
 }
 
 /* ====== CHARTS ====== */
@@ -528,7 +614,7 @@ function renderCharts(){
     new Chart(c,{type:'doughnut',data:{labels:['Remoto','Presencial'],datasets:[{data:[rem,pre]}]},options:{responsive:true,maintainAspectRatio:false}});
   })();
 
-  // Distribución por actividad (dona)
+  // Distribución por actividad
   (function(){
     const c = document.getElementById('chartActividad'); if(!c) return;
     const byAct = {}; FILTERED.forEach(r=>{ const k=r.actividad||'Sin dato'; byAct[k]=(byAct[k]||0)+1; });
@@ -549,16 +635,14 @@ function renderCharts(){
     new Chart(c,{type:'bar',data:{labels:Object.keys(byA),datasets:[{label:'MXN',data:Object.values(byA)}]},options:{responsive:true,maintainAspectRatio:false}});
   })();
 
-  // TeamViewer (si CSV está disponible en /connectionreport.csv)
+  // TeamViewer (CSV robusto)
   (async function(){
     const c = document.getElementById('chartTV'); if(!c) return;
     try{
       const txt = await fetch('/connectionreport.csv').then(r=> r.ok ? r.text() : '');
       if (!txt) return;
-      const rows = txt.trim().split(/\r?\n/).slice(1).map(line=>{
-        const [fecha, conexiones, horas] = line.split(',');
-        return { fecha, conexiones: Number(conexiones||0), horas: Number(horas||0) };
-      });
+      const rows = parseTeamViewerCSV(txt);
+      if (!rows.length) return;
       new Chart(c,{
         type:'bar',
         data:{ labels: rows.map(r=>r.fecha),
@@ -566,8 +650,44 @@ function renderCharts(){
                           {type:'line', label:'Horas', data: rows.map(r=>r.horas)} ] },
         options:{ responsive:true, maintainAspectRatio:false }
       });
+      // KPI horas TV
+      const hrs = rows.reduce((a,r)=>a+(r.horas||0),0);
+      const k = document.getElementById('kpiC_tvhrs'); if (k) k.textContent = hrs.toFixed(2);
     }catch(e){ console.warn('CSV TV no disponible'); }
   })();
+}
+
+/* ====== TeamViewer CSV helpers ====== */
+function splitCSVLine(line){
+  const re = /("([^"]|"")*"|[^,]*)(,|$)/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(line)) !== null) {
+    let v = m[1] || '';
+    v = v.replace(/^"(.*)"$/,'$1').replace(/""/g,'"').trim();
+    out.push(v);
+    if (m[3] === '') break;
+  }
+  return out;
+}
+function parseNum(x){
+  if (x == null) return NaN;
+  return Number(String(x).replace(/[^\d.\-]/g,''));
+}
+function parseTeamViewerCSV(txt){
+  const lines = txt.trim().split(/\r?\n/);
+  const rows = [];
+  for (let i=0;i<lines.length;i++){
+    const cols = splitCSVLine(lines[i]);
+    if (cols.length < 2) continue;
+    if (/MDC\s*-\s*CAD\/CAM/i.test(cols[0])) continue; // ignora cabeceras/etiquetas
+    const fecha = cols[0];
+    const conexiones = parseNum(cols[1]);
+    const horas = parseNum(cols[2]);
+    if (!isFinite(conexiones) && !isFinite(horas)) continue;
+    rows.push({ fecha, conexiones: isFinite(conexiones)?conexiones:0, horas: isFinite(horas)?horas:0 });
+  }
+  return rows;
 }
 
 /* ====== TV TABLE ====== */
@@ -577,10 +697,8 @@ async function renderTeamViewerTable(){
   try{
     const txt = await fetch('/connectionreport.csv').then(r=> r.ok ? r.text() : '');
     if (!txt) { el.innerHTML = '<tr><td class="py-2 px-3" colspan="3">No hay CSV</td></tr>'; return; }
-    const rows = txt.trim().split(/\r?\n/).slice(1).map(line=>{
-      const [fecha, conexiones, horas] = line.split(',');
-      return { fecha, conexiones: Number(conexiones||0), horas: Number(horas||0) };
-    });
+    const rows = parseTeamViewerCSV(txt);
+    if (!rows.length) { el.innerHTML = '<tr><td class="py-2 px-3" colspan="3">CSV sin filas válidas</td></tr>'; return; }
     el.innerHTML = rows.map(r=>`
       <tr class="border-t border-white/10">
         <td class="py-2 px-3">${r.fecha}</td>
@@ -616,6 +734,49 @@ async function boot(){
   applyFilters();
   renderAll();
 }
+
+/* ====== CAPTURA handlers ====== */
+document.getElementById('btnCaptToggle').addEventListener('click', ()=>{
+  const f = document.getElementById('frm');
+  f.classList.toggle('hidden');
+});
+document.getElementById('btnCancelar').addEventListener('click', ()=>{
+  const f = document.getElementById('frm');
+  f.reset(); f.classList.add('hidden');
+});
+document.getElementById('btnGeo').addEventListener('click', ()=>{
+  const latEl = document.querySelector('#frm [name="lat"]');
+  const lngEl = document.querySelector('#frm [name="lng"]');
+  if (!navigator.geolocation) return alert('Geolocalización no soportada');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    latEl.value = pos.coords.latitude.toFixed(6);
+    lngEl.value = pos.coords.longitude.toFixed(6);
+  },()=>alert('No se pudo obtener ubicación'));
+});
+document.getElementById('frm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const data = Object.fromEntries(fd.entries());
+  // Asegura strings
+  ['fecha_inicio','fecha_fin','hora_inicio','hora_fin','asesor','actividad','modalidad','garantia','cobrado','cliente','telefono','ciudad','notas','lat','lng']
+    .forEach(k=>{ if(data[k]==null) data[k]=''; else data[k]=String(data[k]); });
+  // Números
+  ['monto','mo_monto','refacciones_monto','viaticos_monto','iva_monto']
+    .forEach(k=>{ data[k] = Number(data[k]||0); });
+
+  try{
+    const res = await apiPost({ op:'create', token: EDIT_TOKEN, data });
+    if (!res || !res.ok) throw new Error(res && res.error || 'Error creando');
+    alert('Registro creado (ID '+res.id+')');
+    e.target.reset(); e.target.classList.add('hidden');
+    await boot();
+  }catch(err){
+    console.error(err);
+    alert('No se pudo guardar: '+err.message);
+  }
+});
+
+/* ====== botones varios ====== */
 document.getElementById('btnReload').addEventListener('click', boot);
 document.getElementById('btnAplicarFiltros').addEventListener('click', ()=>{ applyFilters(); renderAll(); });
 document.getElementById('btnLimpiarFiltros').addEventListener('click', ()=>{ $('#fAsesor').value=''; $('#fActividad').value=''; $('#fModalidad').value=''; $('#fCiudad').value=''; $('#fRango').value=''; applyFilters(); renderAll(); });
@@ -628,6 +789,7 @@ document.getElementById('btnExportPdf').addEventListener('click', async ()=>{
   const iw = canvas.width*ratio, ih = canvas.height*ratio;
   doc.addImage(imgData,'PNG',(pw-iw)/2,10,iw,ih); doc.save('reporte_mdc.pdf');
 });
+
 boot();
 </script>
 
@@ -648,6 +810,7 @@ boot();
     return new google.maps.Marker({ map, position:{lat,lng}, title:title||'' });
   };
 </script>
+<!-- Sustituye TU_API_KEY_REAL -->
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
 
 </body>
