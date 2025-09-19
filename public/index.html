@@ -3,54 +3,35 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MDC — Reporte Mensual de Actividades Asesores CAD-CAM</title>
+  <title>MDC Digital — Reporte de Actividades Asesores CAD-CAM</title>
 
-  <!-- UI libs -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Tailwind (build) + fallback CDN si falla -->
+  <link rel="stylesheet" href="/styles.css">
+  <script>
+  (function(){
+    var probe=document.createElement('div'); probe.className='hidden';
+    document.head.appendChild(probe);
+    var ok = getComputedStyle(probe).display==='none'; probe.remove();
+    if(!ok){ var s=document.createElement('script'); s.src='https://cdn.tailwindcss.com'; document.head.appendChild(s); }
+  })();
+  </script>
 
-  <!-- Fechas -->
+  <!-- FullCalendar CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css">
+
+  <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/isoWeek.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.min.js"></script>
-  <script>
-    dayjs.extend(window.dayjs_plugin_isoWeek);
-    dayjs.extend(window.dayjs_plugin_customParseFormat);
-  </script>
+  <script>dayjs.extend(window.dayjs_plugin_isoWeek); dayjs.extend(window.dayjs_plugin_customParseFormat);</script>
 
-  <!-- Gráficas -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-
-  <!-- Calendario -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/core/locales-all.global.min.js"></script>
-
- 
 
   <!-- Export PDF -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-
-    <!-- Tailwind CSS -->
-  <link rel="stylesheet" href="/styles.css">
-
-  <!-- Fallback automático: si styles.css está vacío o falla, carga Tailwind CDN -->
-  <script>
-  (function(){
-    var probe=document.createElement('div');
-    probe.className='hidden';
-    document.head.appendChild(probe);
-    var ok = window.getComputedStyle(probe).display==='none';
-    probe.remove();
-    if(!ok){
-      var s=document.createElement('script');
-      s.src='https://cdn.tailwindcss.com';
-      document.head.appendChild(s);
-    }
-  })();
-  </script>
-
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css">
-
 
   <style>
     body{background:#0b0d10;color:#e5e7eb}
@@ -67,114 +48,60 @@
     .chip{display:inline-block;padding:.1rem .5rem;border-radius:.375rem;border:1px solid rgba(255,255,255,.15);font-size:.75rem}
     .chip-warn{background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.35)}
     .chip-ok{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35)}
-
-    /* Tabla y overflow */
-    .table-fixed { table-layout: fixed; width: 100%; }
-    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .col-notas { width: 28rem; }
-    .col-acciones { width: 10rem; }
-    .col-horas { width: 7rem; }
-    .col-money { width: 8rem; }
-    th, td { overflow-wrap: anywhere; }
-    .td-wrap { min-height: 1.5rem; }
-
-    /* Clamp para notas */
-    .line-clamp-4 {
-      display: -webkit-box;
-      -webkit-line-clamp: 4; /* Safari/Chrome */
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      line-clamp: 4; /* recomendación estándar (experimental) */
-    }
-    .td-actions { white-space: nowrap; }
-
-    /* Alturas de contenedores */
-    #map{min-height:420px;height:420px}
-    #calendar{height:820px;}
-    .chart-h{height:300px}
-    .chart-h-lg{height:320px}
-
-    /* Utilidades */
-    .nowrap{white-space:nowrap}
-
-    /* Tabla legible: encabezado fijo + scroll vertical */
+    /* Tabla legible */
     .table-viewport { max-height: 65vh; overflow: auto; }
     #tbl { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
-    #tbl thead th {
-      position: sticky; top: 0;
-      background: #0f172a; /* azul oscuro */
-      z-index: 1;
-    }
+    #tbl thead th { position: sticky; top: 0; background: #0f172a; z-index: 1; }
     #tbl th, #tbl td { font-size: 0.9rem; line-height: 1.2; }
-    #tbl td { padding-top: .4rem; padding-bottom: .4rem; }
-    .col-money { white-space: nowrap; }
-
+    #tbl td { padding-top:.45rem; padding-bottom:.45rem; }
+    .col-notas { width: 28rem; }
+    .col-acciones { width: 10rem; white-space: nowrap; }
+    .col-horas { width: 7rem; }
+    .col-money { width: 8rem; white-space: nowrap; }
+    th, td { overflow-wrap: anywhere; }
+    .td-wrap { min-height: 1.5rem; }
+    .line-clamp-4 {
+      display: -webkit-box;
+      -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; line-clamp: 4;
+    }
+    /* Gráficas */
     canvas { max-width: 100%; }
     .chart-h { height: 300px; }
     .chart-h-lg { height: 320px; }
-
-
+    /* Mapa/Calendario */
+    #map{min-height:420px;height:420px}
+    #calendar{height:820px}
   </style>
-
-<!-- 2) Fallback: si los utilitarios de Tailwind no existen, carga el CDN -->
-<script>
-(function(){
-  // Si .hidden NO existe, Tailwind no cargó → inyecta CDN
-  var probe=document.createElement('div');
-  probe.className='hidden';
-  document.head.appendChild(probe);
-  var ok = window.getComputedStyle(probe).display==='none';
-  probe.remove();
-  if(!ok){
-    var s=document.createElement('script');
-    s.src='https://cdn.tailwindcss.com';
-    document.head.appendChild(s);
-  }
-})();
-</script>
-  <!-- 1) Define global initMap ANTES de cargar la librería -->
-<script>
-  // Asegura que initMap exista en window (global) para el callback
-  window.initMap = function () {
-    const center = { lat: 23.6345, lng: -102.5528 }; // MX
-    // Crea el mapa y guárdalo global si el resto del código lo usa
-    window.MAP = new google.maps.Map(document.getElementById('map'), {
-      center,
-      zoom: 5
-    });
-
-    // Si ya tienes una función que pinta marcadores, asegúrate de que sea global:
-    // window.renderMapMarkers = window.renderMapMarkers || function(){};
-    if (typeof window.renderMapMarkers === 'function') {
-      window.renderMapMarkers();
-    }
-  };
-</script>
-
-<!-- 2) Carga recomendada: loading=async + async/defer -->
-<script
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap"
-  async
-  defer
-></script>
-
 </head>
 <body class="h-full">
 <div class="max-w-7xl mx-auto p-4 sm:p-6">
 
   <!-- HEADER -->
   <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-    <div>
-      <h1 class="text-2xl font-semibold">Reporte Mensual de Actividades</h1>
-      <p class="text-slate-400 text-sm">MDC Digital · Asesores CAD-CAM</p>
+    <div class="flex items-center gap-3">
+      <img src="/logo-mdc.png" alt="MDC Digital" class="h-10 w-auto rounded-sm">
+      <div>
+        <h1 class="text-2xl font-semibold">MDC Digital — Reporte de Actividades Asesores CAD-CAM</h1>
+        <p class="text-slate-400 text-sm">Captura · KPIs · Mapas · Calendario · PDF</p>
+      </div>
     </div>
     <div class="flex flex-wrap gap-2">
-      <button id="btnReload" class="btn">🔄 Recargar</button>
-      <button id="btnExportPdf" class="btn">🧾 Exportar PDF</button>
+      <select id="fMes" class="px-3 py-2 rounded-lg formc"></select>
+      <button id="btnExportPdf" class="btn bg-emerald-600/80 hover:bg-emerald-600 text-white">🧾 Exportar PDF</button>
     </div>
   </header>
 
-  <!-- KPIs principales -->
+  <!-- KPIs CLÁSICOS -->
+  <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
+    <div class="card p-4"><div class="text-slate-400 text-xs">Total registros</div><div id="kpiC_total" class="text-3xl font-semibold mt-1">0</div></div>
+    <div class="card p-4"><div class="text-slate-400 text-xs">Soporte</div><div id="kpiC_soporte" class="text-3xl font-semibold mt-1">0</div></div>
+    <div class="card p-4"><div class="text-slate-400 text-xs">Instalaciones</div><div id="kpiC_inst" class="text-3xl font-semibold mt-1">0</div></div>
+    <div class="card p-4"><div class="text-slate-400 text-xs">Eventos/Proy./Cursos</div><div id="kpiC_eventos" class="text-3xl font-semibold mt-1">0</div></div>
+    <div class="card p-4"><div class="text-slate-400 text-xs">Total cobrado</div><div id="kpiC_cobrado" class="text-3xl font-semibold mt-1">$0</div></div>
+    <div class="card p-4"><div class="text-slate-400 text-xs">Horas TeamViewer</div><div id="kpiC_tvhrs" class="text-3xl font-semibold mt-1">0</div></div>
+  </section>
+
+  <!-- KPIs NUEVOS -->
   <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
     <div class="card p-4">
       <div class="text-slate-400 text-xs">Registros</div>
@@ -217,7 +144,6 @@
 
   <!-- Filtros -->
   <section class="card p-4 mb-6">
-    <h2 class="text-lg font-medium mb-3">Filtros</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
       <select id="fAsesor" class="px-3 py-2 rounded-lg formc">
         <option value="">Todos los asesores</option>
@@ -230,6 +156,8 @@
         <option>Instalación</option>
         <option>Evento</option>
         <option>Proyecto</option>
+        <option>Curso</option>
+        <option>Vacaciones</option>
       </select>
       <select id="fModalidad" class="px-3 py-2 rounded-lg formc">
         <option value="">Todas las modalidades</option>
@@ -264,26 +192,39 @@
     </div>
 
     <div class="card p-4">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-medium">Distribución por actividad</h3>
-     <div style="height:320px"><canvas id="chartActividad"></canvas></div>
+      <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Actividades por asesor (apilado por tipo)</h3></div>
+      <div class="h-[320px]"><canvas id="chartActAsesor"></canvas></div>
+    </div>
 
     <div class="card p-4">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-medium">Horas por asesor (mes)</h3>
-     <div style="height:320px"><canvas id="chartHorasAsesor"></canvas></div>
+      <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Remoto vs Presencial</h3></div>
+      <div class="h-[320px]"><canvas id="chartRemoto"></canvas></div>
+    </div>
+
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Distribución por actividad</h3></div>
+      <div class="h-[320px]"><canvas id="chartActividad"></canvas></div>
+    </div>
+
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Garantía vs No garantía</h3></div>
+      <div class="h-[320px]"><canvas id="chartGarantia"></canvas></div>
+    </div>
+
+    <div class="card p-4 xl:col-span-2">
+      <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Ingresos por asesor (MXN)</h3></div>
+      <div class="h-[360px]"><canvas id="chartIngresos"></canvas></div>
+    </div>
   </section>
 
   <!-- Tabla Registros -->
   <section class="card p-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-lg font-medium">Registros</h2>
-      <div class="flex gap-2">
-        <button id="btnNuevo" class="btn btn-primary">➕ Nuevo</button>
-      </div>
+      <div class="flex gap-2"><button id="btnReload" class="btn">🔄 Recargar</button></div>
     </div>
     <div class="table-viewport">
-     <table id="tbl" class="table-fixed w-full">
+      <table id="tbl" class="table-fixed w-full">
         <thead>
           <tr class="text-left text-slate-400">
             <th class="py-2 px-3">ID</th>
@@ -313,211 +254,40 @@
   </section>
 </div>
 
-<!-- MODAL: Nuevo/Editar registro (ligero, puedes ampliar) -->
-<div id="modalEdit" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-30">
-  <div class="card w-full max-w-3xl p-4">
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="text-lg font-semibold" id="editTitle">Nuevo registro</h3>
-      <button class="btn" onclick="closeEdit()">✖</button>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div>
-        <label class="text-xs text-slate-400">Fecha inicio</label>
-        <input id="eFechaIni" type="date" class="formc px-3 py-2 w-full" />
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Hora inicio</label>
-        <input id="eHoraIni" type="time" class="formc px-3 py-2 w-full" />
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Fecha fin</label>
-        <input id="eFechaFin" type="date" class="formc px-3 py-2 w-full" />
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Hora fin</label>
-        <input id="eHoraFin" type="time" class="formc px-3 py-2 w-full" />
-      </div>
-
-      <div>
-        <label class="text-xs text-slate-400">Asesor</label>
-        <input id="eAsesor" class="formc px-3 py-2 w-full" placeholder="Israel / Selene / …" />
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Actividad</label>
-        <select id="eActividad" class="formc px-3 py-2 w-full">
-          <option>Soporte de garantía</option>
-          <option>Soporte fuera de garantía</option>
-          <option>Instalación</option>
-          <option>Evento</option>
-          <option>Proyecto</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Modalidad</label>
-        <select id="eModalidad" class="formc px-3 py-2 w-full">
-          <option>Presencial</option>
-          <option>Remoto</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Garantía</label>
-        <select id="eGarantia" class="formc px-3 py-2 w-full">
-          <option>Sí</option>
-          <option>No</option>
-        </select>
-      </div>
-
-      <div>
-        <label class="text-xs text-slate-400">Cliente</label>
-        <input id="eCliente" class="formc px-3 py-2 w-full" />
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Teléfono</label>
-        <input id="eTelefono" class="formc px-3 py-2 w-full" />
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Ciudad</label>
-        <input id="eCiudad" class="formc px-3 py-2 w-full" />
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Notas</label>
-        <textarea id="eNotas" class="formc px-3 py-2 w-full" rows="3"></textarea>
-      </div>
-
-      <div>
-        <label class="text-xs text-slate-400">Lat</label>
-        <input id="eLat" class="formc px-3 py-2 w-full" />
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Lng</label>
-        <input id="eLng" class="formc px-3 py-2 w-full" />
-      </div>
-    </div>
-
-    <div class="mt-4 flex items-center justify-between">
-      <button class="btn" onclick="openHorasFromEdit()">⏱️ Editar horas</button>
-      <div class="flex gap-2">
-        <button class="btn" onclick="closeEdit()">Cancelar</button>
-        <button class="btn btn-primary" onclick="saveEdit()">Guardar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL HORAS -->
-<div id="modalHoras" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-40">
-  <div class="card w-full max-w-2xl p-4">
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="text-lg font-semibold">Editar horas del servicio</h3>
-      <button class="btn" onclick="closeHoras()">✖</button>
-    </div>
-    <div class="mb-3">
-      <table class="w-full">
-        <thead class="text-slate-400 text-sm">
-          <tr>
-            <th class="text-left py-2">Fecha</th>
-            <th class="text-left py-2">Inicio</th>
-            <th class="text-left py-2">Fin</th>
-            <th class="text-left py-2">Break (min)</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="horasRows"></tbody>
-      </table>
-      <button class="btn mt-2" onclick="addBloqueRow()">➕ Agregar bloque</button>
-    </div>
-    <div class="flex items-center justify-between">
-      <div>Horas totales: <span id="horasTotSpan" class="font-semibold">0</span></div>
-      <div class="flex gap-2">
-        <button class="btn" onclick="closeHoras()">Cancelar</button>
-        <button class="btn btn-primary" onclick="saveHoras()">Guardar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
+<!-- ===================== SCRIPTS ===================== -->
 <script>
-/* ===================== CONFIG ===================== */
-const API_URL = 'https://script.google.com/macros/s/AKfycbwb_c6_M6S_dKzy4ZxZzudw3LcIjj5gD0XdahCfeH6Vcp5r8GXRoifnvioU7Du48R81/exec'; // e.g. https://script.google.com/macros/s/AKfycbx.../exec
+/* ====== CONFIG ====== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbyOtHBZuG13nxSbk0cD63UIK5SpmP3JPyqCyi2YUErsXYRfBmfBWDBDA_fCkoeoraEz/exec';  // ejemplo: https://script.google.com/macros/s/AKfycbx.../exec
 const EDIT_TOKEN = '42673';
 const TARIFA_GARANTIA = 1000; // $/hora
 const TARIFA_INTERNA_INST = 85; // $/hora
 
-/* ===================== STATE ===================== */
-let ROWS = [];           // datos crudos del backend
-let FILTERED = [];       // después de aplicar filtros
-let ROW_EDIT = null;     // objeto en edición (modal Edit)
-let ROW_EDIT_HORAS = null; // referencia para horas (puede venir de tabla o de modal Edit)
-let MAP = null;
-let MAP_MARKERS = [];
-let CHART_ACT = null;
-let CHART_HORAS = null;
+/* ====== STATE ====== */
+let ROWS = [];
+let FILTERED = [];
 let CAL = null;
 
-/* ===================== UTILS ===================== */
-const $ = (q) => document.querySelector(q);
-function fmtMoney(n){ n = Number(n)||0; return n.toLocaleString('es-MX', {style:'currency', currency:'MXN', maximumFractionDigits:0}); }
-function minutosEntre(hhmm1, hhmm2){
-  if(!hhmm1 || !hhmm2) return 0;
-  const [h1,m1] = String(hhmm1).split(':').map(Number);
-  const [h2,m2] = String(hhmm2).split(':').map(Number);
-  return (h2*60+m2) - (h1*60+m1);
-}
+/* ====== UTILS ====== */
+function $(q){ return document.querySelector(q); }
+function fmtMoney(n){ n = Number(n)||0; return n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}); }
+function minutosEntre(h1,h2){ if(!h1||!h2) return 0; const [a,b]=h1.split(':').map(Number),[c,d]=h2.split(':').map(Number); return (c*60+d)-(a*60+b); }
 function parseBloques(str){ try{return JSON.parse(str||'[]')}catch{return []} }
 function horasTotalesFromBloques(bloques){
-  const mins = bloques.reduce((acc,b)=>{
-    const br = Number(b.breakMin)||0;
-    const d = Math.max(0, minutosEntre(b.inicio,b.fin) - br);
-    return acc + d;
-  },0);
+  const mins = bloques.reduce((acc,b)=>acc+Math.max(0,minutosEntre(b.inicio,b.fin)-(Number(b.breakMin)||0)),0);
   return Math.round((mins/60)*100)/100;
 }
-function totalCobrado(r){
-  const mo  = Number(r.mo_monto)||0;
-  const ref = Number(r.refacciones_monto)||0;
-  const via = Number(r.viaticos_monto)||0;
-  const iva = Number(r.iva_monto)||0;
-  return mo+ref+via+iva;
-}
-function isGarantia(r){
-  const g = (r.garantia||'').toString().trim().toLowerCase();
-  return g.startsWith('s'); // Sí
-}
-function isInstalacion(r){
-  return (r.actividad||'').toString().toLowerCase().includes('instal');
-}
+function totalCobrado(r){ return ['mo_monto','refacciones_monto','viaticos_monto','iva_monto'].reduce((a,k)=>a+(Number(r[k])||0),0); }
+function isGarantia(r){ return String(r.garantia||'').trim().toLowerCase().startsWith('s'); }
+function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().includes('instal'); }
+function toISODate(d){ const m = dayjs(d,['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD'],true); return m.isValid()?m.format('YYYY-MM-DD'):null; }
 
-/* ===================== API ===================== */
-async function apiGet(){
-  const r = await fetch(API_URL);
-  if(!r.ok) throw new Error('GET failed');
-  return await r.json();
-}
-async function apiUpdate(id, data){
-  const r = await fetch(API_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ op:'update', token:EDIT_TOKEN, id, data })
-  });
-  if(!r.ok){ console.error(await r.text()); throw new Error('POST update failed'); }
-  return await r.json();
-}
-async function apiCreate(data){
-  const r = await fetch(API_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ op:'create', token:EDIT_TOKEN, data })
-  });
-  if(!r.ok){ console.error(await r.text()); throw new Error('POST create failed'); }
-  return await r.json();
-}
+/* ====== API ====== */
+async function apiGet(){ const r=await fetch(API_URL); if(!r.ok) throw new Error('GET failed'); return r.json(); }
 
-/* ===================== RENDER – PIPELINE ===================== */
+/* ====== RENDER PIPELINE ====== */
 function deriveComputedFields(rows){
   rows.forEach(r=>{
-    const bloques = parseBloques(r.bloques_horas);
-    const h = horasTotalesFromBloques(bloques);
+    const h = horasTotalesFromBloques(parseBloques(r.bloques_horas));
     r.horas_totales = Number(h || r.horas_totales || 0);
     r.potencial_garantia = isGarantia(r) ? Math.round(r.horas_totales * TARIFA_GARANTIA) : 0;
     r.total_cobrado = totalCobrado(r);
@@ -536,15 +306,13 @@ function applyFilters(){
   if (act) out = out.filter(x => (x.actividad||'').toString().toLowerCase() === act);
   if (mod) out = out.filter(x => (x.modalidad||'').toString().toLowerCase() === mod);
   if (c) out = out.filter(x => (x.ciudad||'').toString().toLowerCase().includes(c));
-
   if (rng && rng.includes('a')) {
     const [d1,d2] = rng.split('a').map(s=>s.trim());
     if (d1 && d2) {
-      const t1 = dayjs(d1, 'YYYY-MM-DD');
-      const t2 = dayjs(d2, 'YYYY-MM-DD').endOf('day');
+      const t1=dayjs(d1,'YYYY-MM-DD'), t2=dayjs(d2,'YYYY-MM-DD').endOf('day');
       out = out.filter(x=>{
         const f = String(x.fecha_inicio||x.fecha_fin||'');
-        const t = dayjs(f, ['YYYY-MM-DD','DD/MM/YYYY']);
+        const t = dayjs(f,['YYYY-MM-DD','DD/MM/YYYY']);
         return t.isValid() ? (t.isAfter(t1.subtract(1,'day')) && t.isBefore(t2.add(1,'second'))) : true;
       });
     }
@@ -552,13 +320,12 @@ function applyFilters(){
   FILTERED = out;
 }
 
-/* ===================== KPIs ===================== */
+/* ====== KPIs ====== */
 function renderKpis(){
+  // nuevos
   $('#kpiTotal').textContent = FILTERED.length.toString();
-
   const sumPotGar = FILTERED.reduce((a,r)=> a + (Number(r.potencial_garantia)||0), 0);
   $('#kpiPotGarantia').textContent = fmtMoney(sumPotGar);
-
   const sumMo  = FILTERED.reduce((a,r)=> a + (Number(r.mo_monto)||0), 0);
   const sumRef = FILTERED.reduce((a,r)=> a + (Number(r.refacciones_monto)||0), 0);
   const sumVia = FILTERED.reduce((a,r)=> a + (Number(r.viaticos_monto)||0), 0);
@@ -573,21 +340,40 @@ function renderKpis(){
   const rowsInst = FILTERED.filter(isInstalacion);
   const sumValSub = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_subtotal)||0), 0);
   const sumValTot = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_total)||0), 0);
-  const sumCostoInst = rowsInst.reduce((a,r)=>{
-    const h = Number(r.horas_totales)||0;
-    const vi = Number(r.viaticos_monto)||0;
-    return a + (h*TARIFA_INTERNA_INST) + vi;
-  }, 0);
+  const sumCostoInst = rowsInst.reduce((a,r)=> (Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0), 0);
   $('#kpiInstValSub').textContent = fmtMoney(sumValSub);
   $('#kpiInstValTot').textContent = fmtMoney(sumValTot);
   $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
   $('#kpiInstRatio').textContent  = (sumCostoInst>0) ? (sumValSub/sumCostoInst).toFixed(2) : '—';
+
+  // clásicos
+  const isSoporte = r => (r.actividad||'').toLowerCase().includes('soporte');
+  const isInst    = r => (r.actividad||'').toLowerCase().includes('instal');
+  const isEvento  = r => /(evento|proy|curso)/i.test(r.actividad||'');
+  $('#kpiC_total').textContent    = FILTERED.length;
+  $('#kpiC_soporte').textContent  = FILTERED.filter(isSoporte).length;
+  $('#kpiC_inst').textContent     = FILTERED.filter(isInst).length;
+  $('#kpiC_eventos').textContent  = FILTERED.filter(isEvento).length;
+  $('#kpiC_cobrado').textContent  = fmtMoney(sumCob);
+
+  if (!window._TV_HRS_LOADED) {
+    fetch('/conexionesimport.csv').then(r=> r.ok ? r.text(): '').then(txt=>{
+      if (!txt) return;
+      const lines = txt.trim().split(/\r?\n/).slice(1);
+      const sumH = lines.reduce((acc,ln)=>{
+        const cols = ln.split(',');
+        const h = parseFloat(cols[2]||'0'); // col de horas
+        return acc + (isFinite(h)?h:0);
+      },0);
+      $('#kpiC_tvhrs').textContent = (Math.round(sumH*100)/100).toString();
+      window._TV_HRS_LOADED = true;
+    }).catch(()=>{});
+  }
 }
 
-/* ===================== TABLA ===================== */
+/* ====== TABLA ====== */
 function renderTable(){
-  const tbody = $('#tbody');
-  tbody.innerHTML = '';
+  const tbody = $('#tbody'); tbody.innerHTML = '';
   FILTERED.forEach(r=>{
     const costoInst = isInstalacion(r) ? ((Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0)) : 0;
     const tr = document.createElement('tr');
@@ -615,298 +401,91 @@ function renderTable(){
       <td class="py-2 px-3 col-money">${fmtMoney(costoInst)}</td>
       <td class="py-2 px-3">${r.ciudad||''}</td>
       <td class="py-2 px-3"><div class="td-wrap line-clamp-4 whitespace-pre-wrap">${r.notas||''}</div></td>
-      <td class="py-2 px-3 td-actions">
-        <button class="btn btn-primary" title="Horas" onclick='openHoras(${JSON.stringify(r.id)})'>⏱️</button>
-        <button class="btn" title="Editar" onclick='openEdit(${JSON.stringify(r.id)})'>✏️</button>
-      </td>
+      <td class="py-2 px-3 col-acciones"><button class="btn">⏱️</button> <button class="btn">✏️</button></td>
     `;
     tbody.appendChild(tr);
   });
 }
 
-/* ===================== MAPA ===================== */
-function initMap() {
-  window.MAP = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: 23.6345, lng: -102.5528 },
-    zoom: 5,
+/* ====== MAPA ====== */
+window.renderMapMarkers = function(){
+  if (!window.MAP) return;
+  if (window._MAP_MARKERS) window._MAP_MARKERS.forEach(m=>m.setMap && m.setMap(null));
+  window._MAP_MARKERS = [];
+  (FILTERED||[]).forEach(r=>{
+    const lat = parseFloat(r.lat), lng = parseFloat(r.lng);
+    if (!isFinite(lat) || !isFinite(lng)) return;
+    const marker = addMapMarker(window.MAP, lat, lng, `${r.cliente||''} · ${r.ciudad||''}`);
+    window._MAP_MARKERS.push(marker);
   });
+};
 
-  if (typeof renderMapMarkers === "function") {
-    renderMapMarkers();
-  }
-}
-
-// ⬇️ ESTA LÍNEA ASEGURA QUE GOOGLE ENCUENTRE initMap
-window.initMap = initMap;
-function clearMarkers(){
-  MAP_MARKERS.forEach(m=>m.setMap(null));
-  MAP_MARKERS = [];
-}
-function renderMapMarkers(){
-  if(!MAP) return;
-  clearMarkers();
-  FILTERED.forEach(r=>{
-    const lat = Number(r.lat); const lng = Number(r.lng);
-    if(!isFinite(lat) || !isFinite(lng)) return;
-    const marker = new google.maps.Marker({
-      position:{lat,lng}, map:MAP, title: `${r.cliente||''} · ${r.ciudad||''}`
-    });
-    const info = new google.maps.InfoWindow({
-      content: `
-        <div style="min-width:220px">
-          <div><strong>${r.cliente||''}</strong></div>
-          <div>${r.ciudad||''}</div>
-          <div>${(r.actividad||'')}</div>
-          <div>Horas: ${(Number(r.horas_totales)||0).toFixed(2)}</div>
-        </div>`
-    });
-    marker.addListener('click', ()=> info.open({anchor: marker, map: MAP}));
-    MAP_MARKERS.push(marker);
-  });
-}
-// ⬇️ ESTA LÍNEA LO HACE GLOBAL
-window.renderMapMarkers = renderMapMarkers;
-
-/* ===================== CALENDARIO ===================== */
-// Convierte "DD/MM/YYYY" o "YYYY-MM-DD" a "YYYY-MM-DD"
-function toISODate(d){
-  const m = dayjs(d, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD'], true);
-  return m.isValid() ? m.format('YYYY-MM-DD') : null;
-}
+/* ====== CALENDARIO ====== */
 function renderCalendar(){
   const el = document.getElementById('calendar');
   if (CAL) { CAL.destroy(); CAL = null; }
   CAL = new FullCalendar.Calendar(el, {
     height: '100%',
-    themeSystem: 'standard',
     locale: 'es',
     initialView: 'dayGridMonth',
-    headerToolbar: {
-      left: 'prev,next today',
-      center: 'title',
-      right: 'dayGridMonth,timeGridWeek,listWeek'
-    },
+    headerToolbar: { left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,listWeek' },
     events: FILTERED.map(r=>{
       const dStart = toISODate(r.fecha_inicio || r.fecha_fin);
       const dEnd   = toISODate(r.fecha_fin   || r.fecha_inicio);
-      const start  = dStart ? `${dStart}T${(r.hora_inicio||'00:00')}` : null;
-      const end    = dEnd   ? `${dEnd}T${(r.hora_fin||'00:00')}`     : null;
-      return {
-        title: `${r.actividad||''} — ${r.asesor||''}`,
-        start, end,
-        allDay: !((r.hora_inicio||'') || (r.hora_fin||'')),
-        extendedProps: { id: r.id }
-      };
+      const start  = dStart ? `${dStart}T${(r.hora_inicio||'00:00')}` : undefined;
+      const end    = dEnd   ? `${dEnd}T${(r.hora_fin||'00:00')}`     : undefined;
+      return { title:`${r.actividad||''} — ${r.asesor||''}`, start, end, allDay: !((r.hora_inicio||'')||(r.hora_fin||'')), extendedProps:{id:r.id} };
     }),
-    eventClick: function(info){
-      const id = info.event.extendedProps?.id;
-      if (id != null) openEdit(id);
-    }
+    eventClick(info){ /* abrir modal si quieres */ }
   });
   CAL.render();
 }
 
-/* ===================== CHARTS ===================== */
+/* ====== CHARTS ====== */
 function renderCharts(){
-  // Actividad
-  const ctx1 = document.getElementById('chartActividad');
-  if (CHART_ACT) { CHART_ACT.destroy(); CHART_ACT = null; }
-  const byAct = {};
-  FILTERED.forEach(r=>{
-    const k = (r.actividad||'Sin dato');
-    byAct[k] = (byAct[k]||0) + 1;
-  });
-  CHART_ACT = new Chart(ctx1, {
-    type:'bar',
-    data:{
-      labels: Object.keys(byAct),
-      datasets:[{ label:'Registros', data:Object.values(byAct) }]
-    },
-    options:{ responsive:true, maintainAspectRatio:false }
-  });
+  // Actividades por asesor (apilado)
+  (function(){
+    const c = document.getElementById('chartActAsesor'); if(!c) return;
+    const asesores = [...new Set(FILTERED.map(r=>r.asesor||'Sin dato'))];
+    const tipos = ['Soporte de garantía','Soporte fuera de garantía','Instalación','Evento','Proyecto','Curso','Vacaciones'];
+    const series = tipos.map(t => asesores.map(a => FILTERED.filter(r=> (r.asesor||'Sin dato')===a && (r.actividad||'')===t).length));
+    new Chart(c,{type:'bar',
+      data:{labels:asesores, datasets:tipos.map((t,i)=>({label:t,data:series[i],stack:'stack1'}))},
+      options:{responsive:true, maintainAspectRatio:false, scales:{x:{stacked:true}, y:{stacked:true}}}
+    });
+  })();
 
-  // Horas por asesor
-  const ctx2 = document.getElementById('chartHorasAsesor');
-  if (CHART_HORAS) { CHART_HORAS.destroy(); CHART_HORAS = null; }
-  const byAsesor = {};
-  FILTERED.forEach(r=>{
-    const k = (r.asesor||'Sin dato');
-    byAsesor[k] = (byAsesor[k]||0) + (Number(r.horas_totales)||0);
-  });
-  CHART_HORAS = new Chart(ctx2, {
-    type:'line',
-    data:{
-      labels: Object.keys(byAsesor),
-      datasets:[{ label:'Horas', data:Object.values(byAsesor), tension:.3 }]
-    },
-    options:{ responsive:true, maintainAspectRatio:false }
-  });
-}
+  // Remoto vs Presencial
+  (function(){
+    const c = document.getElementById('chartRemoto'); if(!c) return;
+    const rem = FILTERED.filter(r=> (r.modalidad||'').toLowerCase()==='remoto').length;
+    const pre = FILTERED.filter(r=> (r.modalidad||'').toLowerCase()==='presencial').length;
+    new Chart(c,{type:'doughnut',data:{labels:['Remoto','Presencial'],datasets:[{data:[rem,pre]}]},options:{responsive:true,maintainAspectRatio:false}});
+  })();
 
-/* ===================== MODAL EDIT ===================== */
-function openEdit(id){
-  const isNew = (id==null);
-  $('#editTitle').textContent = isNew ? 'Nuevo registro' : 'Editar registro';
-  const r = isNew ? {} : ROWS.find(x=> String(x.id)===String(id));
-  ROW_EDIT = r || {};
-  // set values
-  $('#eFechaIni').value = r?.fecha_inicio||'';
-  $('#eHoraIni').value  = r?.hora_inicio||'';
-  $('#eFechaFin').value = r?.fecha_fin||'';
-  $('#eHoraFin').value  = r?.hora_fin||'';
-  $('#eAsesor').value   = r?.asesor||'';
-  $('#eActividad').value= r?.actividad||'Soporte de garantía';
-  $('#eModalidad').value= r?.modalidad||'Presencial';
-  $('#eGarantia').value = r?.garantia||'No';
-  $('#eCliente').value  = r?.cliente||'';
-  $('#eTelefono').value = r?.telefono||'';
-  $('#eCiudad').value   = r?.ciudad||'';
-  $('#eNotas').value    = r?.notas||'';
-  $('#eLat').value      = r?.lat||'';
-  $('#eLng').value      = r?.lng||'';
-  // show
-  $('#modalEdit').classList.remove('hidden');
-  $('#modalEdit').classList.add('flex');
-}
-function closeEdit(){
-  $('#modalEdit').classList.add('hidden');
-  $('#modalEdit').classList.remove('flex');
-  ROW_EDIT = null;
-}
-async function saveEdit(){
-  const data = {
-    fecha_inicio: $('#eFechaIni').value,
-    hora_inicio:  $('#eHoraIni').value,
-    fecha_fin:    $('#eFechaFin').value,
-    hora_fin:     $('#eHoraFin').value,
-    asesor:       $('#eAsesor').value,
-    actividad:    $('#eActividad').value,
-    modalidad:    $('#eModalidad').value,
-    garantia:     $('#eGarantia').value,
-    cliente:      $('#eCliente').value,
-    telefono:     $('#eTelefono').value,
-    ciudad:       $('#eCiudad').value,
-    notas:        $('#eNotas').value,
-    lat:          $('#eLat').value,
-    lng:          $('#eLng').value
-  };
+  // Distribución por actividad (dona)
+  (function(){
+    const c = document.getElementById('chartActividad'); if(!c) return;
+    const byAct = {}; FILTERED.forEach(r=>{ const k=r.actividad||'Sin dato'; byAct[k]=(byAct[k]||0)+1; });
+    new Chart(c,{type:'doughnut',data:{labels:Object.keys(byAct),datasets:[{data:Object.values(byAct)}]},options:{responsive:true,maintainAspectRatio:false}});
+  })();
 
-  if (ROW_EDIT?.id != null){
-    await apiUpdate(ROW_EDIT.id, data);
-  } else {
-    const res = await apiCreate(data);
-    if (res?.id) data.id = res.id;
-  }
-  closeEdit();
-  await boot(); // recarga todo
+  // Garantía vs No garantía
+  (function(){
+    const c = document.getElementById('chartGarantia'); if(!c) return;
+    const si = FILTERED.filter(isGarantia).length; const no = FILTERED.length - si;
+    new Chart(c,{type:'doughnut',data:{labels:['Garantía','No garantía'],datasets:[{data:[si,no]}]},options:{responsive:true,maintainAspectRatio:false}});
+  })();
+
+  // Ingresos por asesor
+  (function(){
+    const c = document.getElementById('chartIngresos'); if(!c) return;
+    const byA={}; FILTERED.forEach(r=>{ const k=r.asesor||'Sin dato'; byA[k]=(byA[k]||0)+(Number(r.total_cobrado)||0); });
+    new Chart(c,{type:'bar',data:{labels:Object.keys(byA),datasets:[{label:'MXN',data:Object.values(byA)}]},options:{responsive:true,maintainAspectRatio:false}});
+  })();
 }
 
-/* ===================== HORAS – MODAL ===================== */
-function openHoras(id){
-  ROW_EDIT_HORAS = ROWS.find(x=> String(x.id)===String(id));
-  openHorasModalWithRow(ROW_EDIT_HORAS);
-}
-function openHorasFromEdit(){
-  // desde el modal de edición (nuevo registro sin ID todavía)
-  const temp = Object.assign({}, ROW_EDIT || {});
-  if (!temp.bloques_horas) temp.bloques_horas = '[]';
-  openHorasModalWithRow(temp, true);
-}
-function openHorasModalWithRow(row, fromEdit=false){
-  const cont = $('#horasRows');
-  cont.innerHTML = '';
-  const arr = parseBloques(row.bloques_horas);
-  if(arr.length===0){ arr.push({fecha:row.fecha_inicio||'',inicio:row.hora_inicio||'',fin:row.hora_fin||'',breakMin:0}); }
-  arr.forEach(b=>addBloqueRow(b));
-  recalcHorasModal();
-  $('#modalHoras').classList.remove('hidden');
-  $('#modalHoras').classList.add('flex');
-  // marca si venimos de modal Edit
-  ROW_EDIT_HORAS = Object.assign({ _fromEdit: fromEdit, id: row.id }, row);
-}
-function closeHoras(){
-  $('#modalHoras').classList.add('hidden');
-  $('#modalHoras').classList.remove('flex');
-  ROW_EDIT_HORAS = null;
-}
-function addBloqueRow(data){
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td class="py-1 pr-2"><input type="date" class="formc px-2 py-1 w-full" value="${data?.fecha||''}"></td>
-    <td class="py-1 pr-2"><input type="time" class="formc px-2 py-1 w-full" value="${data?.inicio||''}"></td>
-    <td class="py-1 pr-2"><input type="time" class="formc px-2 py-1 w-full" value="${data?.fin||''}"></td>
-    <td class="py-1 pr-2"><input type="number" min="0" class="formc px-2 py-1 w-24" value="${data?.breakMin||0}"></td>
-    <td class="py-1"><button class="btn btn-danger" onclick="this.closest('tr').remove(); recalcHorasModal();">🗑️</button></td>
-  `;
-  $('#horasRows').appendChild(tr);
-  [...tr.querySelectorAll('input')].forEach(el=>el.addEventListener('input', recalcHorasModal));
-}
-function collectBloquesDesdeUI(){
-  const rows = [...document.querySelectorAll('#horasRows tr')];
-  return rows.map(tr=>{
-    const [f,i,fn,b] = tr.querySelectorAll('input');
-    return { fecha:f.value, inicio:i.value, fin:fn.value, breakMin:Number(b.value||0) };
-  }).filter(x=>x.inicio && x.fin);
-}
-function recalcHorasModal(){
-  const bloques = collectBloquesDesdeUI();
-  $('#horasTotSpan').textContent = horasTotalesFromBloques(bloques).toFixed(2);
-}
-async function saveHoras(){
-  const bloques = collectBloquesDesdeUI();
-  const horas = horasTotalesFromBloques(bloques);
-  const data = { bloques_horas: JSON.stringify(bloques), horas_totales: horas };
-
-  // si venimos del modal Edit (registro nuevo sin guardar), solo “inyectamos” en memoria
-  if (ROW_EDIT_HORAS?._fromEdit && ROW_EDIT?.id == null){
-    ROW_EDIT.bloques_horas = data.bloques_horas;
-    ROW_EDIT.horas_totales = horas;
-    closeHoras();
-    return;
-  }
-
-  // si ya existe ID
-  await apiUpdate(ROW_EDIT_HORAS.id, data);
-  // refresca local mínimo
-  const row = ROWS.find(x=> String(x.id)===String(ROW_EDIT_HORAS.id));
-  if (row){
-    row.bloques_horas = data.bloques_horas;
-    row.horas_totales = horas;
-  }
-  closeHoras();
-  renderAll();
-}
-
-/* ===================== FILTROS – Eventos ===================== */
-$('#btnAplicarFiltros').addEventListener('click', ()=>{
-  applyFilters(); renderAll();
-});
-$('#btnLimpiarFiltros').addEventListener('click', ()=>{
-  $('#fAsesor').value = '';
-  $('#fActividad').value = '';
-  $('#fModalidad').value = '';
-  $('#fCiudad').value = '';
-  $('#fRango').value = '';
-  applyFilters(); renderAll();
-});
-
-/* ===================== EXPORT PDF ===================== */
-document.getElementById('btnExportPdf').addEventListener('click', async ()=>{
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF('p', 'pt', 'a4');
-  const el = document.body; // exporta todo; puedes cambiar a un contenedor
-  const canvas = await html2canvas(el, { scale: 2 });
-  const imgData = canvas.toDataURL('image/png');
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
-  const imgWidth = canvas.width * ratio;
-  const imgHeight = canvas.height * ratio;
-  doc.addImage(imgData, 'PNG', (pageWidth - imgWidth)/2, 10, imgWidth, imgHeight);
-  doc.save('reporte_mdc.pdf');
-});
-
-/* ===================== RENDER ALL ===================== */
+/* ====== RENDER ALL ====== */
 function renderAll(){
   renderKpis();
   renderTable();
@@ -915,23 +494,52 @@ function renderAll(){
   renderMapMarkers();
 }
 
-/* ===================== BOOT ===================== */
+/* ====== BOOT ====== */
 async function boot(){
-  try{
-    ROWS = await apiGet();
-  }catch(e){
-    console.error(e);
-    alert('Error obteniendo datos');
-    return;
+  // selector de mes (opcional visual)
+  const sel = $('#fMes'); if (sel && !sel._filled){
+    const now = dayjs(); const items=[];
+    for(let i=0;i<12;i++){ const d=now.subtract(i,'month'); items.push(`<option value="${d.format('YYYY-MM')}">${d.format('MMMM YYYY')}</option>`); }
+    sel.innerHTML = items.join(''); sel._filled=true;
   }
+  try{ ROWS = await apiGet(); }catch(e){ console.error(e); alert('Error obteniendo datos'); return; }
   deriveComputedFields(ROWS);
   applyFilters();
   renderAll();
 }
 document.getElementById('btnReload').addEventListener('click', boot);
-
-// Inicia
+document.getElementById('btnAplicarFiltros').addEventListener('click', ()=>{ applyFilters(); renderAll(); });
+document.getElementById('btnLimpiarFiltros').addEventListener('click', ()=>{ $('#fAsesor').value=''; $('#fActividad').value=''; $('#fModalidad').value=''; $('#fCiudad').value=''; $('#fRango').value=''; applyFilters(); renderAll(); });
+document.getElementById('btnExportPdf').addEventListener('click', async ()=>{
+  const { jsPDF } = window.jspdf; const doc = new jsPDF('p','pt','a4');
+  const el = document.body; const canvas = await html2canvas(el,{scale:2});
+  const imgData = canvas.toDataURL('image/png');
+  const pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight();
+  const ratio = Math.min(pw/canvas.width, ph/canvas.height);
+  const iw = canvas.width*ratio, ih = canvas.height*ratio;
+  doc.addImage(imgData,'PNG',(pw-iw)/2,10,iw,ih); doc.save('reporte_mdc.pdf');
+});
 boot();
 </script>
+
+<!-- Google Maps: initMap global + helper de marcadores y carga async -->
+<script>
+  window.initMap = function(){
+    const center = { lat: 23.6345, lng: -102.5528 };
+    window.MAP = new google.maps.Map(document.getElementById('map'), { center, zoom: 5 });
+    if (typeof window.renderMapMarkers === 'function') window.renderMapMarkers();
+  };
+  window.addMapMarker = function(map, lat, lng, title){
+    try {
+      const mod = google.maps.marker;
+      if (mod && mod.AdvancedMarkerElement) {
+        return new mod.AdvancedMarkerElement({ map, position:{lat,lng}, title:title||'' });
+      }
+    } catch(e){}
+    return new google.maps.Marker({ map, position:{lat,lng}, title:title||'' });
+  };
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
+
 </body>
 </html>
