@@ -7,6 +7,23 @@
 
   <!-- Tailwind generado por el build -->
   <link rel="stylesheet" href="/styles.css">
+  <script>
+  // Fallback: si /styles.css no carga o pesa ~0, inyecta Tailwind CDN para no ver la UI “cruda”
+  (async () => {
+    try {
+      const r = await fetch('/styles.css', { cache: 'no-store' });
+      if (!r.ok) throw 0;
+      const len = +(r.headers.get('content-length') || 0);
+      if (len < 10240) throw 0; // <10KB => probablemente vacío
+    } catch {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.tailwindcss.com';
+      document.head.appendChild(s);
+      console.warn('Usando Tailwind CDN fallback (compila styles.css para producción)');
+    }
+  })();
+</script>
+
 
   <!-- FullCalendar CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css">
@@ -444,22 +461,33 @@ function renderCalendar(){
     'Vacaciones': '#94a3b8'
   };
 
-  const events = FILTERED.map(r=>{
+  const events = [];
+  (FILTERED||[]).forEach(r=>{
     const act = r.actividad || 'Otro';
-    const dStart = toISODate(r.fecha_inicio || r.fecha_fin);
-    const dEnd   = toISODate(r.fecha_fin   || r.fecha_inicio);
-    const allDay = !((r.hora_inicio||'') || (r.hora_fin||''));
-    const start  = dStart ? (allDay ? dStart : `${dStart}T${(r.hora_inicio||'00:00')}`) : undefined;
+    // Toma la primera fecha disponible
+    const dStart = toISODate(r.fecha_inicio) || toISODate(r.fecha_fin);
+    const dEnd   = toISODate(r.fecha_fin)    || toISODate(r.fecha_inicio);
+    if (!dStart) return; // sin fecha no pintamos
+
+    const hasTimes = !!((r.hora_inicio||'') || (r.hora_fin||''));
+    const start = hasTimes
+      ? `${dStart}T${(r.hora_inicio||'00:00')}`
+      : dStart;
+
+    // Si es allDay y dEnd = mismo día, FullCalendar quiere end exclusivo => +1 día
     let end;
     if (dEnd) {
-      end = allDay ? dayjs(dEnd).add(1,'day').format('YYYY-MM-DD') : `${dEnd}T${(r.hora_fin||'00:00')}`;
+      end = hasTimes
+        ? `${dEnd}T${(r.hora_fin||'00:00')}`
+        : dayjs(dEnd).add(1,'day').format('YYYY-MM-DD');
     }
-    return {
+
+    events.push({
       title: `${act} — ${r.asesor||''}`,
-      start, end, allDay,
+      start, end, allDay: !hasTimes,
       backgroundColor: COLOR[act] || '#60a5fa',
       borderColor: COLOR[act] || '#60a5fa'
-    };
+    });
   });
 
   CAL = new FullCalendar.Calendar(el, {
@@ -473,6 +501,9 @@ function renderCalendar(){
     events
   });
   CAL.render();
+
+  // Debug opcional:
+  console.log('Calendar events:', events.length);
 }
 
 /* ====== CHARTS ====== */
