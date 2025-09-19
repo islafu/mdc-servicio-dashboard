@@ -1,5 +1,3 @@
-# package.json — JSON válido
-@'
 {
   "name": "reporte-servicio",
   "private": true,
@@ -13,35 +11,3 @@
     "autoprefixer": "^10.4.20"
   }
 }
-'@ | Out-File -Encoding utf8 package.json
-
-# postcss.config.js
-@'
-module.exports = { plugins: { tailwindcss: {}, autoprefixer: {} } };
-'@ | Out-File -Encoding utf8 postcss.config.js
-
-# tailwind.config.js (escanea HTML y JS en /public)
-@'
-module.exports = {
-  content: ["./public/**/*.{html,js}"],
-  theme: { extend: {} },
-  plugins: []
-};
-'@ | Out-File -Encoding utf8 tailwind.config.js
-
-# src/input.css (fuente de Tailwind)
-@'
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-'@ | Out-File -Encoding utf8 src/input.css
-
-# netlify.toml (asegura build y Node estable)
-@'
-[build]
-  command = "npm run build"
-  publish = "public"
-
-[build.environment]
-  NODE_VERSION = "20"
-'@ | Out-File -Encoding utf8 netlify.toml
