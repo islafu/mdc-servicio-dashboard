@@ -30,6 +30,25 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
+    <!-- Tailwind CSS -->
+  <link rel="stylesheet" href="/styles.css">
+
+  <!-- Fallback automático: si styles.css está vacío o falla, carga Tailwind CDN -->
+  <script>
+  (function(){
+    var probe=document.createElement('div');
+    probe.className='hidden';
+    document.head.appendChild(probe);
+    var ok = window.getComputedStyle(probe).display==='none';
+    probe.remove();
+    if(!ok){
+      var s=document.createElement('script');
+      s.src='https://cdn.tailwindcss.com';
+      document.head.appendChild(s);
+    }
+  })();
+  </script>
+
   <style>
     body{background:#0b0d10;color:#e5e7eb}
     .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.06);border-radius:1rem}
@@ -75,7 +94,23 @@
     /* Utilidades */
     .nowrap{white-space:nowrap}
   </style>
-  <link rel="stylesheet" href="./styles.css">
+
+<!-- 2) Fallback: si los utilitarios de Tailwind no existen, carga el CDN -->
+<script>
+(function(){
+  // Si .hidden NO existe, Tailwind no cargó → inyecta CDN
+  var probe=document.createElement('div');
+  probe.className='hidden';
+  document.head.appendChild(probe);
+  var ok = window.getComputedStyle(probe).display==='none';
+  probe.remove();
+  if(!ok){
+    var s=document.createElement('script');
+    s.src='https://cdn.tailwindcss.com';
+    document.head.appendChild(s);
+  }
+})();
+</script>
   <!-- 1) Define global initMap ANTES de cargar la librería -->
 <script>
   // Asegura que initMap exista en window (global) para el callback
