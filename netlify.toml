@@ -1,6 +1,13 @@
+# Crea netlify.toml y fija Node 20
+@"
 [build]
+  command = "npm run build"
   publish = "public"
-  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+"@ | Out-File -Encoding utf8 netlify.toml
+
 
 [[headers]]
   for = "/*"
