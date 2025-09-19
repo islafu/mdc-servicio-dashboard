@@ -8,19 +8,26 @@
   <!-- UI libs -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Fechas -->
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/isoWeek.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.min.js"></script>
-  <script>dayjs.extend(window.dayjs_plugin_isoWeek);dayjs.extend(window.dayjs_plugin_customParseFormat);</script>
+  <script>
+    dayjs.extend(window.dayjs_plugin_isoWeek);
+    dayjs.extend(window.dayjs_plugin_customParseFormat);
+  </script>
+
+  <!-- Gráficas -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 
-  <!-- FullCalendar -->
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+  <!-- Calendario -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/core/locales-all.global.min.js"></script>
 
   <!-- Google Maps (Maps + Places) -->
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&callback=initMap"></script>
+  <!-- Sustituye TU_API_KEY -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=TU_API_KEY&libraries=places&callback=initMap"></script>
 
   <!-- Export PDF -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -28,89 +35,107 @@
 
   <style>
     body{background:#0b0d10;color:#e5e7eb}
-    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));background-color:#12161b;border:1px solid rgba(255,255,255,.06);border-radius:1rem}
-    .dot{display:inline-block;width:10px;height:10px;border-radius:9999px;margin-right:.5rem}
-    #map{min-height:420px;height:420px}
-    #calendar{height:820px;}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.06);border-radius:1rem}
     .formc{background-color:#1e293b;color:#f1f5f9;border:1px solid #334155}
     .formc::placeholder{color:#cbd5e1}
     select.formc option{color:#000}
-    .chart-h{height:300px}
-    .chart-h-lg{height:320px}
-    .nowrap{white-space:nowrap}
-    .btn{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(255,255,255,.12);padding:.3rem .6rem;border-radius:.5rem}
+    .btn{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(255,255,255,.12);padding:.35rem .6rem;border-radius:.5rem}
     .btn:hover{background:rgba(255,255,255,.06)}
     .btn-danger{border-color:rgba(239,68,68,.5)}
     .btn-danger:hover{background:rgba(239,68,68,.1)}
-    .btn-primary{border-color:rgba(16,185,129,.5)}
-    .btn-primary:hover{background:rgba(16,185,129,.15)}
-  /* Altura del contenedor del calendario */
-  #calendar { height: 820px; min-height: 820px; }
+    .btn-primary{border-color:rgba(59,130,246,.5)}
+    .btn-primary:hover{background:rgba(59,130,246,.12)}
+    .chip{display:inline-block;padding:.1rem .5rem;border-radius:.375rem;border:1px solid rgba(255,255,255,.15);font-size:.75rem}
+    .chip-warn{background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.35)}
+    .chip-ok{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35)}
 
-  /* Obliga a que la vista ocupe el alto del contenedor (resta la barra superior) */
-  .fc .fc-view-harness { height: calc(100% - 46px) !important; min-height: 600px; }
-  .fc .fc-scroller-harness,
-  .fc .fc-scroller-liquid-absolute { height: 100% !important; }
-  .fc-event { cursor: pointer; }
-  
-  /* Tabla estable: distribuye columnas por ancho declarado */
-  table.table-fixed { table-layout: fixed; width: 100%; }
+    /* Tabla y overflow */
+    .table-fixed { table-layout: fixed; width: 100%; }
+    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .col-notas { width: 28rem; }
+    .col-acciones { width: 10rem; }
+    .col-horas { width: 7rem; }
+    .col-money { width: 8rem; }
+    th, td { overflow-wrap: anywhere; }
+    .td-wrap { min-height: 1.5rem; }
 
-  /* Alinea arriba las celdas (para notas multi-línea) */
-  table.table-fixed th,
-  table.table-fixed td { vertical-align: top; }
+    /* Clamp para notas */
+    .line-clamp-4 {
+      display: -webkit-box;
+      -webkit-line-clamp: 4; /* Safari/Chrome */
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-clamp: 4; /* recomendación estándar (experimental) */
+    }
+    .td-actions { white-space: nowrap; }
 
-  /* Utilidades */
-  .td-trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .td-wrap  { white-space: normal; overflow-wrap: anywhere; }
+    /* Alturas de contenedores */
+    #map{min-height:420px;height:420px}
+    #calendar{height:820px;}
+    .chart-h{height:300px}
+    .chart-h-lg{height:320px}
 
-  /* Limita a 4 líneas sin plugin */
-.line-clamp-4 {
-  display: -webkit-box;
-  -webkit-line-clamp: 4; /* Safari/Chrome */
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-
-  /* recomendación estándar (VS Code warning) */
-  line-clamp: 4; /* aún experimental en algunos navegadores */
-}
-
-  /* Evita que los botones de Acciones salten de línea */
-  .td-actions { white-space: nowrap; }
-
+    /* Utilidades */
+    .nowrap{white-space:nowrap}
   </style>
 </head>
 <body class="h-full">
 <div class="max-w-7xl mx-auto p-4 sm:p-6">
+
   <!-- HEADER -->
-  <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
-    <div class="flex items-center gap-3">
-      <img src="logo-mdc.png" alt="MDC Digital" class="h-10">
-      <div>
-        <h1 class="text-2xl font-semibold">MDC Digital — Reporte de Actividades Asesores CAD-CAM</h1>
-        <p class="text-sm text-slate-400">Captura · KPIs · Mapas · Calendario · PDF</p>
-      </div>
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold">Reporte Mensual de Actividades</h1>
+      <p class="text-slate-400 text-sm">MDC Digital · Asesores CAD-CAM</p>
     </div>
-    <div class="flex flex-wrap gap-2 items-center">
-      <select id="monthSelect" class="card px-3 py-2 text-sm formc"></select>
-      <button id="exportPdfBtn" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-medium">Exportar PDF</button>
+    <div class="flex flex-wrap gap-2">
+      <button id="btnReload" class="btn">🔄 Recargar</button>
+      <button id="btnExportPdf" class="btn">🧾 Exportar PDF</button>
     </div>
   </header>
 
-  <div id="banner" class="hidden card p-3 mb-4 text-sm"></div>
-
-  <!-- KPIs -->
-  <section id="kpis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-    <div class="card p-4"><div class="text-slate-400 text-xs">Total registros</div><div id="kpiTotal" class="text-3xl font-semibold mt-1">0</div></div>
-    <div class="card p-4"><div class="text-slate-400 text-xs"><span class="dot bg-emerald-400"></span>Soporte</div><div id="kpiSoporte" class="text-3xl font-semibold mt-1">0</div></div>
-    <div class="card p-4"><div class="text-slate-400 text-xs"><span class="dot bg-sky-400"></span>Instalaciones</div><div id="kpiInst" class="text-3xl font-semibold mt-1">0</div></div>
-    <div class="card p-4"><div class="text-slate-400 text-xs"><span class="dot bg-amber-400"></span>Eventos/Proy./Cursos</div><div id="kpiEvt" class="text-3xl font-semibold mt-1">0</div></div>
-    <div class="card p-4"><div class="text-slate-400 text-xs"><span class="dot bg-fuchsia-400"></span>Total cobrado</div><div id="kpiCobrado" class="text-3xl font-semibold mt-1">$0</div></div>
-    <div class="card p-4"><div class="text-slate-400 text-xs"><span class="dot bg-cyan-400"></span>Conexiones TeamViewer</div><div id="kpiTvConn" class="text-3xl font-semibold mt-1">0</div></div>
-    <div class="card p-4"><div class="text-slate-400 text-xs"><span class="dot bg-indigo-400"></span>Horas TeamViewer</div><div id="kpiTvHours" class="text-3xl font-semibold mt-1">0</div></div>
+  <!-- KPIs principales -->
+  <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Registros</div>
+      <div id="kpiTotal" class="text-3xl font-semibold mt-1">0</div>
+    </div>
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Potencial no cobrado (garantía)</div>
+      <div id="kpiPotGarantia" class="text-3xl font-semibold mt-1">$0</div>
+      <div class="text-slate-400 text-xs mt-1">Tarifa $1,000/h</div>
+    </div>
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Total cobrado</div>
+      <div id="kpiCobradoTotal" class="text-3xl font-semibold mt-1">$0</div>
+      <div class="text-slate-400 text-xs mt-1">
+        MO: <span id="kpiMo">$0</span> · Ref: <span id="kpiRef">$0</span> · Via: <span id="kpiVia">$0</span> · IVA: <span id="kpiIva">$0</span>
+      </div>
+    </div>
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Instalaciones — Costo empresa</div>
+      <div id="kpiInstCosto" class="text-3xl font-semibold mt-1">$0</div>
+      <div class="text-slate-400 text-xs mt-1">85/h + viáticos</div>
+    </div>
   </section>
 
-  <!-- FILTROS -->
+  <!-- KPIs instalaciones detalle -->
+  <section class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Valor equipos instalados (Subtotal)</div>
+      <div id="kpiInstValSub" class="text-2xl font-semibold mt-1">$0</div>
+    </div>
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Valor equipos instalados (Total c/IVA)</div>
+      <div id="kpiInstValTot" class="text-2xl font-semibold mt-1">$0</div>
+    </div>
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Ratio Valor / Costo instalación</div>
+      <div id="kpiInstRatio" class="text-2xl font-semibold mt-1">—</div>
+    </div>
+  </section>
+
+  <!-- Filtros -->
   <section class="card p-4 mb-6">
     <h2 class="text-lg font-medium mb-3">Filtros</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -125,178 +150,64 @@
         <option>Instalación</option>
         <option>Evento</option>
         <option>Proyecto</option>
-        <option>Curso</option>
-        <option>Vacaciones</option>
       </select>
       <select id="fModalidad" class="px-3 py-2 rounded-lg formc">
-        <option value="">Remoto/Presencial</option><option>Remoto</option><option>Presencial</option>
+        <option value="">Todas las modalidades</option>
+        <option>Remoto</option>
+        <option>Presencial</option>
       </select>
-      <select id="fGarantia" class="px-3 py-2 rounded-lg formc">
-        <option value="">Garantía / No</option><option>Sí</option><option>No</option>
-      </select>
-      <input id="fBusqueda" placeholder="Buscar cliente/ciudad/nota" class="px-3 py-2 rounded-lg formc" />
+      <input id="fCiudad" class="px-3 py-2 rounded-lg formc" placeholder="Ciudad" />
+      <input id="fRango" class="px-3 py-2 rounded-lg formc" placeholder="Rango fechas (YYYY-MM-DD a YYYY-MM-DD)" />
+    </div>
+    <div class="mt-3 flex gap-2">
+      <button id="btnAplicarFiltros" class="btn btn-primary">Aplicar filtros</button>
+      <button id="btnLimpiarFiltros" class="btn">Limpiar</button>
     </div>
   </section>
 
-  <!-- GRÁFICAS -->
-  <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+  <!-- Panel Map + Calendar + Charts -->
+  <section class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
     <div class="card p-4">
-      <h3 class="mb-2">Actividades por asesor (apilado por tipo)</h3>
-      <div class="chart-h-lg"><canvas id="chartTechCount"></canvas></div>
-    </div>
-    <div class="card p-4">
-      <h3 class="mb-2">Remoto vs Presencial</h3>
-      <div class="chart-h-lg"><canvas id="chartRemPre"></canvas></div>
-    </div>
-  </section>
-  <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <div class="card p-4"><h3 class="mb-2">Distribución por actividad</h3><div class="chart-h"><canvas id="chartActividad"></canvas></div></div>
-    <div class="card p-4"><h3 class="mb-2">Garantía vs No garantía</h3><div class="chart-h"><canvas id="chartGarantia"></canvas></div></div>
-  </section>
-  <section class="card p-4 mb-6">
-    <h3 class="mb-2">Ingresos por asesor (MXN)</h3>
-    <div class="chart-h-lg"><canvas id="chartRevenue"></canvas></div>
-  </section>
-  <section class="card p-4 mb-6">
-    <h3 class="mb-2">TeamViewer — Conexiones y horas (CSV)</h3>
-    <div class="text-xs text-slate-400 mb-3">Fuente: <code>/connectionreport.csv</code></div>
-    <div class="chart-h-lg"><canvas id="chartTV"></canvas></div>
-    <div id="tvBanner" class="text-xs text-slate-400 mt-2"></div>
-  </section>
-
-  <!-- MAPA -->
-  <section class="card p-4 mb-6">
-    <h3 class="mb-2">Mapa de cobertura</h3>
-    <div id="map" class="w-full rounded-xl"></div>
-  </section>
-
-  <!-- CALENDARIO -->
-  <section class="card p-4 mb-6">
-    <div class="flex items-center justify-between mb-2">
-      <h3>Calendario de actividades</h3>
-      <div class="text-xs text-slate-400">Vista mensual · colores por actividad</div>
-    </div>
-    <div id="calendar" class="rounded-xl overflow-hidden"></div>
-  </section>
-
-  <!-- CAPTURA -->
-  <section class="mb-6">
-    <div class="card p-4">
-      <h3 class="mb-2">Capturar actividad</h3>
-      <form id="form" class="grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-min">
-        <div><label class="text-xs text-slate-400">Inicio — fecha</label><input name="fecha_inicio" type="date" required class="w-full px-3 py-2 rounded-lg formc"/></div>
-        <div><label class="text-xs text-slate-400">Inicio — hora</label><input name="hora_inicio" type="time" required class="w-full px-3 py-2 rounded-lg formc"/></div>
-        <div><label class="text-xs text-slate-400">Fin — fecha</label><input name="fecha_fin" type="date" required class="w-full px-3 py-2 rounded-lg formc"/></div>
-        <div><label class="text-xs text-slate-400">Fin — hora</label><input name="hora_fin" type="time" required class="w-full px-3 py-2 rounded-lg formc"/></div>
-
-        <div>
-          <label class="text-xs text-slate-400">Asesor</label>
-          <select name="asesor" required class="w-full px-3 py-2 rounded-lg formc">
-            <option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option><option>Gabriel</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-xs text-slate-400">Actividad</label>
-          <select name="actividad" required class="w-full px-3 py-2 rounded-lg formc">
-            <option>Soporte de garantía</option>
-            <option>Soporte fuera de garantía</option>
-            <option>Instalación</option>
-            <option>Evento</option>
-            <option>Proyecto</option>
-            <option>Curso</option>
-            <option>Vacaciones</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-xs text-slate-400">Modalidad</label>
-          <select name="modalidad" required class="w-full px-3 py-2 rounded-lg formc">
-            <option>Remoto</option><option>Presencial</option>
-          </select>
-        </div>
-
-        <div class="sm:col-span-2">
-          <label class="text-xs text-slate-400">Cliente</label>
-          <input id="cliente" name="cliente" list="dlClientes" placeholder="Nombre del cliente" class="w-full px-3 py-2 rounded-lg formc"/>
-          <datalist id="dlClientes"></datalist>
-        </div>
-        <div><label class="text-xs text-slate-400">Teléfono</label><input id="telefono" name="telefono" type="tel" placeholder="10 dígitos" class="w-full px-3 py-2 rounded-lg formc"/></div>
-        <div>
-          <label class="text-xs text-slate-400">Dirección o ciudad</label>
-          <input id="direccion" name="ciudad" placeholder="Ej. Av. Vallarta 6500, Zapopan" class="w-full px-3 py-2 rounded-lg formc"/>
-          <div class="mt-2 flex gap-2">
-            <button type="button" id="btnUbicacion" class="px-3 py-1.5 text-xs rounded-lg formc">📍 Usar mi ubicación</button>
-            <span class="text-xs text-slate-400">o haz clic en el mapa para fijar el punto</span>
-          </div>
-        </div>
-
-        <div class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label class="text-xs text-slate-400">¿Servicio cobrado?</label>
-            <select id="cobrado" name="cobrado" class="w-full px-3 py-2 rounded-lg formc">
-              <option>No</option><option>Sí</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-xs text-slate-400">Monto (MXN)</label>
-            <input id="monto" name="monto" type="number" step="0.01" min="0" placeholder="0.00" class="w-full px-3 py-2 rounded-lg formc"/>
-          </div>
-          <div class="flex items-end gap-2">
-            <button id="submitBtn" class="w-full px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-medium" type="submit">
-              Guardar
-            </button>
-          </div>
-        </div>
-
-<!-- Banda de estado de edición -->
-<div id="editBanner" class="hidden mt-2 flex items-center justify-between rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2">
-  <div class="text-amber-200 text-sm">
-    Estás editando el registro <span id="editIdLabel" class="font-semibold"></span>. Ajusta los campos y presiona <strong>Actualizar</strong>.
-  </div>
-  <button id="cancelEditBtn" type="button" class="px-2 py-1 text-xs rounded-md bg-slate-700 hover:bg-slate-600">
-    Cancelar edición
-  </button>
-</div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div><label class="text-xs text-slate-400">Lat</label><input name="lat" id="lat" type="number" step="any" class="w-full px-3 py-2 rounded-lg formc" readonly/></div>
-          <div><label class="text-xs text-slate-400">Lng</label><input name="lng" id="lng" type="number" step="any" class="w-full px-3 py-2 rounded-lg formc" readonly/></div>
-        </div>
-        <div class="sm:col-span-2">
-          <label class="text-xs text-slate-400">Notas</label>
-          <textarea name="notas" rows="3" class="w-full px-3 py-2 rounded-lg formc whitespace-normal break-words" placeholder="Descripción breve"></textarea>
-        </div>
-      </form>
-    </div>
-  </section>
-
-  <!-- REGISTROS -->
-  <section class="mb-16">
-    <div class="card p-4 overflow-visible">
-      <div class="flex items-center justify-between mb-2">
-        <h3>Registros</h3>
-        <div class="flex items-center gap-2">
-          <button id="btnExportCSV" class="text-xs px-3 py-1 rounded-lg border border-white/10 hover:bg-white/5">Descargar CSV</button>
-        </div>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-medium">Mapa</h3>
+        <div class="text-xs text-slate-400">Geolocalización por registro (lat/lng)</div>
       </div>
-      <table class="w-full text-sm table-fixed border-collapse">
-        <colgroup>
-          <col class="w-12">            <!-- ID -->
-          <col class="w-40">            <!-- Inicio -->
-          <col class="w-40">            <!-- Fin -->
-          <col class="w-32">            <!-- Asesor -->
-          <col class="w-40">            <!-- Actividad -->
-          <col class="w-32">            <!-- Modalidad -->
-          <col class="w-24">            <!-- Garantía -->
-          <col class="w-24">            <!-- Cobrado -->
-          <col class="w-28">            <!-- Monto -->
-          <col class="w-48">            <!-- Cliente -->
-          <col class="w-40">            <!-- Teléfono -->
-          <col class="w-56">            <!-- Ciudad -->
-          <col class="w-[30rem]">       <!-- Notas (ancha) -->
-          <col class="w-28">            <!-- Acciones (fija) -->
-        </colgroup>
+      <div id="map" class="rounded-lg overflow-hidden"></div>
+    </div>
+
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-medium">Calendario</h3>
+        <div class="text-xs text-slate-400">Eventos por inicio/fin</div>
+      </div>
+      <div id="calendar" class="rounded-lg bg-slate-900"></div>
+    </div>
+
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-medium">Distribución por actividad</h3>
+      </div>
+      <canvas id="chartActividad" class="chart-h"></canvas>
+    </div>
+
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-medium">Horas por asesor (mes)</h3>
+      </div>
+      <canvas id="chartHorasAsesor" class="chart-h"></canvas>
+    </div>
+  </section>
+
+  <!-- Tabla Registros -->
+  <section class="card p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-medium">Registros</h2>
+      <div class="flex gap-2">
+        <button id="btnNuevo" class="btn btn-primary">➕ Nuevo</button>
+      </div>
+    </div>
+    <div class="table-container">
+      <table id="tbl" class="table-fixed w-full">
         <thead>
           <tr class="text-left text-slate-400">
             <th class="py-2 px-3">ID</th>
@@ -305,1277 +216,631 @@
             <th class="py-2 px-3">Asesor</th>
             <th class="py-2 px-3">Actividad</th>
             <th class="py-2 px-3">Modalidad</th>
-            <th class="py-2 px-3">Garantía</th>
-            <th class="py-2 px-3">Cobrado</th>
-            <th class="py-2 px-3">Monto</th>
-            <th class="py-2 px-3">Cliente</th>
-            <th class="py-2 px-3">Teléfono</th>
+            <th class="py-2 px-3 col-horas">Horas</th>
+            <th class="py-2 px-3 col-money">Pot. Garantía</th>
+            <th class="py-2 px-3 col-money">MO $</th>
+            <th class="py-2 px-3 col-money">Ref $</th>
+            <th class="py-2 px-3 col-money">Viáticos $</th>
+            <th class="py-2 px-3 col-money">IVA $</th>
+            <th class="py-2 px-3 col-money">Total $</th>
+            <th class="py-2 px-3 col-money">Eq. Subtotal</th>
+            <th class="py-2 px-3 col-money">Eq. Total</th>
+            <th class="py-2 px-3 col-money">Costo Inst.</th>
             <th class="py-2 px-3">Ciudad</th>
-            <th class="py-2 px-3">Notas</th>
-            <th class="py-2 px-3">Acciones</th>
+            <th class="py-2 px-3 col-notas">Notas</th>
+            <th class="py-2 px-3 col-acciones">Acciones</th>
           </tr>
         </thead>
-        <tbody id="tbody" class="divide-y divide-white/10 text-sm"></tbody>
+        <tbody id="tbody"></tbody>
       </table>
     </div>
   </section>
-
-  <!-- FOOTER -->
-  <footer class="text-center text-xs text-slate-500 pb-10">
-    © MDC Dental — Reporte Mensual · Desarrollado por Israel Landa Fuentes
-  </footer>
 </div>
-<script>
-/* ========= CONFIG ========= */
-const SHEETS_ENDPOINT = "/.netlify/functions/sheets";
-const EDIT_TOKEN = "42673";
 
-/* ========= DEMO (fallback si no hay hoja o falla) ========= */
-const demoData = [
-  {id: 1, fecha_inicio:"2025-08-02",hora_inicio:"09:00",fecha_fin:"2025-08-02",hora_fin:"10:15",asesor:"Israel",actividad:"Soporte de garantía",modalidad:"Remoto",garantia:"Sí",cliente:"Clínica Sonrisa Feliz",telefono:"3312345678",ciudad:"Guadalajara, JAL",notas:"Actualización de software",lat:20.6736,lng:-103.344,cobrado:"Sí",monto:1200},
-  {id: 2, fecha_inicio:"2025-08-03",hora_inicio:"11:30",fecha_fin:"2025-08-03",hora_fin:"14:00",asesor:"Selene",actividad:"Instalación",modalidad:"Presencial",garantia:"",cliente:"Dental Zapopan",telefono:"3323456789",ciudad:"Zapopan, JAL",notas:"Calibración fresadora",lat:20.7236,lng:-103.389,cobrado:"No",monto:0},
-  {id: 3, fecha_inicio:"2025-08-05",hora_inicio:"08:15",fecha_fin:"2025-08-05",hora_fin:"09:00",asesor:"Diego",actividad:"Proyecto",modalidad:"Remoto",garantia:"",cliente:"Sonrisas del Bajío",telefono:"4771234567",ciudad:"León, GTO",notas:"Integración CAD/CAM",lat:21.1221,lng:-101.68,cobrado:"Sí",monto:800},
-  {id: 4, fecha_inicio:"2025-08-08",hora_inicio:"10:00",fecha_fin:"2025-08-08",hora_fin:"13:00",asesor:"Yared",actividad:"Curso",modalidad:"Presencial",garantia:"",cliente:"Colegio Odontológico",telefono:"",ciudad:"Torreón, COAH",notas:"Entrenamiento fresadora",lat:25.54,lng:-103.40,cobrado:"Sí",monto:20000}
-];
-
-/* ========= STATE ========= */
-let state = {
-  rows: [],
-  month: dayjs().format('YYYY-MM'),
-  filters: { asesor:"", actividad:"", modalidad:"", garantia:"", q:"" },
-  charts: {},
-  clientBook: {},
-  calendar: null,
-  editId: null,
-  canEdit: false, // se vuelve true tras validar el token una vez  
-};
-
-let HAS_LOADED_ONCE = false;
-
-// === Helpers edición / banner ===
-function setEditBanner(show, id) {
-  const el = document.getElementById('banner');
-  if (!el) return;
-  if (show) {
-    el.classList.remove('hidden');
-    el.className = 'card p-3 mb-4 text-sm border-emerald-400/40 text-emerald-200';
-    el.innerText = `Estás editando el registro ID ${id}. Modifica y presiona "Guardar" para actualizar, o recarga/cancela para salir del modo edición.`;
-  } else {
-    hideBanner();
-  }
-}
-
-function resetFormAndState() {
-  const form = document.getElementById('form');
-  if (form) form.reset();
-  state.editingId = null;
-  setEditBanner(false);
-}
-
-// Si quieres convertir fecha/hora a los inputs (best effort)
-function toISODate(s) {
-  const m = parseDay(s);
-  return m ? m.format('YYYY-MM-DD') : '';
-}
-function toISOTime(s) {
-  const txt = String(s || '').trim();
-  // si viene "08:00:00" => "08:00"
-  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(txt)) return txt.slice(0,5);
-  return '';
-}
-
-
-/* ========= UI helpers ========= */
-function setBanner(msg,type="info"){
-  const el=document.getElementById('banner');
-  el.classList.remove('hidden');
-  el.innerText=msg;
-  el.className=`card p-3 mb-4 text-sm ${type==='error'?'border-red-500/40 text-red-300':''}`;
-}
-function hideBanner(){document.getElementById('banner').classList.add('hidden');}
-
-/* ========= Month select ========= */
-function initMonthSelect(){
-  const sel=document.getElementById('monthSelect'); const months=[]; const base=dayjs();
-  for(let i=0;i<12;i++) months.push(base.subtract(i,'month').format('YYYY-MM'));
-  sel.innerHTML=months.map(m=>`<option value="${m}">${dayjs(m+'-01').format('MMMM YYYY')}</option>`).join('');
-  sel.value=state.month; sel.addEventListener('change',e=>{state.month=e.target.value; renderAll();});
-}
-
-/* ========= Parse helpers ========= */
-function parseDay(d){
-  if (!d) return null;
-  if (Object.prototype.toString.call(d)==='[object Date]'){const m=dayjs(d);return m.isValid()?m:null;}
-  const s=String(d).trim();
-  let m=dayjs(s,['YYYY-MM-DD','DD/MM/YYYY','D/M/YYYY','YYYY/MM/DD'],true);
-  if(!m.isValid()) m=dayjs(s); // fallback ISO
-  return m.isValid()?m:null;
-}
-function formatMoney(n){try{return n.toLocaleString('es-MX',{style:'currency',currency:'MXN'});}catch(e){return '$'+(n||0).toFixed(2);}}
-
-/* ====== Modal helpers ====== */
-function setModalText(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = text ?? '—';
-}
-// formato compacto “DD/MM/YYYY HH:mm” (o solo fecha si all-day)
-function fmtRangeForUI(start, end, allDay) {
-  const s = dayjs(start);
-  const e = end ? dayjs(end) : null;
-  if (allDay) {
-    const d1 = s.format('DD/MM/YYYY');
-    // end en allDay suele ser “día siguiente”; restamos 1 si aplica
-    const d2 = e ? e.subtract(1, 'day').format('DD/MM/YYYY') : d1;
-    return { ini: d1, fin: d2 };
-  }
-  return {
-    ini: s.format('DD/MM/YYYY HH:mm'),
-    fin: e ? e.format('DD/MM/YYYY HH:mm') : ''
-  };
-}
-
-
-/* ========= Load/Save ========= */
-async function loadData() {
-  const prev = Array.isArray(state.rows) ? state.rows.slice() : [];
-  try {
-    const res = await fetch(SHEETS_ENDPOINT, { cache: 'no-store' });
-    if (!res.ok) throw new Error('No se pudo leer el endpoint');
-    const data = await res.json();
-    const arr = (Array.isArray(data) ? data : []).map(normalizeRowFromSheet);
-
-    if (arr.length) {
-      state.rows = arr;
-      hideBanner();
-    } else {
-      if (!HAS_LOADED_ONCE && prev.length === 0) {
-        state.rows = demoData.slice();
-        setBanner('Tu hoja está vacía. Mostrando datos DEMO.');
-      } else {
-        state.rows = prev; // conserva lo último
-        setBanner('La hoja está vacía. Se mantiene la vista anterior.', 'error');
-      }
-    }
-  } catch (err) {
-    console.error(err);
-    if (!HAS_LOADED_ONCE && prev.length === 0) {
-      state.rows = demoData.slice();
-      setBanner('No se pudo conectar con el Sheet. Mostrando datos DEMO.', 'error');
-    } else {
-      state.rows = prev; // conserva lo último
-      setBanner('Error de conexión. Se mantienen los datos ya cargados.', 'error');
-    }
-  } finally {
-    HAS_LOADED_ONCE = true;
-    rebuildClientBook();
-    populateClientDatalist();
-  }
-  return state.rows;
-}
-
-
-/* -- Normalizadores de fecha/hora desde Apps Script / Sheets -- */
-function normDate(s){
-  if(!s) return '';
-  // si viene como "2025-09-01T06:00:00.000Z"
-  const m = dayjs(s);
-  if (m.isValid()) return m.format('YYYY-MM-DD');
-  // si ya viene "YYYY-MM-DD" lo regresamos tal cual
-  const m2 = dayjs(String(s), ['YYYY-MM-DD','YYYY/M/D','D/M/YYYY','DD/MM/YYYY'], true);
-  return m2.isValid()? m2.format('YYYY-MM-DD') : '';
-}
-function normTime(s){
-  if(!s) return '';
-  // Si es tipo "1899-12-30T20:36:36.000Z" -> tomamos HH:mm local
-  const m = dayjs(s);
-  if (m.isValid()) return m.format('HH:mm');
-  // Si ya es "HH:mm"
-  if (/^\d{1,2}:\d{2}$/.test(String(s).trim())) return s.trim();
-  return '';
-}
-
-function normalizeRowFromSheet(r){
-  // Mapear claves flexibles
-  const asesor    = r.asesor || r.Asesor || r.tecnico || r.Técnico || r.Tecnico || '';
-  const actividad = r.actividad || r.Actividad || '';
-  const modalidad = r.modalidad || r.Modalidad || (['Remoto','Presencial'].includes(r.tipo)? r.tipo : '');
-
-  // Garantía derivada si no viene explícita
-  const garantiaDerivada =
-    actividad==='Soporte de garantía' ? 'Sí' :
-    actividad==='Soporte fuera de garantía' ? 'No' :
-    (r.garantia || r.Garantia || r.Garantía || '');
-
-  // ID
-  const id = r.id!==undefined && r.id!==null && r.id!=='' ? Number(r.id) : undefined;
-
-  // Fechas/Horas: normalizar cualquier ISO/serial de Sheets
-  const fIni = normDate(r.fecha_inicio || r['fecha inicio'] || r.fecha);
-  const hIni = normTime(r.hora_inicio  || r['hora inicio']);
-  const fFin = normDate(r.fecha_fin    || r['fecha fin']   || r.fecha);
-  const hFin = normTime(r.hora_fin     || r['hora fin']);
-
-  return {
-    id,
-    fecha_inicio: fIni,
-    hora_inicio : hIni,
-    fecha_fin   : fFin || fIni,
-    hora_fin    : hFin,
-    asesor,
-    actividad,
-    modalidad,
-    garantia: garantiaDerivada,
-    cliente:   r.cliente || r.Cliente || '',
-    telefono:  r.telefono || r.Teléfono || r.Telefono || '',
-    ciudad:    r.ciudad || r.Ciudad || '',
-    notas:     r.notas || r.Notas || '',
-    lat:       r.lat!=null ? Number(r.lat) : undefined,
-    lng:       r.lng!=null ? Number(r.lng) : undefined,
-    cobrado:   r.cobrado || r.Cobrado || 'No',
-    monto:     r.monto!=null ? Number(r.monto) : 0,
-  };
-}
-
-async function sheetsPost(payload, { timeoutMs = 15000 } = {}) {
-  const ctrl = new AbortController();
-  const to = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
-
-  let res, text = '', data = null;
-  try {
-    res = await fetch(SHEETS_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: ctrl.signal
-    });
-
-    try { text = await res.text(); } catch(_) {}
-    try { data = text ? JSON.parse(text) : null; } catch(_) {}
-
-    if (!res.ok) {
-      const msg = `HTTP ${res.status} ${res.statusText}` + (text ? ` · ${text.slice(0,180)}` : '');
-      throw new Error(msg);
-    }
-    if (data && (data.error || data.status === 'error' || data.ok === false)) {
-      throw new Error(data.error || 'API respondió error');
-    }
-    return data ?? { ok: true, raw: text };
-  } catch (err) {
-    // Propaga con mensaje claro
-    throw new Error(`Fallo al comunicar con Sheets: ${err.message || err}`);
-  } finally {
-    clearTimeout(to);
-  }
-}
-
-
-async function createRow(payload){
-  return sheetsPost({ op:'create', token: EDIT_TOKEN, data: payload });
-}
-
-async function updateRow(id, patch){
-  return sheetsPost({ op:'update', token: EDIT_TOKEN, id, data: patch });
-}
-
-async function deleteRow(id){
-  return sheetsPost({ op:'delete', token: EDIT_TOKEN, id });
-}
-
-/* ========= Client autocomplete (local) ========= */
-function loadClientBookLS(){try{const raw=localStorage.getItem('mdc_client_book');return raw?JSON.parse(raw):{};}catch(e){return {};} }
-function saveClientBookLS(){localStorage.setItem('mdc_client_book',JSON.stringify(state.clientBook));}
-function upsertClient(nombre,tel){ if(!nombre)return; state.clientBook[nombre]=tel||state.clientBook[nombre]||''; saveClientBookLS(); populateClientDatalist(); }
-function rebuildClientBook(){ state.clientBook=loadClientBookLS(); state.rows.forEach(r=>{ if(r.cliente){ upsertClient(r.cliente,r.telefono) } }); }
-function populateClientDatalist(){
-  const dl=document.getElementById('dlClientes'); if(!dl) return;
-  const names=Object.keys(state.clientBook).sort();
-  dl.innerHTML=names.map(n=>`<option value="${n}"></option>`).join('');
-  const clienteInput=document.getElementById('cliente');
-  const telInput=document.getElementById('telefono');
-  clienteInput?.addEventListener('change',()=>{
-    const name=clienteInput.value;
-    if(name&&state.clientBook[name]) telInput.value=state.clientBook[name];
-  });
-}
-
-/* ========= Filters ========= */
-function getFiltered(){
-  const {asesor,actividad,modalidad,garantia,q}=state.filters||{asesor:'',actividad:'',modalidad:'',garantia:'',q:''};
-  const [y,m]=state.month.split('-');
-  return state.rows.filter(r=>{
-    const md=parseDay(r.fecha_inicio||r.fecha);
-    const inMonth = md && md.format('YYYY-MM')===`${y}-${m}`;
-    if(!inMonth) return false;
-    if(asesor && r.asesor!==asesor) return false;
-    if(actividad && r.actividad!==actividad) return false;
-    if(modalidad && r.modalidad!==modalidad) return false;
-    if(garantia && r.garantia!==garantia) return false;
-    if(q){const s=`${r.cliente||''} ${r.ciudad||''} ${r.notas||''}`.toLowerCase(); if(!s.includes(q.toLowerCase())) return false;}
-    return true;
-  });
-}
-
-/* ========= KPIs / Charts ========= */
-function renderKPIs(rows){
-  const total=rows.length;
-  const soporte=rows.filter(r=> r.actividad==='Soporte de garantía' || r.actividad==='Soporte fuera de garantía').length;
-  const instal=rows.filter(r=> r.actividad==='Instalación').length;
-  const otros =rows.filter(r=> ['Evento','Proyecto','Curso','Vacaciones'].includes(r.actividad)).length;
-  const cob=rows.reduce((a,r)=>a+(r.cobrado==='Sí'?(Number(r.monto)||0):0),0);
-  document.getElementById('kpiTotal').innerText=total;
-  document.getElementById('kpiSoporte').innerText=soporte;
-  document.getElementById('kpiInst').innerText=instal;
-  document.getElementById('kpiEvt').innerText=otros;
-  document.getElementById('kpiCobrado').innerText=formatMoney(cob);
-}
-function ensureChart(id,config){
-  const ctx=document.getElementById(id)?.getContext('2d'); if(!ctx) return;
-  if(state.charts?.[id]) state.charts[id].destroy();
-  config.options = config.options || {};
-  config.options.responsive = true;
-  config.options.maintainAspectRatio = false;
-  state.charts = state.charts || {};
-  state.charts[id]=new Chart(ctx,config);
-}
-function renderCharts(rows){
-  const asesores = ['Israel','Selene','Diego','Yared','Gabriel'];
-  const acts = ['Soporte de garantía','Soporte fuera de garantía','Instalación','Evento','Proyecto','Curso','Vacaciones'];
-
-  const datasetsStack = acts.map(act => ({
-    label: act,
-    data: asesores.map(a => rows.filter(r => r.asesor === a && r.actividad === act).length)
-  }));
-  ensureChart('chartTechCount', {
-    type: 'bar',
-    data: { labels: asesores, datasets: datasetsStack },
-    options: {
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: { mode: 'index', intersect: false,
-          callbacks: { footer: (items)=>'Total: '+items.reduce((s,i)=>s+i.parsed.y,0) } }
-      },
-      scales: { x:{stacked:true,grid:{display:true}}, y:{stacked:true,beginAtZero:true,grid:{display:true}} }
-    }
-  });
-
-  const rem = rows.filter(r => r.modalidad === 'Remoto').length;
-  const pre = rows.filter(r => r.modalidad === 'Presencial').length;
-  ensureChart('chartRemPre', {
-    type: 'doughnut',
-    data: { labels: ['Remoto','Presencial'], datasets: [{ data: [rem, pre] }] },
-    options: { plugins: { legend: { position: 'bottom' } } }
-  });
-
-  ensureChart('chartActividad', {
-    type: 'doughnut',
-    data: { labels: acts, datasets: [{ data: acts.map(a => rows.filter(r => r.actividad === a).length) }] },
-    options: { plugins: { legend: { position: 'bottom' } } }
-  });
-
-  const g  = rows.filter(r => r.garantia === 'Sí').length;
-  const ng = rows.filter(r => r.garantia === 'No').length;
-  ensureChart('chartGarantia', {
-    type: 'doughnut',
-    data: { labels: ['Garantía','No garantía'], datasets: [{ data: [g, ng] }] },
-    options: { plugins: { legend: { position: 'bottom' } } }
-  });
-
-  const rev = asesores.map(a =>
-    rows.reduce((sum, r) => sum + (r.asesor === a && r.cobrado === 'Sí' ? (Number(r.monto)||0) : 0), 0)
-  );
-  ensureChart('chartRevenue', {
-    type: 'bar',
-    data: { labels: asesores, datasets: [{ label: 'MXN', data: rev }] },
-    options: {
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx)=>formatMoney(ctx.parsed.y) } } },
-      scales: { y:{beginAtZero:true, ticks:{ callback:(v)=>formatMoney(v) }} }
-    }
-  });
-}
-
-/* ========= Table ========= */
-function renderTable(rows){
-  const tbody=document.getElementById('tbody');
-
-  function fmt(d,t){
-    const base=parseDay(d); if(!base) return '';
-    if(t){
-      const m=dayjs(`${base.format('YYYY-MM-DD')} ${t}`,'YYYY-MM-DD HH:mm',true);
-      return m.isValid()?m.format('DD/MM/YYYY HH:mm'):base.format('DD/MM/YYYY');
-    }
-    return base.format('DD/MM/YYYY');
-  }
-
-  tbody.innerHTML = rows.map(r => `
-    <tr>
-      <td class="py-2 px-3"><div class="td-trunc">${r.id ?? ''}</div></td>
-      <td class="py-2 px-3"><div class="td-trunc nowrap">${fmt(r.fecha_inicio,r.hora_inicio)}</div></td>
-      <td class="py-2 px-3"><div class="td-trunc nowrap">${fmt(r.fecha_fin,r.hora_fin)}</div></td>
-      <td class="py-2 px-3"><div class="td-trunc">${r.asesor||''}</div></td>
-      <td class="py-2 px-3"><div class="td-trunc">${r.actividad||''}</div></td>
-      <td class="py-2 px-3"><div class="td-trunc">${r.modalidad||''}</div></td>
-      <td class="py-2 px-3"><div class="td-trunc">${r.garantia||''}</div></td>
-      <td class="py-2 px-3"><div class="td-trunc">${r.cobrado||'No'}</div></td>
-      <td class="py-2 px-3"><div class="td-trunc">${r.cobrado==='Sí'?formatMoney(Number(r.monto)||0):''}</div></td>
-      <td class="py-2 px-3"><div class="td-trunc">${r.cliente||''}</div></td>
-      <td class="py-2 px-3"><div class="td-trunc">${r.telefono||''}</div></td>
-      <td class="py-2 px-3"><div class="td-wrap td-trunc">${r.ciudad||''}</div></td>
-
-      <!-- NOTAS: envuelve, permite saltos y limita a 4 líneas -->
-      <td class="py-2 px-3">
-        <div class="td-wrap line-clamp-4 whitespace-pre-wrap">${r.notas||''}</div>
-      </td>
-
-      <!-- ACCIONES: ancho fijo y sin saltos -->
-      <td class="py-2 px-3 td-actions">
-        <button class="btn btn-primary text-lg" title="Editar"   onclick="onEditRow(${r.id ?? 'null'})">✏️</button>
-        <button class="btn btn-danger  text-lg" title="Eliminar" onclick="onDeleteRow(${r.id ?? 'null'})">🗑️</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-/* ===== Helpers de formulario (limpieza/edición) ===== */
-function clearForm(){
-  const form = document.getElementById('form');
-  form.reset();
-  ['fecha_inicio','hora_inicio','fecha_fin','hora_fin','cliente','telefono','direccion','monto','lat','lng','notas']
-    .forEach(n => { const el = form.querySelector(`[name="${n}"]`) || document.getElementById(n); if (el) el.value = ''; });
-  ['asesor','actividad','modalidad','cobrado'].forEach(n=>{
-    const el = form.querySelector(`[name="${n}"]`); if (el) el.selectedIndex = 0;
-  });
-}
-
-function fillFormFromRow(row){
-  const f = document.getElementById('form');
-  if (!f || !row) return;
-  const set = (name,val)=>{ const el=f.querySelector(`[name="${name}"]`); if(el!=null) el.value=(val??''); };
-
-  set('fecha_inicio', row.fecha_inicio || '');
-  set('hora_inicio',  row.hora_inicio  || '');
-  set('fecha_fin',    row.fecha_fin    || '');
-  set('hora_fin',     row.hora_fin     || '');
-  set('asesor',       row.asesor       || '');
-  set('actividad',    row.actividad    || '');
-  set('modalidad',    row.modalidad    || '');
-  set('cliente',      row.cliente      || '');
-  set('telefono',     row.telefono     || '');
-  set('ciudad',       row.ciudad       || '');
-  set('notas',        row.notas        || '');
-  set('lat',          row.lat ?? '');
-  set('lng',          row.lng ?? '');
-  set('cobrado',      row.cobrado || 'No');
-  set('monto',        row.cobrado==='Sí' ? (row.monto ?? 0) : '');
-}
-
-/* ===== Token por evento (sin sesión) ===== */
-function assertToken(){
-  const t = prompt('Ingresa el token de edición:');
-  if (t===null) return false;
-  if (t!==EDIT_TOKEN){ alert('Token incorrecto'); return false; }
-  return true;
-}
-
-/* ========= Edit/Delete Handlers ========= */
-async function onEditRow(id){
-  if (id==null){ alert('Este registro no tiene ID.'); return; }
-  if (!assertToken()) return;
-
-  const row = state.rows.find(r=>Number(r.id)===Number(id));
-  if (!row){ alert('No se encontró el registro en memoria.'); return; }
-
-  // Ponemos el formulario en modo edición
-  state.editingId = id;
-  fillFormFromRow(row);
-
-  // Banner informativo + botón de cancelar edición
-  const banner = document.getElementById('banner');
-  if (banner){
-    banner.className = 'card p-3 mb-4 text-sm';
-    banner.innerHTML = `
-      Estás editando el registro <strong>#${id}</strong>.
-      Ajusta los campos y presiona <strong>Actualizar</strong> (botón Guardar).
-      <button id="btnCancelEdit" class="ml-2 btn">Cancelar edición</button>
-    `;
-    banner.classList.remove('hidden');
-    setTimeout(()=>{
-      document.getElementById('btnCancelEdit')?.addEventListener('click', ()=>{
-        state.editingId = null;
-        clearForm();
-        banner.classList.add('hidden');
-      });
-    },0);
-  }
-
-  // Cambiamos el submit para actualizar cuando haya editingId.
-  const form = document.getElementById('form');
-  if (!form._editHookAdded){
-    form._editHookAdded = true;
-    form.addEventListener('submit', async (e)=>{
-      // ESTE listener ya existe en tu código original;
-      // aquí solo aseguramos la rama de “update” si hay editingId.
-      // (Tu submit original ya debe construir el payload `p`)
-      // Asegúrate de que tu submit use algo así:
-      //
-      // if (state.editingId) { await updateRow(state.editingId, p); }
-      // else { await createRow(p); }
-      //
-      // y al finalizar:
-      //   state.editingId = null;
-      //   clearForm();
-      //   await loadData(); renderAll();
-      //
-      // No duplicamos la lógica aquí para no romper tu submit actual.
-    }, { capture: true });
-  }
-}
-
-async function onDeleteRow(id){
-  if (id==null){ alert('Este registro no tiene ID.'); return; }
-  if (!assertToken()) return;
-  if (!confirm(`¿Eliminar registro ID ${id}?`)) return;
-
-  try{
-    await deleteRow(id);
-    // Si estabas editando este mismo ID, sal del modo edición
-    if (state.editingId === id){
-      state.editingId = null;
-      clearForm();
-      document.getElementById('banner')?.classList.add('hidden');
-    }
-    await loadData();
-    renderAll();
-  }catch(e){
-    console.error(e);
-    alert('Error al eliminar');
-  }
-}
-
-/* ========= Google Maps ========= */
-let gmap=null,gmarkers=[],geocoder=null,placeAutocomplete=null,clickMarker=null;
-function ensureGoogleReady(){return new Promise(res=>{if(window.google?.maps)return res(); const iv=setInterval(()=>{if(window.google?.maps){clearInterval(iv);res();}},100);});}
-async function initMap(){
-  await ensureGoogleReady();
-  geocoder=new google.maps.Geocoder();
-  gmap=new google.maps.Map(document.getElementById('map'),{center:{lat:22.0,lng:-102.0},zoom:5,mapTypeControl:false,streetViewControl:false});
-  gmap.addListener('click',(e)=>{setClickMarker(e.latLng); document.getElementById('lat')&&(document.getElementById('lat').value=e.latLng.lat().toFixed(6)); document.getElementById('lng')&&(document.getElementById('lng').value=e.latLng.lng().toFixed(6));});
-  const input=document.getElementById('direccion');
-  if(input){
-    placeAutocomplete=new google.maps.places.Autocomplete(input,{fields:['geometry']});
-    placeAutocomplete.addListener('place_changed',()=>{const place=placeAutocomplete.getPlace(); if(place?.geometry){const pos=place.geometry.location; gmap.setCenter(pos); gmap.setZoom(14); setClickMarker(pos); document.getElementById('lat')&&(document.getElementById('lat').value=pos.lat().toFixed(6)); document.getElementById('lng')&&(document.getElementById('lng').value=pos.lng().toFixed(6));} });
-  }
-}
-function setClickMarker(latLng){ if(clickMarker) clickMarker.setMap(null); clickMarker=new google.maps.Marker({position:latLng,map:gmap,animation:google.maps.Animation.DROP}); }
-function toNum(n){const v=Number(n); return Number.isFinite(v)?v:null;}
-function clearMarkers(){gmarkers.forEach(m=>m.setMap(null)); gmarkers=[];}
-function renderMarkers(rows){
-  if(!gmap) return; clearMarkers();
-  const bounds=new google.maps.LatLngBounds(); let any=false;
-  rows.forEach(r=>{const lat=toNum(r.lat), lng=toNum(r.lng||r.long); if(lat==null||lng==null) return; const pos={lat,lng};
-    const marker=new google.maps.Marker({position:pos,map:gmap,title:`${r.cliente||'Cliente'} — ${r.asesor||''}`});
-    const html=`<div style="min-width:220px"><div><strong>${r.cliente||'Cliente'}</strong></div><div>${r.ciudad||''}</div><div>${r.actividad||''} · ${r.modalidad||''} · Garantía: ${r.garantia||''}</div><div>Por: ${r.asesor||''}</div><div>${(r.fecha_inicio||'')} ${r.hora_inicio||''}</div>${r.cobrado==='Sí'?`<div><strong>Monto:</strong> ${formatMoney(Number(r.monto)||0)}</div>`:''}</div>`;
-    const iw=new google.maps.InfoWindow({content:html}); marker.addListener('click',()=>iw.open({anchor:marker,map:gmap}));
-    gmarkers.push(marker); bounds.extend(pos); any=true;});
-  if(any){ if(gmarkers.length===1){gmap.setCenter(gmarkers[0].getPosition()); gmap.setZoom(14);} else {gmap.fitBounds(bounds,60);} }
-}
-
-/* ========= CSV / PDF ========= */
-function exportCSV(rows){
-  const header=['id','fecha_inicio','hora_inicio','fecha_fin','hora_fin','asesor','actividad','modalidad','garantia','cobrado','monto','cliente','telefono','ciudad','notas','lat','lng'];
-  const lines=[header.join(',')].concat(rows.map(r=> header.map(h=>{const v=(r[h]??'').toString().replaceAll('"','""'); return `"${v}"`;}).join(',')));
-  const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`mdc-servicio-${state.month}.csv`; a.click(); URL.revokeObjectURL(url);
-}
-
-// --- Exportar a PDF (reponer) ---
-async function exportPDF(){
-  try{
-    const { jsPDF } = window.jspdf;
-    const node = document.body;             // puedes cambiar a un wrapper si prefieres
-    const canvas = await html2canvas(node, { scale: 2, useCORS: true });
-    const img = canvas.toDataURL('image/png');
-
-    const pdf = new jsPDF('p','mm','a4');
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const imgH  = canvas.height * pageW / canvas.width;
-
-    let y = 0;
-    pdf.addImage(img, 'PNG', 0, y, pageW, imgH);
-    let remaining = imgH - pageH;
-    while (remaining > 0) {
-      pdf.addPage();
-      y -= pageH;
-      pdf.addImage(img, 'PNG', 0, y, pageW, imgH);
-      remaining -= pageH;
-    }
-    pdf.save(`MDC-Reporte-${state.month}.pdf`);
-  }catch(err){
-    console.error('PDF error:', err);
-    setBanner('No se pudo exportar el PDF.', 'error');
-  }
-}
-
-/* ===== TeamViewer CSV (conexiones y horas) ===== */
-async function loadTeamViewerCSV() {
-  try {
-    const res = await fetch('connectionreport.csv', { cache: 'no-store' });
-    if (!res.ok) throw new Error('CSV no encontrado');
-    const text = await res.text();
-    const { rows, meta } = parseCSV(text);
-
-    // Intenta detectar columnas de fecha-inicio y duración
-    const headerMap = meta.headerMap; // { headerLower: index }
-    const durKey = Object.keys(headerMap).find(k =>
-      k.includes('duration') || k.includes('time spent') || k.includes('minutes') || k.includes('mins')
-    );
-    const startKey = Object.keys(headerMap).find(k =>
-      k.includes('start') || k.includes('date') || k.includes('time')
-    );
-    if (!durKey || !startKey) throw new Error('No se encontraron columnas de duración/fecha en el CSV');
-
-    // Normaliza filas: { date: dayjs, durationHours: number }
-    const normalized = rows.map(r => {
-      const dRaw = r[headerMap[startKey]]?.trim();
-      const m = parseDay(dRaw);
-      const durRaw = r[headerMap[durKey]]?.trim();
-      const hours = parseDurationToHours(durRaw);
-      return (m && Number.isFinite(hours)) ? { date: m, durationHours: hours } : null;
-    }).filter(Boolean);
-
-    return normalized;
-  } catch (e) {
-    console.warn('TeamViewer CSV:', e);
-    showTVBanner('No se pudo leer connectionreport.csv. (Colócalo en /public y verifica encabezados).', true);
-    return [];
-  }
-}
-
-function showTVBanner(msg, isError=false) {
-  const el = document.getElementById('tvBanner');
-  if (!el) return;
-  el.textContent = msg || '';
-  el.className = 'text-xs mt-2 ' + (isError ? 'text-red-300' : 'text-slate-400');
-}
-
-/* --- Parser CSV simple (soporta comillas) --- */
-function parseCSV(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim().length);
-  if (!lines.length) return { rows: [], meta: { headerMap: {} } };
-  const header = splitCSVLine(lines[0]);
-  const headerMap = Object.fromEntries(header.map((h, i) => [h.trim().toLowerCase(), i]));
-  const rows = lines.slice(1).map(line => splitCSVLine(line, header.length));
-  return { rows: rows.map(arr => arr), meta: { header, headerMap } };
-}
-function splitCSVLine(line, padTo) {
-  const out = []; let cur = '', inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
-      else inQ = !inQ;
-    } else if (ch === ',' && !inQ) { out.push(cur); cur = ''; }
-    else { cur += ch; }
-  }
-  out.push(cur);
-  if (padTo && out.length < padTo) { while (out.length < padTo) out.push(''); }
-  return out;
-}
-
-/* --- Normaliza duraciones: "15" / "15 min" / "15,5" => horas --- */
-function parseDurationToHours(s) {
-  if (!s) return 0;
-  const cleaned = String(s).toLowerCase().replace('min', '').trim().replace(',', '.');
-  const mins = Number(cleaned);
-  if (!Number.isFinite(mins)) return 0;
-  return mins / 60;
-}
-
-/* --- KPIs superiores de TV --- */
-function setTVKpis(totalConn, totalHours) {
-  const elC = document.getElementById('kpiTvConn');
-  const elH = document.getElementById('kpiTvHours');
-  if (elC) elC.textContent = String(totalConn);
-  if (elH) elH.textContent = String(totalHours.toFixed(2));
-}
-
-/* --- Render de la gráfica --- */
-let tvChart = null;
-async function renderTeamViewerChart() {
-  const data = await loadTeamViewerCSV();
-  if (!data.length) {
-    if (tvChart) { tvChart.destroy(); tvChart = null; }
-    setTVKpis(0, 0);
-    return;
-  }
-  showTVBanner('Datos cargados desde connectionreport.csv');
-
-  // Filtra por mes activo
-  const [y, m] = state.month.split('-');
-  const monthData = data.filter(d => d.date.format('YYYY-MM') === `${y}-${m}`);
-
-  // Agrega por día
-  const dayMap = new Map();
-  monthData.forEach(d => {
-    const key = d.date.format('DD');
-    if (!dayMap.has(key)) dayMap.set(key, { count: 0, hours: 0 });
-    const agg = dayMap.get(key);
-    agg.count += 1;
-    agg.hours += d.durationHours;
-  });
-
-  const labels = Array.from(dayMap.keys()).sort((a,b)=>a.localeCompare(b));
-  const counts = labels.map(k => dayMap.get(k)?.count || 0);
-  const hours  = labels.map(k => Number((dayMap.get(k)?.hours || 0).toFixed(2)));
-
-  const totalConn  = counts.reduce((a,b)=>a+b,0);
-  const totalHours = Number(hours.reduce((a,b)=>a+b,0).toFixed(2));
-  setTVKpis(totalConn, totalHours);
-
-  const ctx = document.getElementById('chartTV')?.getContext('2d');
-  if (!ctx) return;
-
-  if (tvChart) tvChart.destroy();
-  tvChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { type: 'bar',  label: 'Conexiones', data: counts, yAxisID: 'yCount' },
-        { type: 'line', label: 'Horas',       data: hours,  yAxisID: 'yHours', tension: 0.25 }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: { mode: 'index', intersect: false,
-          callbacks: { label: (ctx) =>
-            ctx.dataset.yAxisID === 'yHours'
-              ? `Horas: ${ctx.parsed.y}`
-              : `Conexiones: ${ctx.parsed.y}` } }
-      },
-      scales: {
-        yCount: { position: 'left', beginAtZero: true, ticks: { precision: 0 } },
-        yHours: { position: 'right', beginAtZero: true }
-      }
-    }
-  });
-}
-
-
-/* ===== Calendario ===== */
-let fcCalendar = null;
-function pickColor(act){
-  const map={
-    'Soporte de garantía':'#22c55e',
-    'Soporte fuera de garantía':'#f59e0b',
-    'Instalación':'#38bdf8',
-    'Evento':'#a78bfa',
-    'Proyecto':'#f472b6',
-    'Curso':'#2dd4bf',
-    'Vacaciones':'#94a3b8'
-  };
-  return map[act] || '#64748b';
-}
-function parseLocalDateTime(dateStr, timeStr){
-  const hasTime = timeStr && String(timeStr).trim() !== '';
-  if (!dateStr) return null;
-  const d = normDate(dateStr);               // asegura YYYY-MM-DD
-  const t = hasTime ? normTime(timeStr) : '';
-  const s = hasTime ? `${d} ${t}` : d;
-  const formats = hasTime
-    ? ['YYYY-MM-DD HH:mm','YYYY-MM-DD H:mm']
-    : ['YYYY-MM-DD'];
-  let m = dayjs(s, formats, true);
-  if (!m.isValid()) m = dayjs(s); // último recurso
-  return m.isValid()? m : null;
-}
-function buildCalendarEvents(rows) {
-  const events = [];
-
-  rows.forEach(r => {
-    const hasStartTime = r.hora_inicio && String(r.hora_inicio).trim() !== '';
-    const hasEndTime   = r.hora_fin    && String(r.hora_fin).trim()   !== '';
-
-    const start = parseLocalDateTime(r.fecha_inicio, hasStartTime ? r.hora_inicio : null);
-    if (!start) {
-      console.warn('Evento con inicio inválido, se omite:', r);
-      return;
-    }
-
-    let end = null;
-    if (hasEndTime) {
-      end = parseLocalDateTime(r.fecha_fin || r.fecha_inicio, r.hora_fin);
-    } else if (hasStartTime) {
-      end = start.add(1, 'hour');
-    } else {
-      end = parseLocalDateTime(r.fecha_inicio, null)?.add(1, 'day');
-    }
-
-    const allDay = !(hasStartTime || hasEndTime);
-
-    events.push({
-      id: r.id ?? undefined,
-      title: `${r.actividad || 'Actividad'} — ${r.asesor || r.tecnico || ''}`,
-      start: start.toDate(),
-      end:   end ? end.toDate() : undefined,
-      allDay,
-      color: pickColor(r.actividad),
-      extendedProps: {
-        // para el modal
-        id: r.id,
-        asesor: r.asesor || r.tecnico || '',
-        actividad: r.actividad || '',
-        modalidad: r.modalidad || '',
-        garantia: r.garantia || '',
-        cobrado: r.cobrado || 'No',
-        monto: Number(r.monto) || 0,
-        cliente: r.cliente || '',
-        telefono: r.telefono || '',
-        ciudad: r.ciudad || '',
-        notas: r.notas || '',
-      }
-    });
-  });
-
-  return events;
-}
-
-function renderCalendar(){
-  const el=document.getElementById('calendar'); if(!el) return;
-  const events = buildCalendarEvents(getFiltered());
-  if (fcCalendar){ fcCalendar.destroy(); fcCalendar=null; }
-  fcCalendar = new FullCalendar.Calendar(el,{
-    initialView:'dayGridMonth',
-    locale:'es',
-    timeZone:'local',
-    height:'100%',
-    expandRows:true,
-    headerToolbar:{ left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,timeGridDay' },
-    events,
-    eventClick: ({ event }) => {
-      const xp = event.extendedProps || {};
-      const { ini, fin } = fmtRangeForUI(event.start, event.end, event.allDay);
-
-      setModalText('em_id', xp.id ?? '—');
-      setModalText('em_asesor', xp.asesor);
-      setModalText('em_actividad', xp.actividad);
-      setModalText('em_modalidad', xp.modalidad);
-      setModalText('em_inicio', ini);
-      setModalText('em_fin', fin || '—');
-      setModalText('em_garantia', xp.garantia || (xp.actividad==='Soporte de garantía'?'Sí':xp.actividad==='Soporte fuera de garantía'?'No':'—'));
-      setModalText('em_cobrado', xp.cobrado);
-      setModalText('em_monto', formatMoney(xp.monto || 0));
-      setModalText('em_cliente', xp.cliente);
-      setModalText('em_telefono', xp.telefono);
-      setModalText('em_ciudad', xp.ciudad);
-      setModalText('em_notas', xp.notas);
-
-      const idNum = Number(xp.id);
-      document.getElementById('eventModalEdit').onclick  = () => { closeEventModal(); if (Number.isFinite(idNum)) onEditRow(idNum);  };
-      document.getElementById('eventModalDelete').onclick= () => { closeEventModal(); if (Number.isFinite(idNum)) onDeleteRow(idNum); };
-
-      openEventModal();
-  }
-
-  });
-  requestAnimationFrame(()=>{ fcCalendar.render(); fcCalendar.updateSize(); setTimeout(()=>fcCalendar.updateSize(),200); });
-}
-window.addEventListener('resize',()=>fcCalendar?.updateSize());
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden) fcCalendar?.updateSize(); });
-
-// ===== Modal helpers =====
-function getModalEl() {
-  return document.getElementById('eventModal');
-}
-
-function openEventModal() {
-  const modal = getModalEl();
-  if (!modal) return;
-  modal.classList.remove('hidden');
-  document.body.classList.add('overflow-hidden');
-}
-
-function closeEventModal() {
-  const modal = getModalEl();
-  if (!modal) return;
-  modal.classList.add('hidden');
-  document.body.classList.remove('overflow-hidden');
-}
-
-/*// Enlaza cierres: botón "Cerrar", "X", backdrop y tecla ESC
-function setupEventModalBindings() {
-  const modal = getModalEl();
-  if (!modal) return;
-
-  // Botones explícitos por id
-  const btnClose = document.getElementById('eventModalClose');
-  const btnCloseX = document.getElementById('eventModalCloseX');
-  btnClose?.addEventListener('click', (e) => { e.preventDefault(); closeEventModal(); });
-  btnCloseX?.addEventListener('click', (e) => { e.preventDefault(); closeEventModal(); });
-
-  // Cualquier elemento con data-close-modal o data-close="modal"
-  modal.querySelectorAll('[data-close-modal], [data-close="modal"]').forEach(el => {
-    el.addEventListener('click', (e) => { e.preventDefault(); closeEventModal(); });
-  });
-
-  // Clic en el backdrop (fuera de la tarjeta)
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) closeEventModal();
-  });
-
-  // Tecla ESC
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-      closeEventModal();
-    }
-  });
-}*/
-
-function safeRenderAll(){
-  try {
-    renderAll();
-  } catch (e) {
-    console.error('Render error:', e);
-    setBanner('Hubo un error al refrescar la vista, pero tus datos siguen intactos.', 'error');
-  }
-}
-
-
-
-/* ========= Render ========= */
-function renderAll(){
-  const rows = getFiltered();
-  renderKPIs(rows);
-  renderCharts(rows);
-  renderTable(rows);
-  renderMarkers(rows);
-  renderTeamViewerChart();   // <-- ESTA LÍNEA
-  renderCalendar();
-}
-
-
-/* ========= Bind ========= */
-function bindUI(){
-  const fAsesor   = document.getElementById('fAsesor');
-  const fActividad= document.getElementById('fActividad');
-  const fModalidad= document.getElementById('fModalidad');
-  const fGarantia = document.getElementById('fGarantia');
-  const fBusqueda = document.getElementById('fBusqueda');
-
-  fAsesor.addEventListener('change',e=>{state.filters.asesor=e.target.value; renderAll();});
-  fActividad.addEventListener('change',e=>{state.filters.actividad=e.target.value; renderAll();});
-  fModalidad.addEventListener('change',e=>{state.filters.modalidad=e.target.value; renderAll();});
-  fGarantia.addEventListener('change',e=>{state.filters.garantia=e.target.value; renderAll();});
-  fBusqueda.addEventListener('input',e=>{state.filters.q=e.target.value; renderAll();});
-
-  document.getElementById('btnExportCSV').addEventListener('click',()=>exportCSV(getFiltered()));
-  document.getElementById('exportPdfBtn').addEventListener('click',exportPDF);
-
-  const cobSel=document.getElementById('cobrado'), monInp=document.getElementById('monto');
-  function toggleMonto(){const yes=cobSel?.value==='Sí'; if(monInp){monInp.disabled=!yes; if(!yes) monInp.value='';}}
-  cobSel?.addEventListener('change',toggleMonto); toggleMonto();
-
-  // === SUBMIT ===
-  const form=document.getElementById('form');
-  form.addEventListener('submit',async (e)=>{
-    e.preventDefault();
-    const fd=new FormData(form);
-    const p=Object.fromEntries(fd.entries());
-
-    // Derivar garantía
-    if (p.actividad === 'Soporte de garantía') p.garantia = 'Sí';
-    else if (p.actividad === 'Soporte fuera de garantía') p.garantia = 'No';
-    else p.garantia = '';
-
-    // Validación de tiempo
-    const start=dayjs(`${p.fecha_inicio} ${p.hora_inicio}`,'YYYY-MM-DD HH:mm');
-    const end  =dayjs(`${p.fecha_fin} ${p.hora_fin}`,'YYYY-MM-DD HH:mm');
-    if(!start.isValid()||!end.isValid()||end.isBefore(start)){
-      setBanner('Revisa fechas/horas: el fin no puede ser antes que el inicio.','error');
-      return;
-    }
-
-    // Monto
-    if(p.cobrado==='Sí'){p.monto=p.monto?Number(p.monto):0;} else {p.monto=0;}
-
-    // Coords
-    p.lat = document.getElementById('lat').value ? Number(document.getElementById('lat').value) : undefined;
-    p.lng = document.getElementById('lng').value ? Number(document.getElementById('lng').value) : undefined;
-
-    // Agenda local de clientes
-    upsertClient(p.cliente,p.telefono);
-
-    try {
-  if (state.editingId) {
-    if (!assertToken()) return;
-    await updateRow(state.editingId, p);
-  } else {
-    await createRow(p);
-  }
-  await loadData();
-  resetFormAndState();
-  safeRenderAll();
-} catch (err) {
-  console.error(err);
-  setBanner('Error al guardar. Se mantienen los datos anteriores.', 'error');
-  // AUN ASÍ re-render para mantener viva la UI:
-  safeRenderAll();
-}
-  });
-}
-
-// Cierre modal (botones y fondo)
-['eventModalClose', 'eventModalClose2', 'eventModalBackdrop'].forEach(id => {
-  const el = document.getElementById(id);
-  el?.addEventListener('click', modalHide);
-});
-// Cerrar con ESC
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') modalHide();
-});
-
-
-/* ========= Edición (modo en formulario) ========= */
-let editingId = null;
-
-function setEditBanner(id){
-  const b=document.getElementById('editStatus'); const btn=document.getElementById('btnCancelEdit');
-  if(!b||!btn) return;
-  if(id){
-    b.textContent=`Estás editando el registro #${id}. Ajusta los campos y presiona Actualizar.`;
-    b.classList.remove('hidden'); btn.classList.remove('hidden');
-  }else{
-    b.classList.add('hidden'); btn.classList.add('hidden');
-  }
-}
-document.getElementById('btnCancelEdit')?.addEventListener('click',()=>{
-  editingId=null; setEditBanner(null);
-  document.getElementById('form')?.reset();
-});
-
-function fillFormFromRow(r){
-  const form=document.getElementById('form'); if(!form) return;
-  const map = {
-    id:'id', fecha_inicio:'fecha_inicio', hora_inicio:'hora_inicio',
-    fecha_fin:'fecha_fin', hora_fin:'hora_fin', asesor:'asesor',
-    actividad:'actividad', modalidad:'modalidad', cliente:'cliente',
-    telefono:'telefono', ciudad:'ciudad', notas:'notas',
-    cobrado:'cobrado', monto:'monto'
-  };
-  Object.keys(map).forEach(k=>{
-    if(form[map[k]]!=null && r[k]!=null) form[map[k]].value = r[k];
-  });
-}
-
-async function onSubmitForm(e){
-  e.preventDefault();
-  const form=e.target;
-  const fd=new FormData(form);
-  const p=Object.fromEntries(fd.entries());
-
-  // Normalizar y derivar
-  p.fecha_inicio = normDate(p.fecha_inicio);
-  p.fecha_fin    = normDate(p.fecha_fin || p.fecha_inicio);
-  p.hora_inicio  = normTime(p.hora_inicio);
-  p.hora_fin     = normTime(p.hora_fin);
-  if (p.actividad==='Soporte de garantía') p.garantia='Sí';
-  else if (p.actividad==='Soporte fuera de garantía') p.garantia='No';
-  else p.garantia='';
-  p.monto = p.cobrado==='Sí' ? Number(p.monto||0) : 0;
-
-  try{
-    if (editingId){
-      await updateRow(editingId, p);
-    }else{
-      await createRow(p);
-    }
-    await loadData();
-    renderAll();
-    form.reset();
-    editingId=null; setEditBanner(null);
-  }catch(err){
-    console.error(err);
-    setBanner('Error al guardar. Revisa tu Apps Script/endpoint.','error');
-  }
-}
-
-async function onEditRow(id){
-  if (id==null){ alert('Este registro no tiene ID.'); return; }
-  // Pedimos token por evento
-  if (!assertToken()) return;
-
-  const row = state.rows.find(r=>Number(r.id)===Number(id));
-  if (!row){ alert('No se encontró el registro.'); return; }
-
-  // Rellenar formulario
-  const form = document.getElementById('form');
-  form.querySelector('[name=fecha_inicio]').value = toISODate(row.fecha_inicio);
-  form.querySelector('[name=hora_inicio]').value  = toISOTime(row.hora_inicio);
-  form.querySelector('[name=fecha_fin]').value    = toISODate(row.fecha_fin || row.fecha_inicio);
-  form.querySelector('[name=hora_fin]').value     = toISOTime(row.hora_fin);
-  form.querySelector('[name=asesor]').value       = row.asesor || '';
-  form.querySelector('[name=actividad]').value    = row.actividad || '';
-  form.querySelector('[name=modalidad]').value    = row.modalidad || '';
-  form.querySelector('[name=cliente]').value      = row.cliente || '';
-  form.querySelector('[name=telefono]').value     = row.telefono || '';
-  form.querySelector('[name=ciudad]').value       = row.ciudad || '';
-  form.querySelector('[name=notas]').value        = row.notas || '';
-  document.getElementById('lat').value            = (row.lat ?? '').toString();
-  document.getElementById('lng').value            = (row.lng ?? '').toString();
-
-  // Cobrado/monto
-  const cobSel = document.getElementById('cobrado');
-  const monInp = document.getElementById('monto');
-  cobSel.value = row.cobrado || 'No';
-  monInp.value = row.cobrado === 'Sí' ? (Number(row.monto)||0) : '';
-  monInp.disabled = row.cobrado !== 'Sí';
-
-  state.editingId = id;
-  setEditBanner(true, id);
-  form.scrollIntoView({behavior:'smooth', block:'start'});
-}
-
-async function onDeleteRow(id){
-  if (id==null){ alert('Este registro no tiene ID.'); return; }
-  // Token por evento
-  if (!assertToken()) return;
-  if (!confirm(`¿Eliminar registro ID ${id}?`)) return;
-
-  try {
-  await deleteRow(id);
-  if (state.editingId === id) resetFormAndState();
-  await loadData();
-  safeRenderAll();
-} catch (e) {
-  console.error(e);
-  alert('Error al eliminar. Se mantiene el estado anterior.');
-  safeRenderAll();
-}
-
-}
-
-
-/* ========= Init ========= */
-(async function(){
-  lucide.createIcons?.();
-  initMonthSelect();
-  bindUI();
-  await loadData();
-  renderAll();
-})();
-window.initMap = initMap;
-</script>
-
-<!-- ========== Modal detalle de evento ========== -->
-<div id="eventModal" class="fixed inset-0 z-[100] hidden">
-  <!-- backdrop -->
-  <div id="eventModalBackdrop" class="absolute inset-0 bg-black/60"></div>
-
-  <!-- card -->
-  <div class="absolute inset-0 flex items-center justify-center p-4">
-    <div class="w-full max-w-2xl card border border-white/10 rounded-2xl overflow-hidden">
-      <div class="flex items-center justify-between px-5 py-3 border-b border-white/10">
-        <h3 class="text-lg font-semibold">Detalle de actividad</h3>
-        <button id="eventModalCloseX" type="button" aria-label="Cerrar" class="absolute right-3 top-3">✖</button>
+<!-- MODAL: Nuevo/Editar registro (ligero, puedes ampliar) -->
+<div id="modalEdit" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-30">
+  <div class="card w-full max-w-3xl p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-semibold" id="editTitle">Nuevo registro</h3>
+      <button class="btn" onclick="closeEdit()">✖</button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div>
+        <label class="text-xs text-slate-400">Fecha inicio</label>
+        <input id="eFechaIni" type="date" class="formc px-3 py-2 w-full" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Hora inicio</label>
+        <input id="eHoraIni" type="time" class="formc px-3 py-2 w-full" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Fecha fin</label>
+        <input id="eFechaFin" type="date" class="formc px-3 py-2 w-full" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Hora fin</label>
+        <input id="eHoraFin" type="time" class="formc px-3 py-2 w-full" />
       </div>
 
-      <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-        <div>
-          <div class="text-slate-400 text-xs">ID</div>
-          <div id="em_id" class="font-medium">—</div>
-        </div>
-        <div>
-          <div class="text-slate-400 text-xs">Asesor</div>
-          <div id="em_asesor" class="font-medium">—</div>
-        </div>
-
-        <div>
-          <div class="text-slate-400 text-xs">Actividad</div>
-          <div id="em_actividad" class="font-medium">—</div>
-        </div>
-        <div>
-          <div class="text-slate-400 text-xs">Modalidad</div>
-          <div id="em_modalidad" class="font-medium">—</div>
-        </div>
-
-        <div>
-          <div class="text-slate-400 text-xs">Inicio</div>
-          <div id="em_inicio" class="font-medium">—</div>
-        </div>
-        <div>
-          <div class="text-slate-400 text-xs">Fin</div>
-          <div id="em_fin" class="font-medium">—</div>
-        </div>
-
-        <div>
-          <div class="text-slate-400 text-xs">Garantía</div>
-          <div id="em_garantia" class="font-medium">—</div>
-        </div>
-        <div>
-          <div class="text-slate-400 text-xs">Cobrado</div>
-          <div id="em_cobrado" class="font-medium">—</div>
-        </div>
-
-        <div>
-          <div class="text-slate-400 text-xs">Monto</div>
-          <div id="em_monto" class="font-medium">—</div>
-        </div>
-
-        <div>
-          <div class="text-slate-400 text-xs">Cliente</div>
-          <div id="em_cliente" class="font-medium break-words">—</div>
-        </div>
-        <div>
-          <div class="text-slate-400 text-xs">Teléfono</div>
-          <div id="em_telefono" class="font-medium break-words">—</div>
-        </div>
-
-        <div class="sm:col-span-2">
-          <div class="text-slate-400 text-xs">Ciudad / Dirección</div>
-          <div id="em_ciudad" class="font-medium break-words">—</div>
-        </div>
-
-        <div class="sm:col-span-2">
-          <div class="text-slate-400 text-xs">Notas</div>
-          <div id="em_notas" class="font-medium whitespace-pre-wrap break-words">—</div>
-        </div>
+      <div>
+        <label class="text-xs text-slate-400">Asesor</label>
+        <input id="eAsesor" class="formc px-3 py-2 w-full" placeholder="Israel / Selene / …" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Actividad</label>
+        <select id="eActividad" class="formc px-3 py-2 w-full">
+          <option>Soporte de garantía</option>
+          <option>Soporte fuera de garantía</option>
+          <option>Instalación</option>
+          <option>Evento</option>
+          <option>Proyecto</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Modalidad</label>
+        <select id="eModalidad" class="formc px-3 py-2 w-full">
+          <option>Presencial</option>
+          <option>Remoto</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Garantía</label>
+        <select id="eGarantia" class="formc px-3 py-2 w-full">
+          <option>Sí</option>
+          <option>No</option>
+        </select>
       </div>
 
-      <div class="px-5 py-4 border-t border-white/10 flex items-center justify-end gap-2">
-        <button id="eventModalEdit" class="btn btn-primary text-sm">✏️ Editar</button>
-        <button id="eventModalDelete" class="btn btn-danger text-sm">🗑️ Eliminar</button>
-        <button id="eventModalClose" type="button" class="btn">Cerrar</button>
+      <div>
+        <label class="text-xs text-slate-400">Cliente</label>
+        <input id="eCliente" class="formc px-3 py-2 w-full" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Teléfono</label>
+        <input id="eTelefono" class="formc px-3 py-2 w-full" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Ciudad</label>
+        <input id="eCiudad" class="formc px-3 py-2 w-full" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Notas</label>
+        <textarea id="eNotas" class="formc px-3 py-2 w-full" rows="3"></textarea>
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-400">Lat</label>
+        <input id="eLat" class="formc px-3 py-2 w-full" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Lng</label>
+        <input id="eLng" class="formc px-3 py-2 w-full" />
+      </div>
+    </div>
+
+    <div class="mt-4 flex items-center justify-between">
+      <button class="btn" onclick="openHorasFromEdit()">⏱️ Editar horas</button>
+      <div class="flex gap-2">
+        <button class="btn" onclick="closeEdit()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveEdit()">Guardar</button>
       </div>
     </div>
   </div>
 </div>
+
+<!-- MODAL HORAS -->
+<div id="modalHoras" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-40">
+  <div class="card w-full max-w-2xl p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-semibold">Editar horas del servicio</h3>
+      <button class="btn" onclick="closeHoras()">✖</button>
+    </div>
+    <div class="mb-3">
+      <table class="w-full">
+        <thead class="text-slate-400 text-sm">
+          <tr>
+            <th class="text-left py-2">Fecha</th>
+            <th class="text-left py-2">Inicio</th>
+            <th class="text-left py-2">Fin</th>
+            <th class="text-left py-2">Break (min)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="horasRows"></tbody>
+      </table>
+      <button class="btn mt-2" onclick="addBloqueRow()">➕ Agregar bloque</button>
+    </div>
+    <div class="flex items-center justify-between">
+      <div>Horas totales: <span id="horasTotSpan" class="font-semibold">0</span></div>
+      <div class="flex gap-2">
+        <button class="btn" onclick="closeHoras()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveHoras()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-  // Ejecutar el setup cuando el DOM ya tiene el modal
-  window.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('eventModal');
-    if (!modal) return;
+/* ===================== CONFIG ===================== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbwb_c6_M6S_dKzy4ZxZzudw3LcIjj5gD0XdahCfeH6Vcp5r8GXRoifnvioU7Du48R81/exec'; // e.g. https://script.google.com/macros/s/AKfycbx.../exec
+const EDIT_TOKEN = '42673';
+const TARIFA_GARANTIA = 1000; // $/hora
+const TARIFA_INTERNA_INST = 85; // $/hora
 
-    // Botones explícitos
-    document.getElementById('eventModalClose')?.addEventListener('click', (e)=>{ e.preventDefault(); closeEventModal(); });
-    document.getElementById('eventModalCloseX')?.addEventListener('click', (e)=>{ e.preventDefault(); closeEventModal(); });
+/* ===================== STATE ===================== */
+let ROWS = [];           // datos crudos del backend
+let FILTERED = [];       // después de aplicar filtros
+let ROW_EDIT = null;     // objeto en edición (modal Edit)
+let ROW_EDIT_HORAS = null; // referencia para horas (puede venir de tabla o de modal Edit)
+let MAP = null;
+let MAP_MARKERS = [];
+let CHART_ACT = null;
+let CHART_HORAS = null;
+let CAL = null;
 
-    // Backdrop
-    document.getElementById('eventModalBackdrop')?.addEventListener('click', () => closeEventModal());
+/* ===================== UTILS ===================== */
+const $ = (q) => document.querySelector(q);
+function fmtMoney(n){ n = Number(n)||0; return n.toLocaleString('es-MX', {style:'currency', currency:'MXN', maximumFractionDigits:0}); }
+function minutosEntre(hhmm1, hhmm2){
+  if(!hhmm1 || !hhmm2) return 0;
+  const [h1,m1] = String(hhmm1).split(':').map(Number);
+  const [h2,m2] = String(hhmm2).split(':').map(Number);
+  return (h2*60+m2) - (h1*60+m1);
+}
+function parseBloques(str){ try{return JSON.parse(str||'[]')}catch{return []} }
+function horasTotalesFromBloques(bloques){
+  const mins = bloques.reduce((acc,b)=>{
+    const br = Number(b.breakMin)||0;
+    const d = Math.max(0, minutosEntre(b.inicio,b.fin) - br);
+    return acc + d;
+  },0);
+  return Math.round((mins/60)*100)/100;
+}
+function totalCobrado(r){
+  const mo  = Number(r.mo_monto)||0;
+  const ref = Number(r.refacciones_monto)||0;
+  const via = Number(r.viaticos_monto)||0;
+  const iva = Number(r.iva_monto)||0;
+  return mo+ref+via+iva;
+}
+function isGarantia(r){
+  const g = (r.garantia||'').toString().trim().toLowerCase();
+  return g.startsWith('s'); // Sí
+}
+function isInstalacion(r){
+  return (r.actividad||'').toString().toLowerCase().includes('instal');
+}
 
-    // Delegado para cualquier data-close-modal
-    modal.querySelectorAll('[data-close-modal],[data-close="modal"]').forEach(el=>{
-      el.addEventListener('click', (e)=>{ e.preventDefault(); closeEventModal(); });
-    });
-
-    // Tecla ESC
-    document.addEventListener('keydown', (e)=>{
-      if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeEventModal();
-    });
+/* ===================== API ===================== */
+async function apiGet(){
+  const r = await fetch(API_URL);
+  if(!r.ok) throw new Error('GET failed');
+  return await r.json();
+}
+async function apiUpdate(id, data){
+  const r = await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ op:'update', token:EDIT_TOKEN, id, data })
   });
+  if(!r.ok){ console.error(await r.text()); throw new Error('POST update failed'); }
+  return await r.json();
+}
+async function apiCreate(data){
+  const r = await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ op:'create', token:EDIT_TOKEN, data })
+  });
+  if(!r.ok){ console.error(await r.text()); throw new Error('POST create failed'); }
+  return await r.json();
+}
+
+/* ===================== RENDER – PIPELINE ===================== */
+function deriveComputedFields(rows){
+  rows.forEach(r=>{
+    const bloques = parseBloques(r.bloques_horas);
+    const h = horasTotalesFromBloques(bloques);
+    r.horas_totales = Number(h || r.horas_totales || 0);
+    r.potencial_garantia = isGarantia(r) ? Math.round(r.horas_totales * TARIFA_GARANTIA) : 0;
+    r.total_cobrado = totalCobrado(r);
+  });
+  return rows;
+}
+function applyFilters(){
+  const a = ($('#fAsesor').value||'').trim().toLowerCase();
+  const act = ($('#fActividad').value||'').trim().toLowerCase();
+  const mod = ($('#fModalidad').value||'').trim().toLowerCase();
+  const c  = ($('#fCiudad').value||'').trim().toLowerCase();
+  const rng = ($('#fRango').value||'').trim();
+
+  let out = ROWS.slice();
+  if (a) out = out.filter(x => (x.asesor||'').toString().toLowerCase().includes(a));
+  if (act) out = out.filter(x => (x.actividad||'').toString().toLowerCase() === act);
+  if (mod) out = out.filter(x => (x.modalidad||'').toString().toLowerCase() === mod);
+  if (c) out = out.filter(x => (x.ciudad||'').toString().toLowerCase().includes(c));
+
+  if (rng && rng.includes('a')) {
+    const [d1,d2] = rng.split('a').map(s=>s.trim());
+    if (d1 && d2) {
+      const t1 = dayjs(d1, 'YYYY-MM-DD');
+      const t2 = dayjs(d2, 'YYYY-MM-DD').endOf('day');
+      out = out.filter(x=>{
+        const f = String(x.fecha_inicio||x.fecha_fin||'');
+        const t = dayjs(f, ['YYYY-MM-DD','DD/MM/YYYY']);
+        return t.isValid() ? (t.isAfter(t1.subtract(1,'day')) && t.isBefore(t2.add(1,'second'))) : true;
+      });
+    }
+  }
+  FILTERED = out;
+}
+
+/* ===================== KPIs ===================== */
+function renderKpis(){
+  $('#kpiTotal').textContent = FILTERED.length.toString();
+
+  const sumPotGar = FILTERED.reduce((a,r)=> a + (Number(r.potencial_garantia)||0), 0);
+  $('#kpiPotGarantia').textContent = fmtMoney(sumPotGar);
+
+  const sumMo  = FILTERED.reduce((a,r)=> a + (Number(r.mo_monto)||0), 0);
+  const sumRef = FILTERED.reduce((a,r)=> a + (Number(r.refacciones_monto)||0), 0);
+  const sumVia = FILTERED.reduce((a,r)=> a + (Number(r.viaticos_monto)||0), 0);
+  const sumIva = FILTERED.reduce((a,r)=> a + (Number(r.iva_monto)||0), 0);
+  const sumCob = sumMo+sumRef+sumVia+sumIva;
+  $('#kpiMo').textContent  = fmtMoney(sumMo);
+  $('#kpiRef').textContent = fmtMoney(sumRef);
+  $('#kpiVia').textContent = fmtMoney(sumVia);
+  $('#kpiIva').textContent = fmtMoney(sumIva);
+  $('#kpiCobradoTotal').textContent = fmtMoney(sumCob);
+
+  const rowsInst = FILTERED.filter(isInstalacion);
+  const sumValSub = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_subtotal)||0), 0);
+  const sumValTot = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_total)||0), 0);
+  const sumCostoInst = rowsInst.reduce((a,r)=>{
+    const h = Number(r.horas_totales)||0;
+    const vi = Number(r.viaticos_monto)||0;
+    return a + (h*TARIFA_INTERNA_INST) + vi;
+  }, 0);
+  $('#kpiInstValSub').textContent = fmtMoney(sumValSub);
+  $('#kpiInstValTot').textContent = fmtMoney(sumValTot);
+  $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
+  $('#kpiInstRatio').textContent  = (sumCostoInst>0) ? (sumValSub/sumCostoInst).toFixed(2) : '—';
+}
+
+/* ===================== TABLA ===================== */
+function renderTable(){
+  const tbody = $('#tbody');
+  tbody.innerHTML = '';
+  FILTERED.forEach(r=>{
+    const costoInst = isInstalacion(r) ? ((Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0)) : 0;
+    const tr = document.createElement('tr');
+    tr.className = 'border-t border-white/10';
+    tr.innerHTML = `
+      <td class="py-2 px-3">${r.id||''}</td>
+      <td class="py-2 px-3">${[r.fecha_inicio,r.hora_inicio].filter(Boolean).join(' ')}</td>
+      <td class="py-2 px-3">${[r.fecha_fin,r.hora_fin].filter(Boolean).join(' ')}</td>
+      <td class="py-2 px-3">${r.asesor||''}</td>
+      <td class="py-2 px-3">
+        ${r.actividad||''}
+        ${isGarantia(r) ? '<span class="chip chip-warn ml-1">Garantía</span>' : ''}
+        ${isInstalacion(r) ? '<span class="chip chip-ok ml-1">Instalación</span>' : ''}
+      </td>
+      <td class="py-2 px-3">${r.modalidad||''}</td>
+      <td class="py-2 px-3 col-horas">${(Number(r.horas_totales)||0).toFixed(2)}</td>
+      <td class="py-2 px-3 col-money">${fmtMoney(r.potencial_garantia||0)}</td>
+      <td class="py-2 px-3 col-money">${fmtMoney(r.mo_monto||0)}</td>
+      <td class="py-2 px-3 col-money">${fmtMoney(r.refacciones_monto||0)}</td>
+      <td class="py-2 px-3 col-money">${fmtMoney(r.viaticos_monto||0)}</td>
+      <td class="py-2 px-3 col-money">${fmtMoney(r.iva_monto||0)}</td>
+      <td class="py-2 px-3 col-money">${fmtMoney(r.total_cobrado||0)}</td>
+      <td class="py-2 px-3 col-money">${fmtMoney(r.equipos_valor_subtotal||0)}</td>
+      <td class="py-2 px-3 col-money">${fmtMoney(r.equipos_valor_total||0)}</td>
+      <td class="py-2 px-3 col-money">${fmtMoney(costoInst)}</td>
+      <td class="py-2 px-3">${r.ciudad||''}</td>
+      <td class="py-2 px-3"><div class="td-wrap line-clamp-4 whitespace-pre-wrap">${r.notas||''}</div></td>
+      <td class="py-2 px-3 td-actions">
+        <button class="btn btn-primary" title="Horas" onclick='openHoras(${JSON.stringify(r.id)})'>⏱️</button>
+        <button class="btn" title="Editar" onclick='openEdit(${JSON.stringify(r.id)})'>✏️</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ===================== MAPA ===================== */
+function initMap(){
+  MAP = new google.maps.Map(document.getElementById('map'), {
+    center: {lat: 23.6345, lng: -102.5528}, // MX
+    zoom: 5,
+    styles: [{ elementType:'geometry', stylers:[{color:'#0b0d10'}] }]
+  });
+  renderMapMarkers();
+}
+function clearMarkers(){
+  MAP_MARKERS.forEach(m=>m.setMap(null));
+  MAP_MARKERS = [];
+}
+function renderMapMarkers(){
+  if(!MAP) return;
+  clearMarkers();
+  FILTERED.forEach(r=>{
+    const lat = Number(r.lat); const lng = Number(r.lng);
+    if(!isFinite(lat) || !isFinite(lng)) return;
+    const marker = new google.maps.Marker({
+      position:{lat,lng}, map:MAP, title: `${r.cliente||''} · ${r.ciudad||''}`
+    });
+    const info = new google.maps.InfoWindow({
+      content: `
+        <div style="min-width:220px">
+          <div><strong>${r.cliente||''}</strong></div>
+          <div>${r.ciudad||''}</div>
+          <div>${(r.actividad||'')}</div>
+          <div>Horas: ${(Number(r.horas_totales)||0).toFixed(2)}</div>
+        </div>`
+    });
+    marker.addListener('click', ()=> info.open({anchor: marker, map: MAP}));
+    MAP_MARKERS.push(marker);
+  });
+}
+
+/* ===================== CALENDARIO ===================== */
+function renderCalendar(){
+  const el = document.getElementById('calendar');
+  if (CAL) { CAL.destroy(); CAL = null; }
+  CAL = new FullCalendar.Calendar(el, {
+    height: '100%',
+    themeSystem: 'standard',
+    locale: 'es',
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,listWeek'
+    },
+    events: FILTERED.map(r=>{
+      const start = (r.fecha_inicio ? `${r.fecha_inicio}T${(r.hora_inicio||'00:00')}` : null);
+      const end   = (r.fecha_fin   ? `${r.fecha_fin}T${(r.hora_fin||'00:00')}`   : null);
+      return {
+        title: `${r.actividad||''} — ${r.asesor||''}`,
+        start, end,
+        extendedProps: { id: r.id }
+      };
+    }),
+    eventClick: function(info){
+      const id = info.event.extendedProps?.id;
+      if (id != null) openEdit(id);
+    }
+  });
+  CAL.render();
+}
+
+/* ===================== CHARTS ===================== */
+function renderCharts(){
+  // Actividad
+  const ctx1 = document.getElementById('chartActividad');
+  if (CHART_ACT) { CHART_ACT.destroy(); CHART_ACT = null; }
+  const byAct = {};
+  FILTERED.forEach(r=>{
+    const k = (r.actividad||'Sin dato');
+    byAct[k] = (byAct[k]||0) + 1;
+  });
+  CHART_ACT = new Chart(ctx1, {
+    type:'bar',
+    data:{
+      labels: Object.keys(byAct),
+      datasets:[{ label:'Registros', data:Object.values(byAct) }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false }
+  });
+
+  // Horas por asesor
+  const ctx2 = document.getElementById('chartHorasAsesor');
+  if (CHART_HORAS) { CHART_HORAS.destroy(); CHART_HORAS = null; }
+  const byAsesor = {};
+  FILTERED.forEach(r=>{
+    const k = (r.asesor||'Sin dato');
+    byAsesor[k] = (byAsesor[k]||0) + (Number(r.horas_totales)||0);
+  });
+  CHART_HORAS = new Chart(ctx2, {
+    type:'line',
+    data:{
+      labels: Object.keys(byAsesor),
+      datasets:[{ label:'Horas', data:Object.values(byAsesor), tension:.3 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false }
+  });
+}
+
+/* ===================== MODAL EDIT ===================== */
+function openEdit(id){
+  const isNew = (id==null);
+  $('#editTitle').textContent = isNew ? 'Nuevo registro' : 'Editar registro';
+  const r = isNew ? {} : ROWS.find(x=> String(x.id)===String(id));
+  ROW_EDIT = r || {};
+  // set values
+  $('#eFechaIni').value = r?.fecha_inicio||'';
+  $('#eHoraIni').value  = r?.hora_inicio||'';
+  $('#eFechaFin').value = r?.fecha_fin||'';
+  $('#eHoraFin').value  = r?.hora_fin||'';
+  $('#eAsesor').value   = r?.asesor||'';
+  $('#eActividad').value= r?.actividad||'Soporte de garantía';
+  $('#eModalidad').value= r?.modalidad||'Presencial';
+  $('#eGarantia').value = r?.garantia||'No';
+  $('#eCliente').value  = r?.cliente||'';
+  $('#eTelefono').value = r?.telefono||'';
+  $('#eCiudad').value   = r?.ciudad||'';
+  $('#eNotas').value    = r?.notas||'';
+  $('#eLat').value      = r?.lat||'';
+  $('#eLng').value      = r?.lng||'';
+  // show
+  $('#modalEdit').classList.remove('hidden');
+  $('#modalEdit').classList.add('flex');
+}
+function closeEdit(){
+  $('#modalEdit').classList.add('hidden');
+  $('#modalEdit').classList.remove('flex');
+  ROW_EDIT = null;
+}
+async function saveEdit(){
+  const data = {
+    fecha_inicio: $('#eFechaIni').value,
+    hora_inicio:  $('#eHoraIni').value,
+    fecha_fin:    $('#eFechaFin').value,
+    hora_fin:     $('#eHoraFin').value,
+    asesor:       $('#eAsesor').value,
+    actividad:    $('#eActividad').value,
+    modalidad:    $('#eModalidad').value,
+    garantia:     $('#eGarantia').value,
+    cliente:      $('#eCliente').value,
+    telefono:     $('#eTelefono').value,
+    ciudad:       $('#eCiudad').value,
+    notas:        $('#eNotas').value,
+    lat:          $('#eLat').value,
+    lng:          $('#eLng').value
+  };
+
+  if (ROW_EDIT?.id != null){
+    await apiUpdate(ROW_EDIT.id, data);
+  } else {
+    const res = await apiCreate(data);
+    if (res?.id) data.id = res.id;
+  }
+  closeEdit();
+  await boot(); // recarga todo
+}
+
+/* ===================== HORAS – MODAL ===================== */
+function openHoras(id){
+  ROW_EDIT_HORAS = ROWS.find(x=> String(x.id)===String(id));
+  openHorasModalWithRow(ROW_EDIT_HORAS);
+}
+function openHorasFromEdit(){
+  // desde el modal de edición (nuevo registro sin ID todavía)
+  const temp = Object.assign({}, ROW_EDIT || {});
+  if (!temp.bloques_horas) temp.bloques_horas = '[]';
+  openHorasModalWithRow(temp, true);
+}
+function openHorasModalWithRow(row, fromEdit=false){
+  const cont = $('#horasRows');
+  cont.innerHTML = '';
+  const arr = parseBloques(row.bloques_horas);
+  if(arr.length===0){ arr.push({fecha:row.fecha_inicio||'',inicio:row.hora_inicio||'',fin:row.hora_fin||'',breakMin:0}); }
+  arr.forEach(b=>addBloqueRow(b));
+  recalcHorasModal();
+  $('#modalHoras').classList.remove('hidden');
+  $('#modalHoras').classList.add('flex');
+  // marca si venimos de modal Edit
+  ROW_EDIT_HORAS = Object.assign({ _fromEdit: fromEdit, id: row.id }, row);
+}
+function closeHoras(){
+  $('#modalHoras').classList.add('hidden');
+  $('#modalHoras').classList.remove('flex');
+  ROW_EDIT_HORAS = null;
+}
+function addBloqueRow(data){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="py-1 pr-2"><input type="date" class="formc px-2 py-1 w-full" value="${data?.fecha||''}"></td>
+    <td class="py-1 pr-2"><input type="time" class="formc px-2 py-1 w-full" value="${data?.inicio||''}"></td>
+    <td class="py-1 pr-2"><input type="time" class="formc px-2 py-1 w-full" value="${data?.fin||''}"></td>
+    <td class="py-1 pr-2"><input type="number" min="0" class="formc px-2 py-1 w-24" value="${data?.breakMin||0}"></td>
+    <td class="py-1"><button class="btn btn-danger" onclick="this.closest('tr').remove(); recalcHorasModal();">🗑️</button></td>
+  `;
+  $('#horasRows').appendChild(tr);
+  [...tr.querySelectorAll('input')].forEach(el=>el.addEventListener('input', recalcHorasModal));
+}
+function collectBloquesDesdeUI(){
+  const rows = [...document.querySelectorAll('#horasRows tr')];
+  return rows.map(tr=>{
+    const [f,i,fn,b] = tr.querySelectorAll('input');
+    return { fecha:f.value, inicio:i.value, fin:fn.value, breakMin:Number(b.value||0) };
+  }).filter(x=>x.inicio && x.fin);
+}
+function recalcHorasModal(){
+  const bloques = collectBloquesDesdeUI();
+  $('#horasTotSpan').textContent = horasTotalesFromBloques(bloques).toFixed(2);
+}
+async function saveHoras(){
+  const bloques = collectBloquesDesdeUI();
+  const horas = horasTotalesFromBloques(bloques);
+  const data = { bloques_horas: JSON.stringify(bloques), horas_totales: horas };
+
+  // si venimos del modal Edit (registro nuevo sin guardar), solo “inyectamos” en memoria
+  if (ROW_EDIT_HORAS?._fromEdit && ROW_EDIT?.id == null){
+    ROW_EDIT.bloques_horas = data.bloques_horas;
+    ROW_EDIT.horas_totales = horas;
+    closeHoras();
+    return;
+  }
+
+  // si ya existe ID
+  await apiUpdate(ROW_EDIT_HORAS.id, data);
+  // refresca local mínimo
+  const row = ROWS.find(x=> String(x.id)===String(ROW_EDIT_HORAS.id));
+  if (row){
+    row.bloques_horas = data.bloques_horas;
+    row.horas_totales = horas;
+  }
+  closeHoras();
+  renderAll();
+}
+
+/* ===================== FILTROS – Eventos ===================== */
+$('#btnAplicarFiltros').addEventListener('click', ()=>{
+  applyFilters(); renderAll();
+});
+$('#btnLimpiarFiltros').addEventListener('click', ()=>{
+  $('#fAsesor').value = '';
+  $('#fActividad').value = '';
+  $('#fModalidad').value = '';
+  $('#fCiudad').value = '';
+  $('#fRango').value = '';
+  applyFilters(); renderAll();
+});
+
+/* ===================== EXPORT PDF ===================== */
+document.getElementById('btnExportPdf').addEventListener('click', async ()=>{
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('p', 'pt', 'a4');
+  const el = document.body; // exporta todo; puedes cambiar a un contenedor
+  const canvas = await html2canvas(el, { scale: 2 });
+  const imgData = canvas.toDataURL('image/png');
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+  const imgWidth = canvas.width * ratio;
+  const imgHeight = canvas.height * ratio;
+  doc.addImage(imgData, 'PNG', (pageWidth - imgWidth)/2, 10, imgWidth, imgHeight);
+  doc.save('reporte_mdc.pdf');
+});
+
+/* ===================== RENDER ALL ===================== */
+function renderAll(){
+  renderKpis();
+  renderTable();
+  renderCalendar();
+  renderCharts();
+  renderMapMarkers();
+}
+
+/* ===================== BOOT ===================== */
+async function boot(){
+  try{
+    ROWS = await apiGet();
+  }catch(e){
+    console.error(e);
+    alert('Error obteniendo datos');
+    return;
+  }
+  deriveComputedFields(ROWS);
+  applyFilters();
+  renderAll();
+}
+document.getElementById('btnReload').addEventListener('click', boot);
+
+// Inicia
+boot();
 </script>
-
-
 </body>
 </html>
