@@ -5,16 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MDC Digital — Reporte de Actividades Asesores CAD-CAM</title>
 
-  <!-- Tailwind (build) + fallback CDN si falla -->
+  <!-- Tailwind generado por el build -->
   <link rel="stylesheet" href="/styles.css">
-  <script>
-  (function(){
-    var probe=document.createElement('div'); probe.className='hidden';
-    document.head.appendChild(probe);
-    var ok = getComputedStyle(probe).display==='none'; probe.remove();
-    if(!ok){ var s=document.createElement('script'); s.src='https://cdn.tailwindcss.com'; document.head.appendChild(s); }
-  })();
-  </script>
 
   <!-- FullCalendar CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css">
@@ -41,36 +33,42 @@
     select.formc option{color:#000}
     .btn{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(255,255,255,.12);padding:.35rem .6rem;border-radius:.5rem}
     .btn:hover{background:rgba(255,255,255,.06)}
-    .btn-danger{border-color:rgba(239,68,68,.5)}
-    .btn-danger:hover{background:rgba(239,68,68,.1)}
     .btn-primary{border-color:rgba(59,130,246,.5)}
     .btn-primary:hover{background:rgba(59,130,246,.12)}
     .chip{display:inline-block;padding:.1rem .5rem;border-radius:.375rem;border:1px solid rgba(255,255,255,.15);font-size:.75rem}
     .chip-warn{background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.35)}
     .chip-ok{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35)}
-    /* Tabla legible */
+
+    /* === Tabla legible === */
     .table-viewport { max-height: 65vh; overflow: auto; }
-    #tbl { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
-    #tbl thead th { position: sticky; top: 0; background: #0f172a; z-index: 1; }
-    #tbl th, #tbl td { font-size: 0.9rem; line-height: 1.2; }
-    #tbl td { padding-top:.45rem; padding-bottom:.45rem; }
-    .col-notas { width: 28rem; }
-    .col-acciones { width: 10rem; white-space: nowrap; }
-    .col-horas { width: 7rem; }
-    .col-money { width: 8rem; white-space: nowrap; }
-    th, td { overflow-wrap: anywhere; }
-    .td-wrap { min-height: 1.5rem; }
-    .line-clamp-4 {
-      display: -webkit-box;
-      -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; line-clamp: 4;
+    #tbl {
+      table-layout: auto;
+      border-collapse: separate;
+      border-spacing: 0;
+      width: max-content;      /* permite scroll horizontal si hace falta */
+      min-width: 100%;
     }
+    #tbl thead th { position: sticky; top: 0; background: #0f172a; z-index: 1; }
+    #tbl th, #tbl td {
+      font-size: 0.92rem;
+      line-height: 1.25rem;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    #tbl td { padding-top:.5rem; padding-bottom:.5rem; }
+    .col-money { text-align: right; min-width: 7.5rem; }
+    .col-horas { text-align: right; min-width: 6rem; }
+    .col-notas { white-space: normal; max-width: 40rem; }
+    .col-acciones { white-space: nowrap; min-width: 9rem; }
+
     /* Gráficas */
     canvas { max-width: 100%; }
-    .chart-h { height: 300px; }
-    .chart-h-lg { height: 320px; }
-    /* Mapa/Calendario */
+    .chart-h { height: 320px; }
+    .chart-h-lg { height: 360px; }
+
+    /* Mapa / Calendario */
     #map{min-height:420px;height:420px}
-    #calendar{height:820px}
+    #calendar{min-height:900px;height:auto}
   </style>
 </head>
 <body class="h-full">
@@ -91,22 +89,18 @@
     </div>
   </header>
 
-  <!-- KPIs CLÁSICOS -->
+  <!-- KPIs CLÁSICOS (dejamos "Total registros" aquí) -->
   <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
     <div class="card p-4"><div class="text-slate-400 text-xs">Total registros</div><div id="kpiC_total" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Soporte</div><div id="kpiC_soporte" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Instalaciones</div><div id="kpiC_inst" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Eventos/Proy./Cursos</div><div id="kpiC_eventos" class="text-3xl font-semibold mt-1">0</div></div>
-    <div class="card p-4"><div class="text-slate-400 text-xs">Total cobrado</div><div id="kpiC_cobrado" class="text-3xl font-semibold mt-1">$0</div></div>
+    <!-- Quitamos el KPI "Total cobrado" simple -->
     <div class="card p-4"><div class="text-slate-400 text-xs">Horas TeamViewer</div><div id="kpiC_tvhrs" class="text-3xl font-semibold mt-1">0</div></div>
   </section>
 
-  <!-- KPIs NUEVOS -->
-  <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-    <div class="card p-4">
-      <div class="text-slate-400 text-xs">Registros</div>
-      <div id="kpiTotal" class="text-3xl font-semibold mt-1">0</div>
-    </div>
+  <!-- KPIs NUEVOS (dejamos "Total cobrado" desglosado; quitamos "Registros") -->
+  <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
     <div class="card p-4">
       <div class="text-slate-400 text-xs">Potencial no cobrado (garantía)</div>
       <div id="kpiPotGarantia" class="text-3xl font-semibold mt-1">$0</div>
@@ -114,7 +108,7 @@
     </div>
     <div class="card p-4">
       <div class="text-slate-400 text-xs">Total cobrado</div>
-      <div id="kpiCobradoTotal" class="text-3xl font-semibold mt-1">$0</div>
+      <div class="text-3xl font-semibold mt-1" id="kpiCobradoTotal">$0</div>
       <div class="text-slate-400 text-xs mt-1">
         MO: <span id="kpiMo">$0</span> · Ref: <span id="kpiRef">$0</span> · Via: <span id="kpiVia">$0</span> · IVA: <span id="kpiIva">$0</span>
       </div>
@@ -185,35 +179,62 @@
 
     <div class="card p-4">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-medium">Calendario</h3>
-        <div class="text-xs text-slate-400">Eventos por inicio/fin</div>
+        <h3 class="text-lg font-medium">Calendario de actividades</h3>
+        <div class="text-xs text-slate-400">Vista mensual · colores por actividad</div>
       </div>
       <div id="calendar" class="rounded-lg bg-slate-900"></div>
     </div>
 
     <div class="card p-4">
       <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Actividades por asesor (apilado por tipo)</h3></div>
-      <div class="h-[320px]"><canvas id="chartActAsesor"></canvas></div>
+      <div class="chart-h"><canvas id="chartActAsesor"></canvas></div>
     </div>
 
     <div class="card p-4">
       <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Remoto vs Presencial</h3></div>
-      <div class="h-[320px]"><canvas id="chartRemoto"></canvas></div>
+      <div class="chart-h"><canvas id="chartRemoto"></canvas></div>
     </div>
 
     <div class="card p-4">
       <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Distribución por actividad</h3></div>
-      <div class="h-[320px]"><canvas id="chartActividad"></canvas></div>
+      <div class="chart-h"><canvas id="chartActividad"></canvas></div>
     </div>
 
     <div class="card p-4">
       <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Garantía vs No garantía</h3></div>
-      <div class="h-[320px]"><canvas id="chartGarantia"></canvas></div>
+      <div class="chart-h"><canvas id="chartGarantia"></canvas></div>
     </div>
 
     <div class="card p-4 xl:col-span-2">
       <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Ingresos por asesor (MXN)</h3></div>
-      <div class="h-[360px]"><canvas id="chartIngresos"></canvas></div>
+      <div class="chart-h-lg"><canvas id="chartIngresos"></canvas></div>
+    </div>
+
+    <div class="card p-4 xl:col-span-2">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-lg font-medium">TeamViewer — Conexiones y horas (CSV)</h3>
+        <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
+      </div>
+      <div class="chart-h-lg"><canvas id="chartTV"></canvas></div>
+
+      <section class="card p-4 mt-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-lg font-medium">TeamViewer — Tabla (CSV)</h3>
+          <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
+        </div>
+        <div class="table-viewport">
+          <table class="w-full" id="tvTable">
+            <thead>
+              <tr class="text-left text-slate-400">
+                <th class="py-2 px-3">Fecha</th>
+                <th class="py-2 px-3">Conexiones</th>
+                <th class="py-2 px-3">Horas</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </section>
 
@@ -224,7 +245,7 @@
       <div class="flex gap-2"><button id="btnReload" class="btn">🔄 Recargar</button></div>
     </div>
     <div class="table-viewport">
-      <table id="tbl" class="table-fixed w-full">
+      <table id="tbl">
         <thead>
           <tr class="text-left text-slate-400">
             <th class="py-2 px-3">ID</th>
@@ -257,7 +278,7 @@
 <!-- ===================== SCRIPTS ===================== -->
 <script>
 /* ====== CONFIG ====== */
-const API_URL = '/.netlify/functions/gas-proxy';
+const API_URL = '/.netlify/functions/gas-proxy';  // proxy en Netlify
 const EDIT_TOKEN = '42673';
 const TARIFA_GARANTIA = 1000; // $/hora
 const TARIFA_INTERNA_INST = 85; // $/hora
@@ -272,17 +293,21 @@ function $(q){ return document.querySelector(q); }
 function fmtMoney(n){ n = Number(n)||0; return n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}); }
 function minutosEntre(h1,h2){ if(!h1||!h2) return 0; const [a,b]=h1.split(':').map(Number),[c,d]=h2.split(':').map(Number); return (c*60+d)-(a*60+b); }
 function parseBloques(str){ try{return JSON.parse(str||'[]')}catch{return []} }
-function horasTotalesFromBloques(bloques){
-  const mins = bloques.reduce((acc,b)=>acc+Math.max(0,minutosEntre(b.inicio,b.fin)-(Number(b.breakMin)||0)),0);
-  return Math.round((mins/60)*100)/100;
-}
+function horasTotalesFromBloques(bloques){ const mins=bloques.reduce((acc,b)=>acc+Math.max(0,minutosEntre(b.inicio,b.fin)-(Number(b.breakMin)||0)),0); return Math.round((mins/60)*100)/100; }
 function totalCobrado(r){ return ['mo_monto','refacciones_monto','viaticos_monto','iva_monto'].reduce((a,k)=>a+(Number(r[k])||0),0); }
 function isGarantia(r){ return String(r.garantia||'').trim().toLowerCase().startsWith('s'); }
 function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().includes('instal'); }
 function toISODate(d){ const m = dayjs(d,['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD'],true); return m.isValid()?m.format('YYYY-MM-DD'):null; }
 
 /* ====== API ====== */
-async function apiGet(){ const r=await fetch(API_URL); if(!r.ok) throw new Error('GET failed'); return r.json(); }
+async function apiGet(){
+  const r = await fetch(API_URL, { method:'GET' });
+  const ct = r.headers.get('content-type') || '';
+  const txt = await r.text();
+  if (!r.ok) { console.error('API error', r.status, txt.slice(0,400)); throw new Error(`GET ${r.status}`); }
+  if (!ct.includes('application/json')) { console.error('API NO JSON', ct, txt.slice(0,400)); throw new Error('API no devolvió JSON'); }
+  return JSON.parse(txt);
+}
 
 /* ====== RENDER PIPELINE ====== */
 function deriveComputedFields(rows){
@@ -322,8 +347,16 @@ function applyFilters(){
 
 /* ====== KPIs ====== */
 function renderKpis(){
-  // nuevos
-  $('#kpiTotal').textContent = FILTERED.length.toString();
+  // Clásicos
+  const isSoporte = r => (r.actividad||'').toLowerCase().includes('soporte');
+  const isInst    = r => (r.actividad||'').toLowerCase().includes('instal');
+  const isEvento  = r => /(evento|proy|curso)/i.test(r.actividad||'');
+  $('#kpiC_total').textContent    = FILTERED.length;
+  $('#kpiC_soporte').textContent  = FILTERED.filter(isSoporte).length;
+  $('#kpiC_inst').textContent     = FILTERED.filter(isInst).length;
+  $('#kpiC_eventos').textContent  = FILTERED.filter(isEvento).length;
+
+  // Nuevos
   const sumPotGar = FILTERED.reduce((a,r)=> a + (Number(r.potencial_garantia)||0), 0);
   $('#kpiPotGarantia').textContent = fmtMoney(sumPotGar);
   const sumMo  = FILTERED.reduce((a,r)=> a + (Number(r.mo_monto)||0), 0);
@@ -345,30 +378,6 @@ function renderKpis(){
   $('#kpiInstValTot').textContent = fmtMoney(sumValTot);
   $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
   $('#kpiInstRatio').textContent  = (sumCostoInst>0) ? (sumValSub/sumCostoInst).toFixed(2) : '—';
-
-  // clásicos
-  const isSoporte = r => (r.actividad||'').toLowerCase().includes('soporte');
-  const isInst    = r => (r.actividad||'').toLowerCase().includes('instal');
-  const isEvento  = r => /(evento|proy|curso)/i.test(r.actividad||'');
-  $('#kpiC_total').textContent    = FILTERED.length;
-  $('#kpiC_soporte').textContent  = FILTERED.filter(isSoporte).length;
-  $('#kpiC_inst').textContent     = FILTERED.filter(isInst).length;
-  $('#kpiC_eventos').textContent  = FILTERED.filter(isEvento).length;
-  $('#kpiC_cobrado').textContent  = fmtMoney(sumCob);
-
-  if (!window._TV_HRS_LOADED) {
-    fetch('/conexionesimport.csv').then(r=> r.ok ? r.text(): '').then(txt=>{
-      if (!txt) return;
-      const lines = txt.trim().split(/\r?\n/).slice(1);
-      const sumH = lines.reduce((acc,ln)=>{
-        const cols = ln.split(',');
-        const h = parseFloat(cols[2]||'0'); // col de horas
-        return acc + (isFinite(h)?h:0);
-      },0);
-      $('#kpiC_tvhrs').textContent = (Math.round(sumH*100)/100).toString();
-      window._TV_HRS_LOADED = true;
-    }).catch(()=>{});
-  }
 }
 
 /* ====== TABLA ====== */
@@ -400,7 +409,7 @@ function renderTable(){
       <td class="py-2 px-3 col-money">${fmtMoney(r.equipos_valor_total||0)}</td>
       <td class="py-2 px-3 col-money">${fmtMoney(costoInst)}</td>
       <td class="py-2 px-3">${r.ciudad||''}</td>
-      <td class="py-2 px-3"><div class="td-wrap line-clamp-4 whitespace-pre-wrap">${r.notas||''}</div></td>
+      <td class="py-2 px-3 col-notas whitespace-pre-wrap">${r.notas||''}</td>
       <td class="py-2 px-3 col-acciones"><button class="btn">⏱️</button> <button class="btn">✏️</button></td>
     `;
     tbody.appendChild(tr);
@@ -420,23 +429,48 @@ window.renderMapMarkers = function(){
   });
 };
 
-/* ====== CALENDARIO ====== */
+/* ====== CALENDARIO (alto y con colores) ====== */
 function renderCalendar(){
   const el = document.getElementById('calendar');
   if (CAL) { CAL.destroy(); CAL = null; }
+
+  const COLOR = {
+    'Soporte de garantía': '#22c55e',
+    'Soporte fuera de garantía': '#ef4444',
+    'Instalación': '#38bdf8',
+    'Evento': '#7c3aed',
+    'Proyecto': '#f43f5e',
+    'Curso': '#eab308',
+    'Vacaciones': '#94a3b8'
+  };
+
+  const events = FILTERED.map(r=>{
+    const act = r.actividad || 'Otro';
+    const dStart = toISODate(r.fecha_inicio || r.fecha_fin);
+    const dEnd   = toISODate(r.fecha_fin   || r.fecha_inicio);
+    const allDay = !((r.hora_inicio||'') || (r.hora_fin||''));
+    const start  = dStart ? (allDay ? dStart : `${dStart}T${(r.hora_inicio||'00:00')}`) : undefined;
+    let end;
+    if (dEnd) {
+      end = allDay ? dayjs(dEnd).add(1,'day').format('YYYY-MM-DD') : `${dEnd}T${(r.hora_fin||'00:00')}`;
+    }
+    return {
+      title: `${act} — ${r.asesor||''}`,
+      start, end, allDay,
+      backgroundColor: COLOR[act] || '#60a5fa',
+      borderColor: COLOR[act] || '#60a5fa'
+    };
+  });
+
   CAL = new FullCalendar.Calendar(el, {
-    height: '100%',
+    height: 'auto',
+    contentHeight: 900,
+    expandRows: true,
+    handleWindowResize: true,
     locale: 'es',
     initialView: 'dayGridMonth',
-    headerToolbar: { left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,listWeek' },
-    events: FILTERED.map(r=>{
-      const dStart = toISODate(r.fecha_inicio || r.fecha_fin);
-      const dEnd   = toISODate(r.fecha_fin   || r.fecha_inicio);
-      const start  = dStart ? `${dStart}T${(r.hora_inicio||'00:00')}` : undefined;
-      const end    = dEnd   ? `${dEnd}T${(r.hora_fin||'00:00')}`     : undefined;
-      return { title:`${r.actividad||''} — ${r.asesor||''}`, start, end, allDay: !((r.hora_inicio||'')||(r.hora_fin||'')), extendedProps:{id:r.id} };
-    }),
-    eventClick(info){ /* abrir modal si quieres */ }
+    headerToolbar: { left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,dayGridDay' },
+    events
   });
   CAL.render();
 }
@@ -483,6 +517,49 @@ function renderCharts(){
     const byA={}; FILTERED.forEach(r=>{ const k=r.asesor||'Sin dato'; byA[k]=(byA[k]||0)+(Number(r.total_cobrado)||0); });
     new Chart(c,{type:'bar',data:{labels:Object.keys(byA),datasets:[{label:'MXN',data:Object.values(byA)}]},options:{responsive:true,maintainAspectRatio:false}});
   })();
+
+  // TeamViewer (si CSV está disponible en /connectionreport.csv)
+  (async function(){
+    const c = document.getElementById('chartTV'); if(!c) return;
+    try{
+      const txt = await fetch('/connectionreport.csv').then(r=> r.ok ? r.text() : '');
+      if (!txt) return;
+      const rows = txt.trim().split(/\r?\n/).slice(1).map(line=>{
+        const [fecha, conexiones, horas] = line.split(',');
+        return { fecha, conexiones: Number(conexiones||0), horas: Number(horas||0) };
+      });
+      new Chart(c,{
+        type:'bar',
+        data:{ labels: rows.map(r=>r.fecha),
+               datasets:[ {type:'bar', label:'Conexiones', data: rows.map(r=>r.conexiones)},
+                          {type:'line', label:'Horas', data: rows.map(r=>r.horas)} ] },
+        options:{ responsive:true, maintainAspectRatio:false }
+      });
+    }catch(e){ console.warn('CSV TV no disponible'); }
+  })();
+}
+
+/* ====== TV TABLE ====== */
+async function renderTeamViewerTable(){
+  const el = document.querySelector('#tvTable tbody');
+  if (!el) return;
+  try{
+    const txt = await fetch('/connectionreport.csv').then(r=> r.ok ? r.text() : '');
+    if (!txt) { el.innerHTML = '<tr><td class="py-2 px-3" colspan="3">No hay CSV</td></tr>'; return; }
+    const rows = txt.trim().split(/\r?\n/).slice(1).map(line=>{
+      const [fecha, conexiones, horas] = line.split(',');
+      return { fecha, conexiones: Number(conexiones||0), horas: Number(horas||0) };
+    });
+    el.innerHTML = rows.map(r=>`
+      <tr class="border-t border-white/10">
+        <td class="py-2 px-3">${r.fecha}</td>
+        <td class="py-2 px-3">${r.conexiones}</td>
+        <td class="py-2 px-3">${r.horas.toFixed(2)}</td>
+      </tr>
+    `).join('');
+  }catch(e){
+    el.innerHTML = '<tr><td class="py-2 px-3" colspan="3">Error leyendo CSV</td></tr>';
+  }
 }
 
 /* ====== RENDER ALL ====== */
@@ -491,12 +568,13 @@ function renderAll(){
   renderTable();
   renderCalendar();
   renderCharts();
+  renderTeamViewerTable();
   renderMapMarkers();
 }
 
 /* ====== BOOT ====== */
 async function boot(){
-  // selector de mes (opcional visual)
+  // selector de mes (visual)
   const sel = $('#fMes'); if (sel && !sel._filled){
     const now = dayjs(); const items=[];
     for(let i=0;i<12;i++){ const d=now.subtract(i,'month'); items.push(`<option value="${d.format('YYYY-MM')}">${d.format('MMMM YYYY')}</option>`); }
