@@ -49,6 +49,9 @@
   })();
   </script>
 
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css">
+
+
   <style>
     body{background:#0b0d10;color:#e5e7eb}
     .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.06);border-radius:1rem}
@@ -93,6 +96,24 @@
 
     /* Utilidades */
     .nowrap{white-space:nowrap}
+
+    /* Tabla legible: encabezado fijo + scroll vertical */
+    .table-viewport { max-height: 65vh; overflow: auto; }
+    #tbl { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
+    #tbl thead th {
+      position: sticky; top: 0;
+      background: #0f172a; /* azul oscuro */
+      z-index: 1;
+    }
+    #tbl th, #tbl td { font-size: 0.9rem; line-height: 1.2; }
+    #tbl td { padding-top: .4rem; padding-bottom: .4rem; }
+    .col-money { white-space: nowrap; }
+
+    canvas { max-width: 100%; }
+    .chart-h { height: 300px; }
+    .chart-h-lg { height: 320px; }
+
+
   </style>
 
 <!-- 2) Fallback: si los utilitarios de Tailwind no existen, carga el CDN -->
@@ -245,16 +266,12 @@
     <div class="card p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-medium">Distribución por actividad</h3>
-      </div>
-      <canvas id="chartActividad" class="chart-h"></canvas>
-    </div>
+     <div style="height:320px"><canvas id="chartActividad"></canvas></div>
 
     <div class="card p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-medium">Horas por asesor (mes)</h3>
-      </div>
-      <canvas id="chartHorasAsesor" class="chart-h"></canvas>
-    </div>
+     <div style="height:320px"><canvas id="chartHorasAsesor"></canvas></div>
   </section>
 
   <!-- Tabla Registros -->
@@ -265,8 +282,8 @@
         <button id="btnNuevo" class="btn btn-primary">➕ Nuevo</button>
       </div>
     </div>
-    <div class="table-container">
-      <table id="tbl" class="table-fixed w-full">
+    <div class="table-viewport">
+     <table id="tbl" class="table-fixed w-full">
         <thead>
           <tr class="text-left text-slate-400">
             <th class="py-2 px-3">ID</th>
@@ -651,6 +668,11 @@ function renderMapMarkers(){
 window.renderMapMarkers = renderMapMarkers;
 
 /* ===================== CALENDARIO ===================== */
+// Convierte "DD/MM/YYYY" o "YYYY-MM-DD" a "YYYY-MM-DD"
+function toISODate(d){
+  const m = dayjs(d, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD'], true);
+  return m.isValid() ? m.format('YYYY-MM-DD') : null;
+}
 function renderCalendar(){
   const el = document.getElementById('calendar');
   if (CAL) { CAL.destroy(); CAL = null; }
@@ -665,11 +687,14 @@ function renderCalendar(){
       right: 'dayGridMonth,timeGridWeek,listWeek'
     },
     events: FILTERED.map(r=>{
-      const start = (r.fecha_inicio ? `${r.fecha_inicio}T${(r.hora_inicio||'00:00')}` : null);
-      const end   = (r.fecha_fin   ? `${r.fecha_fin}T${(r.hora_fin||'00:00')}`   : null);
+      const dStart = toISODate(r.fecha_inicio || r.fecha_fin);
+      const dEnd   = toISODate(r.fecha_fin   || r.fecha_inicio);
+      const start  = dStart ? `${dStart}T${(r.hora_inicio||'00:00')}` : null;
+      const end    = dEnd   ? `${dEnd}T${(r.hora_fin||'00:00')}`     : null;
       return {
         title: `${r.actividad||''} — ${r.asesor||''}`,
         start, end,
+        allDay: !((r.hora_inicio||'') || (r.hora_fin||'')),
         extendedProps: { id: r.id }
       };
     }),
