@@ -24,9 +24,7 @@
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/core/locales-all.global.min.js"></script>
 
-  <!-- Google Maps (Maps + Places) -->
-  <!-- Sustituye TU_API_KEY -->
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&callback=initMap"></script>
+ 
 
   <!-- Export PDF -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -78,6 +76,32 @@
     .nowrap{white-space:nowrap}
   </style>
   <link rel="stylesheet" href="./styles.css">
+  <!-- 1) Define global initMap ANTES de cargar la librería -->
+<script>
+  // Asegura que initMap exista en window (global) para el callback
+  window.initMap = function () {
+    const center = { lat: 23.6345, lng: -102.5528 }; // MX
+    // Crea el mapa y guárdalo global si el resto del código lo usa
+    window.MAP = new google.maps.Map(document.getElementById('map'), {
+      center,
+      zoom: 5
+    });
+
+    // Si ya tienes una función que pinta marcadores, asegúrate de que sea global:
+    // window.renderMapMarkers = window.renderMapMarkers || function(){};
+    if (typeof window.renderMapMarkers === 'function') {
+      window.renderMapMarkers();
+    }
+  };
+</script>
+
+<!-- 2) Carga recomendada: loading=async + async/defer -->
+<script
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap"
+  async
+  defer
+></script>
+
 </head>
 <body class="h-full">
 <div class="max-w-7xl mx-auto p-4 sm:p-6">
@@ -549,14 +573,19 @@ function renderTable(){
 }
 
 /* ===================== MAPA ===================== */
-function initMap(){
-  MAP = new google.maps.Map(document.getElementById('map'), {
-    center: {lat: 23.6345, lng: -102.5528}, // MX
+function initMap() {
+  window.MAP = new google.maps.Map(document.getElementById("map"), {
+    center: { lat: 23.6345, lng: -102.5528 },
     zoom: 5,
-    styles: [{ elementType:'geometry', stylers:[{color:'#0b0d10'}] }]
   });
-  renderMapMarkers();
+
+  if (typeof renderMapMarkers === "function") {
+    renderMapMarkers();
+  }
 }
+
+// ⬇️ ESTA LÍNEA ASEGURA QUE GOOGLE ENCUENTRE initMap
+window.initMap = initMap;
 function clearMarkers(){
   MAP_MARKERS.forEach(m=>m.setMap(null));
   MAP_MARKERS = [];
@@ -583,6 +612,8 @@ function renderMapMarkers(){
     MAP_MARKERS.push(marker);
   });
 }
+// ⬇️ ESTA LÍNEA LO HACE GLOBAL
+window.renderMapMarkers = renderMapMarkers;
 
 /* ===================== CALENDARIO ===================== */
 function renderCalendar(){
