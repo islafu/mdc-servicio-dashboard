@@ -424,17 +424,22 @@ function deriveComputedFields(rows){
   return rows;
 }
 function applyFilters(){
-  const a = ($('#fAsesor').value||'').trim().toLowerCase();
-  const act = ($('#fActividad').value||'').trim().toLowerCase();
-  const mod = ($('#fModalidad').value||'').trim().toLowerCase();
-  const c  = ($('#fCiudad').value||'').trim().toLowerCase();
-  const rng = ($('#fRango').value||'').trim();
+  const getVal = (id) => (document.getElementById(id)?.value || '').trim().toLowerCase();
+
+  const a   = getVal('fAsesor');
+  const act = getVal('fActividad');
+  const mod = getVal('fModalidad');
+  const c   = getVal('fCiudad');
+  const rngRaw = document.getElementById('fRango')?.value || '';
+  const rng = rngRaw.trim();
 
   let out = ROWS.slice();
-  if (a) out = out.filter(x => (x.asesor||'').toString().toLowerCase().includes(a));
+
+  if (a)   out = out.filter(x => (x.asesor||'').toString().toLowerCase().includes(a));
   if (act) out = out.filter(x => (x.actividad||'').toString().toLowerCase() === act);
   if (mod) out = out.filter(x => (x.modalidad||'').toString().toLowerCase() === mod);
-  if (c) out = out.filter(x => (x.ciudad||'').toString().toLowerCase().includes(c));
+  if (c)   out = out.filter(x => (x.ciudad||'').toString().toLowerCase().includes(c));
+
   if (rng && rng.includes('a')) {
     const [d1,d2] = rng.split('a').map(s=>s.trim());
     if (d1 && d2) {
@@ -446,6 +451,7 @@ function applyFilters(){
       });
     }
   }
+
   FILTERED = out;
 }
 
