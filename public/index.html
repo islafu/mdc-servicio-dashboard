@@ -337,11 +337,54 @@ function minutosEntre(h1,h2){ if(!h1||!h2) return 0; const [a,b]=h1.split(':').m
 function parseBloques(str){ try{return JSON.parse(str||'[]')}catch{return []} }
 function horasTotalesFromBloques(bloques){ const mins=bloques.reduce((acc,b)=>acc+Math.max(0,minutosEntre(b.inicio,b.fin)-(Number(b.breakMin)||0)),0); return Math.round((mins/60)*100)/100; }
 function totalCobrado(r){ return ['mo_monto','refacciones_monto','viaticos_monto','iva_monto'].reduce((a,k)=>a+(Number(r[k])||0),0); }
-function isGarantia(r){ return String(r.garantia||'').trim().toLowerCase().startsWith('s'); }
-function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().includes('instal'); }
-function toISODate(d){ const m = dayjs(d,['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD'],true); return m.isValid()?m.format('YYYY-MM-DD'):null; }
 function fmtDateCell(s){ const m=dayjs(String(s),['YYYY-MM-DD','DD/MM/YYYY']); return m.isValid()?m.format('YYYY-MM-DD'):String(s||''); }
 function fmtTimeCell(s){ const ok=/^\d{1,2}:\d{2}$/.test(String(s||'')); return ok?String(s):''; }
+
+/* === Normalización de FECHA/HORA robusta === */
+function fromSheetSerial(n){ // Google Sheets serial → YYYY-MM-DD
+  const base = dayjs('1899-12-30');
+  return base.add(Number(n||0), 'day').format('YYYY-MM-DD');
+}
+function normalizeDate(val){
+  if (val == null || val === '') return null;
+  if (typeof val === 'number') return fromSheetSerial(val);
+  const s = String(val).trim();
+  const tryFormats = [
+    'YYYY-MM-DD',
+    'DD/MM/YYYY',
+    'YYYY/MM/DD',
+    'DD-MM-YYYY',
+    'YYYY-MM-DD HH:mm',
+    'DD/MM/YYYY HH:mm',
+    'YYYY/MM/DD HH:mm',
+    'DD-MM-YYYY HH:mm',
+    'DD/MM/YYYY HH:mm:ss',
+    'YYYY-MM-DD HH:mm:ss',
+    'YYYY/MM/DD HH:mm:ss'
+  ];
+  const m = dayjs(s, tryFormats, true);
+  if (m.isValid()) return m.format('YYYY-MM-DD');
+  const iso = dayjs(s);
+  if (iso.isValid()) return iso.format('YYYY-MM-DD');
+  return null;
+}
+function normalizeTime(val){
+  if (!val) return '';
+  let s = String(val).trim().toLowerCase();
+  s = s.replace(/\s*a\.?\s?m\.?\s*/g,' am').replace(/\s*p\.?\s?m\.?\s*/g,' pm');
+  const hhmmss = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?$/i);
+  if (hhmmss) {
+    let hh = Number(hhmmss[1]), mm = Number(hhmmss[2]);
+    const ampm = (hhmmss[3]||'').toLowerCase();
+    if (ampm === 'pm' && hh < 12) hh += 12;
+    if (ampm === 'am' && hh === 12) hh = 0;
+    return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+  }
+  const m = dayjs(s, ['HH:mm', 'H:mm', 'h:mm A', 'h:mm a'], true);
+  if (m.isValid()) return m.format('HH:mm');
+  return '';
+}
+function toISODate(val){ return normalizeDate(val); }
 
 /* ==== IVA helpers ==== */
 function splitBaseIvaFromTotal(total){
@@ -354,7 +397,7 @@ function splitBaseIvaFromTotal(total){
 function deriveEquiposIVA(row){
   let sub = Number(row.equipos_valor_subtotal||0);
   let tot = Number(row.equipos_valor_total||0);
-  let iva = Number(row.equipos_iva||0);
+  let iva = Number(row.equipos_iva)||0;
   if (sub>0 && tot===0) { tot = round0(sub*(1+IVA_RATE)); iva = tot - sub; }
   else if (tot>0 && sub===0) { const split = splitBaseIvaFromTotal(tot); sub = split.base; iva = split.iva; }
   else if (iva===0 && (sub>0 || tot>0)) { if (sub>0) iva = round0(sub*IVA_RATE); else iva = round0(tot - tot/(1+IVA_RATE)); }
@@ -381,24 +424,33 @@ async function apiPost(payload){
 /* ====== RENDER PIPELINE ====== */
 function deriveComputedFields(rows){
   rows.forEach(r=>{
-    // Horas
+    // 1) Horas (bloques, rango o ya calculadas)
     let horas = 0;
     const bloques = parseBloques(r.bloques_horas);
     if (Array.isArray(bloques) && bloques.length){
-      horas = horasTotalesFromBloques(bloques);
-    } else if (r.hora_inicio && r.hora_fin){
-      const m = minutosEntre(r.hora_inicio, r.hora_fin);
-      horas = Math.max(0, Math.round((m/60)*100)/100);
-    } else if (Number(r.horas_totales) > 0){
-      horas = Number(r.horas_totales);
+      horas = horasTotalesFromBloques(bloques.map(b => ({
+        inicio: normalizeTime(b.inicio),
+        fin: normalizeTime(b.fin),
+        breakMin: Number(b.breakMin)||0
+      })));
+    } else {
+      const hi = normalizeTime(r.hora_inicio);
+      const hf = normalizeTime(r.hora_fin);
+      if (hi && hf) {
+        const m = minutosEntre(hi, hf);
+        horas = Math.max(0, Math.round((m/60)*100)/100);
+      } else if (Number(r.horas_totales) > 0){
+        horas = Number(r.horas_totales);
+      }
     }
     r.horas_totales = horas;
 
-    // Potencial garantía
-    const g = String(r.garantia||'').trim().toLowerCase().startsWith('s');
-    r.potencial_garantia = g ? round0(horas * TARIFA_GARANTIA) : 0;
+    // 2) Garantía robusta
+    const gStr = String(r.garantia||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+    const esGarantia = /(^s(i)?$)|garantia.*(si)?/.test(gStr) || gStr.startsWith('s');
+    r.potencial_garantia = esGarantia ? round0(horas * TARIFA_GARANTIA) : 0;
 
-    // Desglose + IVA
+    // 3) Desglose + IVA
     let mo  = Number(r.mo_monto)||0;
     let ref = Number(r.refacciones_monto)||0;
     let via = Number(r.viaticos_monto)||0;
@@ -418,11 +470,12 @@ function deriveComputedFields(rows){
       r.total_cobrado = round0(mo + ref + via + iva);
     }
 
-    // Instalaciones: equipos
+    // 4) Instalaciones: equipos
     deriveEquiposIVA(r);
   });
   return rows;
 }
+
 function applyFilters(){
   const getVal = (id) => (document.getElementById(id)?.value || '').trim().toLowerCase();
 
@@ -451,11 +504,15 @@ function applyFilters(){
       });
     }
   }
-
   FILTERED = out;
 }
 
 /* ====== KPIs ====== */
+function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().includes('instal'); }
+function isGarantia(r){
+  const g = String(r.garantia||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+  return /(^s(i)?$)|garantia.*(si)?/.test(g) || g.startsWith('s');
+}
 function renderKpis(){
   const isSoporte = r => (r.actividad||'').toLowerCase().includes('soporte');
   const isInst    = r => (r.actividad||'').toLowerCase().includes('instal');
@@ -614,13 +671,17 @@ function renderCalendar(){
   const events = [];
   (FILTERED||[]).forEach(r=>{
     const act = r.actividad || 'Otro';
-    const dStart = toISODate(r.fecha_inicio) || toISODate(r.fecha_fin);
-    const dEnd   = toISODate(r.fecha_fin)    || toISODate(r.fecha_inicio);
+    const dStart = normalizeDate(r.fecha_inicio) || normalizeDate(r.fecha_fin);
+    const dEnd   = normalizeDate(r.fecha_fin)    || normalizeDate(r.fecha_inicio);
     if (!dStart) return;
-    const hasTimes = !!((r.hora_inicio||'') || (r.hora_fin||''));
-    const start = hasTimes ? `${dStart}T${(r.hora_inicio||'00:00')}` : dStart;
+
+    const hi = normalizeTime(r.hora_inicio);
+    const hf = normalizeTime(r.hora_fin);
+    const hasTimes = !!(hi || hf);
+
+    const start = hasTimes ? `${dStart}T${(hi||'00:00')}` : dStart;
     let end;
-    if (dEnd) end = hasTimes ? `${dEnd}T${(r.hora_fin||'00:00')}` : dayjs(dEnd).add(1,'day').format('YYYY-MM-DD');
+    if (dEnd) end = hasTimes ? `${dEnd}T${(hf||'00:00')}` : dayjs(dEnd).add(1,'day').format('YYYY-MM-DD');
 
     events.push({
       title: `${act} — ${r.asesor||''}`,
@@ -696,12 +757,33 @@ function renderCharts(){
     const byA={}; FILTERED.forEach(r=>{ const k=r.asesor||'Sin dato'; byA[k]=(byA[k]||0)+(Number(r.total_cobrado)||0); });
     new Chart(c,{type:'bar',data:{labels:Object.keys(byA),datasets:[{label:'MXN',data:Object.values(byA)}]},options:{responsive:true,maintainAspectRatio:false}});
   })();
+
+  // TeamViewer: carga tolerante y render
   (async function(){
-    const c = document.getElementById('chartTV'); if(!c) return;
-    try{
-      const txt = await fetch('/connectionreport.csv').then(r=> r.ok ? r.text() : '');
-      if (!txt) return;
-      const rows = parseTeamViewerCSV(txt);
+    const c = document.getElementById('chartTV'); 
+    const tbl = document.querySelector('#tvTable tbody');
+    if (!c && !tbl) return;
+
+    async function fetchAny(urls){
+      for (const u of urls){
+        try{ const r = await fetch(u, {cache:'no-store'}); if (r.ok) return await r.text(); }catch{}
+      }
+      return '';
+    }
+
+    const txt = await fetchAny(['/connectionreport.csv','/public/connectionreport.csv','/tv/connectionreport.csv']);
+    if (!txt) {
+      if (tbl) tbl.innerHTML = '<tr><td class="py-2 px-3" colspan="3">No hay CSV</td></tr>';
+      return;
+    }
+
+    const rows = parseTeamViewerCSV(txt);
+    if (rows.length === 0){
+      if (tbl) tbl.innerHTML = '<tr><td class="py-2 px-3" colspan="3">CSV sin datos válidos</td></tr>';
+      return;
+    }
+
+    if (c){
       new Chart(c,{
         type:'bar',
         data:{ labels: rows.map(r=>r.fecha),
@@ -709,15 +791,20 @@ function renderCharts(){
                           {type:'line', label:'Horas', data: rows.map(r=>r.horas)} ] },
         options:{ responsive:true, maintainAspectRatio:false }
       });
-      // tabla
-      const el = document.querySelector('#tvTable tbody');
-      el.innerHTML = rows.map(r=>`
+    }
+
+    if (tbl){
+      tbl.innerHTML = rows.map(r=>`
         <tr class="border-t border-white/10">
           <td class="py-2 px-3">${r.fecha}</td>
           <td class="py-2 px-3">${r.conexiones}</td>
           <td class="py-2 px-3">${Number(r.horas||0).toFixed(2)}</td>
         </tr>`).join('');
-    }catch(e){ console.warn('CSV TV no disponible'); }
+    }
+
+    const sumTvH = rows.reduce((a,x)=>a + (Number(x.horas)||0), 0);
+    const k = document.getElementById('kpiC_tvhrs');
+    if (k) k.textContent = Number(sumTvH).toFixed(1);
   })();
 }
 
