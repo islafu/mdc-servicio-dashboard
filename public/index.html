@@ -104,6 +104,15 @@
     <div class="card p-4"><div class="text-slate-400 text-xs">Eventos/Proy./Cursos</div><div id="kpiC_eventos" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Conexiones TV (mes)</div><div id="kpiC_tvconn" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Horas TV (mes)</div><div id="kpiC_tvhrs" class="text-3xl font-semibold mt-1">0</div></div>
+    <!-- KPI Valor equipos instalados -->
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Valor equipos instalados (Subtotal)</div>
+      <div id="kpiEqSub" class="text-2xl font-semibold mt-1">$0</div>
+    </div>
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Valor equipos instalados (Total c/IVA)</div>
+      <div id="kpiEqTot" class="text-2xl font-semibold mt-1">$0</div>
+    </div>
   </section>
 
   <!-- KPIs financieros -->
@@ -382,6 +391,48 @@ function getMonthRange(){
   return { start, end };
 }
 
+function toggleEventModal(show){
+  const m = document.getElementById('eventModal');
+  if (!m) return;
+  m.classList.toggle('hidden', !show);
+}
+
+function showEventModal({id, title, inicio, fin, asesor, actividad, modalidad, ciudad, notas}){
+  const fmtDT = v => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '—';
+  document.getElementById('emTitle').textContent     = title || 'Detalle de evento';
+  document.getElementById('emInicio').textContent    = fmtDT(inicio);
+  document.getElementById('emFin').textContent       = fmtDT(fin);
+  document.getElementById('emAsesor').textContent    = asesor || '—';
+  document.getElementById('emActividad').textContent = actividad || '—';
+  document.getElementById('emModalidad').textContent = modalidad || '—';
+  document.getElementById('emCiudad').textContent    = ciudad || '—';
+  document.getElementById('emNotas').textContent     = notas || '—';
+
+  // acciones
+  document.getElementById('emBtnEdit').onclick = () => {
+    // intenta usar tu flujo de edición si existe
+    if (typeof startEdit === 'function') startEdit(id);
+    else alert('Implementa startEdit(id) para abrir el formulario de edición.\nID: '+id);
+    toggleEventModal(false);
+  };
+  document.getElementById('emBtnDelete').onclick = async () => {
+    if (!confirm('¿Eliminar este registro?')) return;
+    try{
+      const r = await fetch(API_URL, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ op:'delete', token: EDIT_TOKEN, id })
+      });
+      if (!r.ok) throw new Error('Delete failed');
+      await boot(); // recarga datos/ UI
+      toggleEventModal(false);
+    }catch(e){ alert('Error eliminando: '+e.message); }
+  };
+  document.getElementById('emClose').onclick = ()=> toggleEventModal(false);
+  toggleEventModal(true);
+}
+
+
 /* ===== API ===== */
 async function apiGet(){
   const r = await fetch(API_URL, { method:'GET' });
@@ -477,6 +528,15 @@ function renderKpis(){
   const sumValTot = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_total)||0), 0);
   const sumCostoInst = rowsInst.reduce((a,r)=> (Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0), 0);
   $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
+
+  const esInst = r => (r.actividad||'').toLowerCase().includes('instal');
+  const eqSub = FILTERED.filter(esInst).reduce((a,r)=> a + (Number(r.equipos_valor_subtotal)||0), 0);
+  const eqTot = FILTERED.filter(esInst).reduce((a,r)=> a + (Number(r.equipos_valor_total)||0), 0);
+
+  const kSub = document.getElementById('kpiEqSub');
+  const kTot = document.getElementById('kpiEqTot');
+  if (kSub) kSub.textContent = fmtMoney(eqSub);
+  if (kTot) kTot.textContent = fmtMoney(eqTot);
 }
 
 /* ===== Tabla ===== */
@@ -649,6 +709,7 @@ function renderCalendar(){
       const r = info.event.extendedProps?.rjson || {};
       // Abre modal de detalle (usa el que ya tienes si existía)
       showEventModal({
+        id: r.id,
         title: info.event.title,
         inicio: info.event.start,
         fin: info.event.end,
@@ -656,8 +717,7 @@ function renderCalendar(){
         actividad: r.actividad,
         modalidad: r.modalidad,
         ciudad: r.ciudad,
-        notas: r.notas,
-        id: r.id
+        notas: r.notas
       });
     }
   });
@@ -1002,5 +1062,36 @@ boot();
   }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
+<!-- Modal evento calendario -->
+<div id="eventModal" class="fixed inset-0 z-[70] hidden">
+  <!-- backdrop -->
+  <div class="absolute inset-0 bg-black/60"></div>
+
+  <!-- card -->
+  <div class="relative mx-auto mt-20 w-[min(680px,94vw)] rounded-xl border border-white/10 bg-slate-900 shadow-2xl">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-white/10">
+      <h3 id="emTitle" class="text-lg font-semibold">Detalle de evento</h3>
+      <button id="emClose" class="px-2 py-1 rounded hover:bg-white/10">✕</button>
+    </div>
+
+    <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+      <div><div class="text-slate-400">Inicio</div><div id="emInicio" class="font-medium"></div></div>
+      <div><div class="text-slate-400">Fin</div><div id="emFin" class="font-medium"></div></div>
+      <div><div class="text-slate-400">Asesor</div><div id="emAsesor" class="font-medium"></div></div>
+      <div><div class="text-slate-400">Actividad</div><div id="emActividad" class="font-medium"></div></div>
+      <div><div class="text-slate-400">Modalidad</div><div id="emModalidad" class="font-medium"></div></div>
+      <div><div class="text-slate-400">Ciudad / Dirección</div><div id="emCiudad" class="font-medium"></div></div>
+      <div class="sm:col-span-2">
+        <div class="text-slate-400">Notas</div>
+        <div id="emNotas" class="font-medium whitespace-pre-wrap"></div>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-2 px-5 pb-5">
+      <button id="emBtnEdit" class="btn btn-primary">✏️ Editar</button>
+      <button id="emBtnDelete" class="btn bg-red-600/80 hover:bg-red-600 text-white">🗑 Eliminar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
