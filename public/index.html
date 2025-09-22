@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MDC Digital — Reporte de Actividades Asesores CAD-CAM</title>
 
-  <!-- CSS de producción (Tailwind compilado). Si no existe o pesa ~0, inyectamos CDN como fallback -->
+  <!-- Tailwind (build) + fallback CDN para no ver UI cruda si /styles.css no existe -->
   <link rel="stylesheet" href="/styles.css">
   <script>
     (async () => {
@@ -23,17 +23,16 @@
     })();
   </script>
 
-  <!-- Librerías -->
+  <!-- Libs -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css">
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/isoWeek.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.min.js"></script>
-  <script>dayjs.extend(window.dayjs_plugin_isoWeek); dayjs.extend(window.dayjs_plugin_customParseFormat);</script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/isBetween.min.js"></script>
   <script>
     dayjs.extend(window.dayjs_plugin_isoWeek);
     dayjs.extend(window.dayjs_plugin_customParseFormat);
-    dayjs.extend(window.dayjs_plugin_isBetween);  // <-- NUEVO
+    dayjs.extend(window.dayjs_plugin_isBetween);
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
@@ -56,6 +55,7 @@
     .chip-warn{background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.35)}
     .chip-ok{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35)}
 
+    /* Tabla */
     .table-viewport { max-height: 65vh; overflow: auto; }
     #tbl { table-layout: auto; border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
     #tbl thead th { position: sticky; top: 0; background: #0f172a; z-index: 1; }
@@ -66,16 +66,18 @@
     .col-notas { white-space: normal; min-width: 20rem; max-width: 40rem; }
     .col-acciones { white-space: nowrap; min-width: 10rem; }
 
+    /* Gráficas y paneles */
     canvas { max-width: 100%; }
     .chart-h { height: 320px; }
     .chart-h-lg { height: 360px; }
-
     #map{min-height:460px;height:460px}
     #calendar{min-height:960px;height:auto}
 
     /* Modal calendario */
-    .modal-bg{position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:50}
-    .modal{background:#0b1220;border:1px solid rgba(255,255,255,.08);border-radius:1rem;max-width:42rem;width:92%;padding:1rem}
+    #eventModal.hidden{display:none}
+    #eventModal{position:fixed;inset:0;z-index:70}
+    #eventModal .back{position:absolute;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(2px)}
+    #eventModal .panel{position:relative;margin:4rem auto 0;max-width:640px;width:95%;background:#0b1220;border:1px solid rgba(255,255,255,.08);border-radius:1rem;box-shadow:0 20px 60px rgba(0,0,0,.45)}
   </style>
 </head>
 <body class="h-full">
@@ -104,15 +106,6 @@
     <div class="card p-4"><div class="text-slate-400 text-xs">Eventos/Proy./Cursos</div><div id="kpiC_eventos" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Conexiones TV (mes)</div><div id="kpiC_tvconn" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Horas TV (mes)</div><div id="kpiC_tvhrs" class="text-3xl font-semibold mt-1">0</div></div>
-    <!-- KPI Valor equipos instalados -->
-    <div class="card p-4">
-      <div class="text-slate-400 text-xs">Valor equipos instalados (Subtotal)</div>
-      <div id="kpiEqSub" class="text-2xl font-semibold mt-1">$0</div>
-    </div>
-    <div class="card p-4">
-      <div class="text-slate-400 text-xs">Valor equipos instalados (Total c/IVA)</div>
-      <div id="kpiEqTot" class="text-2xl font-semibold mt-1">$0</div>
-    </div>
   </section>
 
   <!-- KPIs financieros -->
@@ -136,21 +129,32 @@
     </div>
   </section>
 
-  <!-- Gráficas + TeamViewer totales -->
+  <!-- KPIs equipos -->
+  <section class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Valor equipos instalados (Subtotal)</div>
+      <div id="kpiEqSub" class="text-2xl font-semibold mt-1">$0</div>
+    </div>
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Valor equipos instalados (Total c/IVA)</div>
+      <div id="kpiEqTot" class="text-2xl font-semibold mt-1">$0</div>
+    </div>
+  </section>
+
+  <!-- Gráficas + TeamViewer -->
   <section class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
     <div class="card p-4"><h3 class="text-lg font-medium mb-3">Actividades por asesor (apilado por tipo)</h3><div class="chart-h"><canvas id="chartActAsesor"></canvas></div></div>
     <div class="card p-4"><h3 class="text-lg font-medium mb-3">Remoto vs Presencial</h3><div class="chart-h"><canvas id="chartRemoto"></canvas></div></div>
     <div class="card p-4"><h3 class="text-lg font-medium mb-3">Distribución por actividad</h3><div class="chart-h"><canvas id="chartActividad"></canvas></div></div>
     <div class="card p-4"><h3 class="text-lg font-medium mb-3">Garantía vs No garantía</h3><div class="chart-h"><canvas id="chartGarantia"></canvas></div></div>
 
-    <!-- TeamViewer junto con gráficas -->
     <div class="card p-4 xl:col-span-2">
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center justify-between mb-2">
         <h3 class="text-lg font-medium">TeamViewer — Totales del mes</h3>
-        <canvas id="chartTV"></canvas>
         <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
       </div>
-      <div class="table-viewport">
+      <div class="chart-h"><canvas id="chartTV"></canvas></div>
+      <div class="table-viewport mt-4">
         <table class="w-full" id="tvTable">
           <thead>
             <tr class="text-left text-slate-400">
@@ -167,12 +171,12 @@
     <div class="card p-4 xl:col-span-2"><h3 class="text-lg font-medium mb-3">Ingresos por asesor (MXN)</h3><div class="chart-h-lg"><canvas id="chartIngresos"></canvas></div></div>
   </section>
 
-  <!-- Mapa y Calendario (pantalla completa uno debajo del otro) -->
+  <!-- Mapa y Calendario (pantalla completa, uno bajo otro) -->
   <section class="grid grid-cols-1 gap-6 mb-6">
     <div class="card p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-medium">Mapa</h3>
-        <div class="text-xs text-slate-400">Geolocalización por registro (lat/lng)</div>
+        <div class="text-xs text-slate-400">Geolocalización por registro</div>
       </div>
       <div id="map" class="rounded-lg overflow-hidden"></div>
     </div>
@@ -185,14 +189,19 @@
     </div>
   </section>
 
-  <!-- CAPTURA (debajo de calendario y arriba de registros) -->
+  <!-- CAPTURA (debajo del calendario, arriba de registros) -->
   <section class="card p-4 mb-6">
     <h2 class="text-lg font-medium mb-3">Captura de registro</h2>
-    <form id="frm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <input class="formc px-3 py-2 rounded" name="fecha_inicio" placeholder="Fecha inicio (YYYY-MM-DD)" />
-      <input class="formc px-3 py-2 rounded" name="hora_inicio" placeholder="Hora inicio (HH:MM)" />
-      <input class="formc px-3 py-2 rounded" name="fecha_fin" placeholder="Fecha fin (YYYY-MM-DD)" />
-      <input class="formc px-3 py-2 rounded" name="hora_fin" placeholder="Hora fin (HH:MM)" />
+    <form id="frm" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+      <!-- Fechas/horas simples -->
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Inicio</span>
+        <input class="formc px-3 py-2 rounded" name="dt_inicio" type="datetime-local">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Fin</span>
+        <input class="formc px-3 py-2 rounded" name="dt_fin" type="datetime-local">
+      </label>
 
       <input class="formc px-3 py-2 rounded" name="asesor" placeholder="Asesor" />
       <select class="formc px-3 py-2 rounded" name="actividad">
@@ -218,16 +227,16 @@
 
       <input class="formc px-3 py-2 rounded" name="cliente" placeholder="Cliente" />
       <input class="formc px-3 py-2 rounded" name="telefono" placeholder="Teléfono" />
+
+      <!-- Dirección con Autocomplete (nuevo componente) -->
+      <label class="flex flex-col gap-1 md:col-span-2">
+        <span class="text-slate-400">Dirección (Maps)</span>
+        <gmpx-place-autocomplete id="capDireccion" class="formc px-3 py-2 rounded" placeholder="Escribe y selecciona la dirección"></gmpx-place-autocomplete>
+      </label>
+
       <input class="formc px-3 py-2 rounded" name="ciudad" placeholder="Ciudad" />
-
-      <!-- Autocomplete (dirección) -->
-      <div class="md:col-span-2">
-        <div class="text-xs text-slate-400 mb-1">Dirección (Maps)</div>
-        <div id="placeBox" class="w-full"></div>
-      </div>
-
-      <input class="formc px-3 py-2 rounded" name="lat" placeholder="Latitud" />
-      <input class="formc px-3 py-2 rounded" name="lng" placeholder="Longitud" />
+      <input class="formc px-3 py-2 rounded" name="lat" placeholder="Latitud" readonly />
+      <input class="formc px-3 py-2 rounded" name="lng" placeholder="Longitud" readonly />
       <textarea class="formc px-3 py-2 rounded md:col-span-2" name="notas" placeholder="Notas"></textarea>
 
       <!-- Costeo y desglose -->
@@ -241,8 +250,29 @@
       <input class="formc px-3 py-2 rounded" name="equipos_iva" placeholder="Equipos IVA (auto 16%)" readonly />
       <input class="formc px-3 py-2 rounded" name="equipos_valor_total" placeholder="Equipos total" readonly />
 
-      <!-- Bloques de horas JSON simple -->
-      <textarea class="formc px-3 py-2 rounded md:col-span-2" name="bloques_horas" placeholder='Bloques (JSON) p.e. [{"fecha":"2025-09-10","inicio":"08:00","fin":"13:00","breakMin":0}]'></textarea>
+      <!-- Editor de bloques -->
+      <div class="md:col-span-2 card p-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-slate-300">Bloques de tiempo</div>
+          <button type="button" id="btnAddBloque" class="btn btn-primary">➕ Agregar bloque</button>
+        </div>
+        <div class="overflow-auto">
+          <table class="w-full text-sm" id="tblBloques">
+            <thead>
+              <tr class="text-left text-slate-400">
+                <th class="py-1 px-2">Fecha</th>
+                <th class="py-1 px-2">Inicio</th>
+                <th class="py-1 px-2">Fin</th>
+                <th class="py-1 px-2">Descanso (min)</th>
+                <th class="py-1 px-2"></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <input type="hidden" name="bloques_horas" id="bloquesJson">
+      </div>
+
       <input class="formc px-3 py-2 rounded" name="horas_totales" placeholder="Horas totales" readonly />
 
       <div class="md:col-span-2 flex gap-2">
@@ -318,22 +348,31 @@
   </section>
 </div>
 
-<!-- Modal calendario -->
-<div id="modalBg" class="modal-bg">
-  <div class="modal">
-    <div class="flex items-start justify-between">
-      <h3 id="mTitulo" class="text-lg font-semibold">Detalle</h3>
-      <button id="mClose" class="btn">✖</button>
+<!-- Modal de evento (calendario) -->
+<div id="eventModal" class="hidden">
+  <div class="back"></div>
+  <div class="panel">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-white/10">
+      <h3 id="emTitle" class="text-lg font-semibold">Detalle de evento</h3>
+      <button id="emClose" class="px-2 py-1 rounded hover:bg-white/10">✕</button>
     </div>
-    <div id="mBody" class="mt-2 text-slate-300 text-sm whitespace-pre-wrap"></div>
-    <div class="mt-4 flex gap-2 justify-end">
-      <button id="mEdit" class="btn btn-primary">✏️ Editar</button>
-      <button id="mDel" class="btn">🗑️ Eliminar</button>
+    <div class="px-5 py-4 space-y-2 text-sm">
+      <div><span class="text-slate-400">Inicio:</span> <span id="emInicio"></span></div>
+      <div><span class="text-slate-400">Fin:</span> <span id="emFin"></span></div>
+      <div><span class="text-slate-400">Asesor:</span> <span id="emAsesor"></span></div>
+      <div><span class="text-slate-400">Actividad:</span> <span id="emActividad"></span></div>
+      <div><span class="text-slate-400">Modalidad:</span> <span id="emModalidad"></span></div>
+      <div><span class="text-slate-400">Ciudad/Dirección:</span> <span id="emCiudad"></span></div>
+      <div><span class="text-slate-400">Notas:</span> <pre id="emNotas" class="whitespace-pre-wrap"></pre></div>
+    </div>
+    <div class="px-5 pb-5 flex gap-2 justify-end">
+      <button id="emBtnEdit" class="btn btn-primary">✏️ Editar</button>
+      <button id="emBtnDelete" class="btn">🗑️ Eliminar</button>
     </div>
   </div>
 </div>
 
-<!-- ================= JS ================= -->
+<!-- ===================== JS ===================== -->
 <script>
 /* ===== Config ===== */
 const API_URL = '/.netlify/functions/gas-proxy';
@@ -347,7 +386,6 @@ let ROWS = [];
 let FILTERED = [];
 let CAL = null;
 const CHARTS = {};
-let CAL_EVENT_CLICKED = null;
 
 /* ===== Utils ===== */
 function $(q){ return document.querySelector(q); }
@@ -362,28 +400,35 @@ function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().inc
 function toISODate(d){
   if (d == null) return null;
   const s = String(d).trim();
-
-  // 1) Try strict common formats
   let m = dayjs(s, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD','DD-MM-YYYY','MM-DD-YYYY'], true);
   if (m.isValid()) return m.format('YYYY-MM-DD');
-
-  // 2) If it has time, strip time and retry
-  //    - "2025-09-20T00:00:00.000Z"  -> "2025-09-20"
-  //    - "20/09/2025 0:00:00"        -> "20/09/2025"
   const justDate =
-    (s.match(/^\d{4}-\d{2}-\d{2}/)?.[0]) ||         // 2025-09-20...
-    (s.match(/^\d{2}\/\d{2}\/\d{4}/)?.[0]) ||       // 20/09/2025...
-    (s.match(/^\d{2}-\d{2}-\d{4}/)?.[0]);           // 20-09-2025...
+    (s.match(/^\d{4}-\d{2}-\d{2}/)?.[0]) ||
+    (s.match(/^\d{2}\/\d{2}\/\d{4}/)?.[0]) ||
+    (s.match(/^\d{2}-\d{2}-\d{4}/)?.[0]);
   if (justDate) {
     m = dayjs(justDate, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD','DD-MM-YYYY','MM-DD-YYYY'], true);
     if (m.isValid()) return m.format('YYYY-MM-DD');
   }
-
-  // 3) Last resort: non-strict parse
   m = dayjs(s);
   if (m.isValid()) return m.format('YYYY-MM-DD');
-
   return null;
+}
+function cleanTime(v){
+  if (!v) return '';
+  const s = String(v);
+  const mIso = s.match(/T(\d{2}):(\d{2})/);
+  if (mIso) return `${mIso[1]}:${mIso[2]}`;
+  const mHms = s.match(/\b(\d{1,2}):(\d{2})/);
+  if (mHms) return `${String(mHms[1]).padStart(2,'0')}:${mHms[2]}`;
+  return '';
+}
+function fmtDateTime(fecha, hora){
+  const d = toISODate(fecha) || '';
+  const t = cleanTime(hora);
+  if (!d && !t) return '—';
+  if (!d) return t;
+  return t ? `${d} ${t}` : d;
 }
 function getMonthRange(){
   const sel = ($('#fMes')?.value || dayjs().format('YYYY-MM'));
@@ -391,48 +436,6 @@ function getMonthRange(){
   const end = start.endOf('month');
   return { start, end };
 }
-
-function toggleEventModal(show){
-  const m = document.getElementById('eventModal');
-  if (!m) return;
-  m.classList.toggle('hidden', !show);
-}
-
-function showEventModal({id, title, inicio, fin, asesor, actividad, modalidad, ciudad, notas}){
-  const fmtDT = v => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '—';
-  document.getElementById('emTitle').textContent     = title || 'Detalle de evento';
-  document.getElementById('emInicio').textContent    = fmtDT(inicio);
-  document.getElementById('emFin').textContent       = fmtDT(fin);
-  document.getElementById('emAsesor').textContent    = asesor || '—';
-  document.getElementById('emActividad').textContent = actividad || '—';
-  document.getElementById('emModalidad').textContent = modalidad || '—';
-  document.getElementById('emCiudad').textContent    = ciudad || '—';
-  document.getElementById('emNotas').textContent     = notas || '—';
-
-  // acciones
-  document.getElementById('emBtnEdit').onclick = () => {
-    // intenta usar tu flujo de edición si existe
-    if (typeof startEdit === 'function') startEdit(id);
-    else alert('Implementa startEdit(id) para abrir el formulario de edición.\nID: '+id);
-    toggleEventModal(false);
-  };
-  document.getElementById('emBtnDelete').onclick = async () => {
-    if (!confirm('¿Eliminar este registro?')) return;
-    try{
-      const r = await fetch(API_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ op:'delete', token: EDIT_TOKEN, id })
-      });
-      if (!r.ok) throw new Error('Delete failed');
-      await boot(); // recarga datos/ UI
-      toggleEventModal(false);
-    }catch(e){ alert('Error eliminando: '+e.message); }
-  };
-  document.getElementById('emClose').onclick = ()=> toggleEventModal(false);
-  toggleEventModal(true);
-}
-
 
 /* ===== API ===== */
 async function apiGet(){
@@ -474,7 +477,7 @@ function applyFilters(){
 
   let out = ROWS.filter(x=>{
     const f = toISODate(x.fecha_inicio) || toISODate(x.fecha_fin);
-    if (!f) return false; // sin fecha no entra al mensual
+    if (!f) return false;
     const t = dayjs(f, 'YYYY-MM-DD', true);
     return t.isValid() && t.isBetween(start, end, 'day', '[]');
   });
@@ -498,7 +501,6 @@ function applyFilters(){
   }
   FILTERED = out;
 }
-
 
 /* ===== KPIs ===== */
 function renderKpis(){
@@ -524,20 +526,15 @@ function renderKpis(){
   $('#kpiIva').textContent = fmtMoney(sumIva);
   $('#kpiCobradoTotal').textContent = fmtMoney(sumCob);
 
-  const rowsInst = FILTERED.filter(isInstalacion);
-  const sumValSub = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_subtotal)||0), 0);
-  const sumValTot = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_total)||0), 0);
-  const sumCostoInst = rowsInst.reduce((a,r)=> (Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0), 0);
-  $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
-
   const esInst = r => (r.actividad||'').toLowerCase().includes('instal');
   const eqSub = FILTERED.filter(esInst).reduce((a,r)=> a + (Number(r.equipos_valor_subtotal)||0), 0);
   const eqTot = FILTERED.filter(esInst).reduce((a,r)=> a + (Number(r.equipos_valor_total)||0), 0);
-
+  const sumCostoInst = FILTERED.filter(esInst).reduce((a,r)=> (Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0), 0);
   const kSub = document.getElementById('kpiEqSub');
   const kTot = document.getElementById('kpiEqTot');
   if (kSub) kSub.textContent = fmtMoney(eqSub);
   if (kTot) kTot.textContent = fmtMoney(eqTot);
+  $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
 }
 
 /* ===== Tabla ===== */
@@ -549,8 +546,8 @@ function renderTable(){
     tr.className = 'border-t border-white/10';
     tr.innerHTML = `
       <td class="py-2 px-3">${r.id||''}</td>
-      <td class="py-2 px-3">${[r.fecha_inicio,r.hora_inicio].filter(Boolean).join(' ')}</td>
-      <td class="py-2 px-3">${[r.fecha_fin,r.hora_fin].filter(Boolean).join(' ')}</td>
+      <td class="py-2 px-3">${fmtDateTime(r.fecha_inicio, r.hora_inicio)}</td>
+      <td class="py-2 px-3">${fmtDateTime(r.fecha_fin, r.hora_fin)}</td>
       <td class="py-2 px-3">${r.asesor||''}</td>
       <td class="py-2 px-3">
         ${r.actividad||''}
@@ -578,30 +575,38 @@ function renderTable(){
     tbody.appendChild(tr);
   });
 
-  // Delegación para editar/eliminar
   tbody.onclick = async (ev)=>{
-    const b = ev.target.closest('button');
-    if (!b) return;
-    const id = b.dataset.edit || b.dataset.del;
-    if (!id) return;
-
+    const b = ev.target.closest('button'); if (!b) return;
+    const id = b.dataset.edit || b.dataset.del; if (!id) return;
     if (b.dataset.del){
       if (!confirm(`¿Eliminar registro #${id}?`)) return;
-      try{
-        await apiPost('delete', { id: Number(id) });
-        await boot();
-      }catch(e){ alert('Error al eliminar: ' + e.message); }
+      try{ await apiPost('delete', { id:Number(id) }); await boot(); }
+      catch(e){ alert('Error al eliminar: '+e.message); }
       return;
     }
     if (b.dataset.edit){
-      const r = ROWS.find(x=> String(x.id)===String(id));
-      if (!r) return alert('No encontrado');
-      // Llena el form con valores del registro
-      for (const [k,v] of Object.entries(r)){
-        const el = document.querySelector(`#frm [name="${k}"]`);
-        if (el) el.value = (v==null?'':v);
+      // Llena captura con el registro (edición rápida)
+      const r = ROWS.find(x=> String(x.id)===String(id)); if (!r) return;
+      const f = document.getElementById('frm');
+      if (f){
+        f.reset();
+        const di = `${toISODate(r.fecha_inicio)||''}T${cleanTime(r.hora_inicio)}`;
+        const df = `${toISODate(r.fecha_fin)||''}T${cleanTime(r.hora_fin)}`;
+        f.dt_inicio.value = di !== 'T' ? di : '';
+        f.dt_fin.value    = df !== 'T' ? df : '';
+        ['asesor','actividad','modalidad','garantia','cliente','telefono','ciudad','lat','lng','notas',
+         'mo_monto','refacciones_monto','viaticos_monto','iva_monto','total_cobrado',
+         'equipos_valor_subtotal','equipos_iva','equipos_valor_total','horas_totales']
+          .forEach(k=>{ if (k in r) f[k].value = r[k] ?? ''; });
+        // bloques
+        try{
+          const arr = parseBloques(r.bloques_horas);
+          document.querySelector('#tblBloques tbody').innerHTML = '';
+          arr.forEach(addBloqueRow);
+          updateBloquesJson();
+        }catch{}
+        window.scrollTo({ top: f.getBoundingClientRect().top + window.scrollY - 80, behavior:'smooth' });
       }
-      window.scrollTo({ top: document.getElementById('frm').getBoundingClientRect().top + window.scrollY - 80, behavior:'smooth' });
     }
   };
 }
@@ -619,207 +624,48 @@ window.renderMapMarkers = function(){
   });
 };
 
-/* ===== Calendario + modal ===== */
-function openModal(evt, row){
-  $('#mTitulo').textContent = evt.title || 'Detalle';
-  $('#mBody').textContent = [
-    `Inicio: ${evt.start?.toISOString?.()||evt.startStr||''}`,
-    `Fin: ${evt.end?.toISOString?.()||evt.endStr||''}`,
-    `Asesor: ${row?.asesor||''}`,
-    `Actividad: ${row?.actividad||''}`,
-    `Ciudad: ${row?.ciudad||''}`,
-    `Notas: ${row?.notas||''}`
-  ].join('\n');
-  CAL_EVENT_CLICKED = row;
-  $('#modalBg').style.display = 'flex';
+/* ===== Modal calendario ===== */
+function toggleEventModal(show){
+  const m = document.getElementById('eventModal');
+  if (!m) return;
+  m.classList.toggle('hidden', !show);
 }
-function closeModal(){ $('#modalBg').style.display = 'none'; CAL_EVENT_CLICKED=null; }
+function showEventModal({id, title, inicio, fin, asesor, actividad, modalidad, ciudad, notas}){
+  const f = v => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '—';
+  $('#emTitle').textContent     = title || 'Detalle de evento';
+  $('#emInicio').textContent    = f(inicio);
+  $('#emFin').textContent       = f(fin);
+  $('#emAsesor').textContent    = asesor || '—';
+  $('#emActividad').textContent = actividad || '—';
+  $('#emModalidad').textContent = modalidad || '—';
+  $('#emCiudad').textContent    = ciudad || '—';
+  $('#emNotas').textContent     = notas || '—';
+  $('#emBtnEdit').onclick = ()=> {
+    const f = ROWS.find(r=> String(r.id)===String(id));
+    if (!f){ alert('No se encontró el registro'); return; }
+    document.querySelector(`[data-edit="${id}"]`)?.click(); // reutiliza edición rápida
+    toggleEventModal(false);
+  };
+  $('#emBtnDelete').onclick = async ()=>{
+    if (!confirm('¿Eliminar este registro?')) return;
+    try{ await apiPost('delete', { id:Number(id) }); await boot(); toggleEventModal(false); }
+    catch(e){ alert('Error eliminando: '+e.message); }
+  };
+  toggleEventModal(true);
+}
+document.getElementById('emClose').onclick = ()=> toggleEventModal(false);
+document.getElementById('eventModal').addEventListener('click', (e)=>{ if (e.target.id==='eventModal' || e.target.classList.contains('back')) toggleEventModal(false); });
+
+/* ===== Calendario ===== */
 function extractHHmm(v){
   if (!v) return null;
   const s = String(v);
-  // HH:mm directo
   const m1 = s.match(/\b(\d{1,2}):(\d{2})\b/);
-  if (m1) {
-    const hh = String(m1[1]).padStart(2,'0');
-    const mm = String(m1[2]).padStart(2,'0');
-    return `${hh}:${mm}`;
-  }
-  // ISO con "T.."
+  if (m1) return `${String(m1[1]).padStart(2,'0')}:${m1[2]}`;
   const m2 = s.match(/T(\d{2}):(\d{2})/);
   if (m2) return `${m2[1]}:${m2[2]}`;
   return null;
 }
-
-// ===== Modal Calendario (exponer en window) =====
-window.toggleEventModal = function(show){
-  const m = document.getElementById('eventModal');
-  if (!m) return;
-  m.classList.toggle('hidden', !show);
-};
-
-window.showEventModal = function({id, title, inicio, fin, asesor, actividad, modalidad, ciudad, notas}){
-  const fmtDT = v => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '—';
-  (document.getElementById('emTitle')||{}).textContent     = title || 'Detalle de evento';
-  (document.getElementById('emInicio')||{}).textContent    = fmtDT(inicio);
-  (document.getElementById('emFin')||{}).textContent       = fmtDT(fin);
-  (document.getElementById('emAsesor')||{}).textContent    = asesor || '—';
-  (document.getElementById('emActividad')||{}).textContent = actividad || '—';
-  (document.getElementById('emModalidad')||{}).textContent = modalidad || '—';
-  (document.getElementById('emCiudad')||{}).textContent    = ciudad || '—';
-  (document.getElementById('emNotas')||{}).textContent     = notas || '—';
-
-  const close = document.getElementById('emClose');
-  if (close) close.onclick = () => window.toggleEventModal(false);
-
-  const btnE = document.getElementById('emBtnEdit');
-  if (btnE) btnE.onclick = () => {
-    if (typeof window.startEdit === 'function') window.startEdit(id);
-    else alert('Implementa startEdit(id) para abrir el formulario de edición.\nID: '+id);
-    window.toggleEventModal(false);
-  };
-
-  const btnD = document.getElementById('emBtnDelete');
-  if (btnD) btnD.onclick = async () => {
-    if (!confirm('¿Eliminar este registro?')) return;
-    try{
-      const r = await fetch(API_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ op:'delete', token: EDIT_TOKEN, id })
-      });
-      if (!r.ok) throw new Error('Delete failed');
-      await boot();
-      window.toggleEventModal(false);
-    }catch(e){ alert('Error eliminando: '+e.message); }
-  };
-
-  window.toggleEventModal(true);
-};
-
-// ===== Modal Captura/Edición =====
-function toggleEditModal(show){
-  const m = document.getElementById('editModal');
-  if (!m) return;
-  m.classList.toggle('hidden', !show);
-}
-
-function iva16(mo, ref, via){ const base=(+mo||0)+(+ref||0)+(+via||0); return Math.round(base*0.16*100)/100; }
-function eqTotal16(sub){ return Math.round((+sub||0)*1.16*100)/100; }
-
-// Autocomplete → actualiza Lat/Lng y, si no has escrito "Ciudad", rellena ciudad con locality
-function wireAutocomplete(){
-  const el = document.getElementById('edDireccion');
-  if (!el || el._wired) return;
-  el.addEventListener('gmpx-placechange', () => {
-    const place = el.value; // texto seleccionado (componente devuelve string)
-    // Obtenemos geocoding desde Maps JS si lo necesitas; aquí hacemos un fetch rápido usando Geocoder si ya cargas API Maps
-    // Para simplificar: si en tu flujo ya guardas lat/lng al seleccionar, déjalo así.
-  });
-  el._wired = true;
-}
-
-function fillFormFromRow(r){
-  $('#edId').value        = r?.id || '';
-  $('#edFechaIni').value  = toISODate(r?.fecha_inicio) || '';
-  $('#edHoraIni').value   = extractHHmm(r?.hora_inicio) || '';
-  $('#edFechaFin').value  = toISODate(r?.fecha_fin) || '';
-  $('#edHoraFin').value   = extractHHmm(r?.hora_fin) || '';
-  $('#edAsesor').value    = r?.asesor || '';
-  $('#edActividad').value = r?.actividad || 'Soporte de garantía';
-  $('#edModalidad').value = r?.modalidad || 'Remoto';
-  $('#edGarantia').value  = (String(r?.garantia||'').toLowerCase().startsWith('s')?'Sí':'No');
-  $('#edCliente').value   = r?.cliente || '';
-  document.getElementById('edDireccion').value = r?.ciudad || '';
-  $('#edLat').value       = r?.lat || '';
-  $('#edLng').value       = r?.lng || '';
-  $('#edTel').value       = r?.telefono || '';
-  $('#edCiudad').value    = r?.ciudad || '';
-  $('#edNotas').value     = r?.notas || '';
-  $('#edMO').value        = r?.mo_monto || 0;
-  $('#edRef').value       = r?.refacciones_monto || 0;
-  $('#edVia').value       = r?.viaticos_monto || 0;
-  $('#edIVA').value       = r?.iva_monto || iva16(r?.mo_monto, r?.refacciones_monto, r?.viaticos_monto);
-  $('#edEqSub').value     = r?.equipos_valor_subtotal || 0;
-  $('#edEqTot').value     = r?.equipos_valor_total || eqTotal16(r?.equipos_valor_subtotal);
-}
-
-function collectFormData(){
-  const data = {
-    fecha_inicio: $('#edFechaIni').value,
-    hora_inicio:  $('#edHoraIni').value,
-    fecha_fin:    $('#edFechaFin').value,
-    hora_fin:     $('#edHoraFin').value,
-    asesor:       $('#edAsesor').value,
-    actividad:    $('#edActividad').value,
-    modalidad:    $('#edModalidad').value,
-    garantia:     $('#edGarantia').value,
-    cliente:      $('#edCliente').value,
-    ciudad:       document.getElementById('edDireccion').value || $('#edCiudad').value,
-    telefono:     $('#edTel').value,
-    notas:        $('#edNotas').value,
-    lat:          $('#edLat').value,
-    lng:          $('#edLng').value,
-    mo_monto:            Number($('#edMO').value||0),
-    refacciones_monto:   Number($('#edRef').value||0),
-    viaticos_monto:      Number($('#edVia').value||0),
-    iva_monto:           Number($('#edIVA').value||0),
-    equipos_valor_subtotal: Number($('#edEqSub').value||0),
-    equipos_valor_total:    Number($('#edEqTot').value||0),
-  };
-  // Recalcular IVA/Total equipos por si cambió algo:
-  data.iva_monto = iva16(data.mo_monto, data.refacciones_monto, data.viaticos_monto);
-  data.equipos_valor_total = eqTotal16(data.equipos_valor_subtotal);
-  return data;
-}
-
-function bindCalcAuto(){
-  const recalc = ()=>{
-    const mo  = Number($('#edMO').value||0);
-    const ref = Number($('#edRef').value||0);
-    const via = Number($('#edVia').value||0);
-    $('#edIVA').value = iva16(mo,ref,via);
-    $('#edEqTot').value = eqTotal16(Number($('#edEqSub').value||0));
-  };
-  ['edMO','edRef','edVia','edEqSub'].forEach(id=>{
-    const el = document.getElementById(id);
-    if (el && !el._wired){ el.addEventListener('input', recalc); el._wired=true; }
-  });
-}
-
-function openCreate(){
-  document.getElementById('edTitle').textContent = 'Nuevo registro';
-  fillFormFromRow({});
-  wireAutocomplete(); bindCalcAuto();
-  toggleEditModal(true);
-}
-
-window.startEdit = function(id){
-  const row = ROWS.find(r => Number(r.id) === Number(id));
-  document.getElementById('edTitle').textContent = `Editar registro #${id}`;
-  fillFormFromRow(row||{});
-  wireAutocomplete(); bindCalcAuto();
-  toggleEditModal(true);
-};
-
-async function saveRecord(e){
-  e?.preventDefault?.();
-  const id = $('#edId').value;
-  const data = collectFormData();
-  try{
-    const body = id ? { op:'update', token:EDIT_TOKEN, id:Number(id), data } :
-                      { op:'create', token:EDIT_TOKEN, data };
-    const r = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-    if(!r.ok) throw new Error('Error API');
-    toggleEditModal(false);
-    await boot();
-  }catch(err){ alert('No se pudo guardar: '+err.message); }
-}
-
-document.getElementById('edForm')?.addEventListener('submit', saveRecord);
-document.getElementById('edCancel')?.addEventListener('click', ()=> toggleEditModal(false));
-document.getElementById('edClose')?.addEventListener('click', ()=> toggleEditModal(false));
-
-
 function renderCalendar(){
   const el = document.getElementById('calendar');
   if (!el) return;
@@ -852,7 +698,6 @@ function renderCalendar(){
       start = `${dStart}T${tStart || '00:00'}`;
       if (dEnd) end = `${dEnd}T${tEnd || tStart || '00:00'}`;
     } else {
-      // allDay -> end exclusivo (+1 día si hay dEnd, si no, mismo día +1)
       const endDate = dEnd || dStart;
       end = dayjs(endDate, 'YYYY-MM-DD', true).add(1,'day').format('YYYY-MM-DD');
     }
@@ -862,9 +707,7 @@ function renderCalendar(){
       start, end, allDay: !hasTimes,
       backgroundColor: COLOR[act] || '#60a5fa',
       borderColor: COLOR[act] || '#60a5fa',
-      extendedProps: {
-        rjson: r
-      }
+      extendedProps: { rjson: r }
     });
   });
 
@@ -879,7 +722,6 @@ function renderCalendar(){
     events,
     eventClick(info){
       const r = info.event.extendedProps?.rjson || {};
-      // Abre modal de detalle (usa el que ya tienes si existía)
       showEventModal({
         id: r.id,
         title: info.event.title,
@@ -897,32 +739,7 @@ function renderCalendar(){
   console.log('Calendar events:', events.length);
 }
 
-$('#mClose').onclick = closeModal;
-$('#modalBg').onclick = (e)=> { if (e.target.id==='modalBg') closeModal(); };
-$('#mEdit').onclick = ()=>{
-  if (!CAL_EVENT_CLICKED) return;
-  // Carga al form
-  for (const [k,v] of Object.entries(CAL_EVENT_CLICKED)){
-    const el = document.querySelector(`#frm [name="${k}"]`);
-    if (el) el.value = (v==null?'':v);
-  }
-  closeModal();
-  window.scrollTo({ top: document.getElementById('frm').getBoundingClientRect().top + window.scrollY - 80, behavior:'smooth' });
-};
-$('#mDel').onclick = async ()=>{
-  if (!CAL_EVENT_CLICKED) return;
-  if (!confirm(`¿Eliminar registro #${CAL_EVENT_CLICKED.id}?`)) return;
-  try{
-    await apiPost('delete', { id: Number(CAL_EVENT_CLICKED.id) });
-    closeModal(); await boot();
-  }catch(e){ alert('Error al eliminar: ' + e.message); }
-};
-
 /* ===== Gráficas ===== */
-function destroyCharts(){
-  Object.values(CHARTS).forEach(ch => { try{ ch.destroy(); }catch{} });
-  for (const k of Object.keys(CHARTS)) delete CHARTS[k];
-}
 function renderCharts(){
   // Actividades por asesor
   (function(){
@@ -972,11 +789,6 @@ function renderCharts(){
 }
 
 /* ===== TeamViewer (totales del mes) ===== */
-
-// Si conoces las columnas exactas de tu archivo, descomenta y fija (base 1):
-// const TV_FORCE_DATE_COL = 1;   // p. ej. 1 = primera columna
-// const TV_FORCE_MIN_COL  = 8;   // p. ej. 8 = minutos
-
 async function readTVRows(){
   try{
     const txt = await fetch('/connectionreport.csv', { cache:'no-store' }).then(r=>r.ok?r.text():'');
@@ -988,22 +800,12 @@ async function readTVRows(){
     const sep = (lines[0].includes(';') && !lines[0].includes(',')) ? ';' : ',';
     const headers = lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));
 
-    // Diagnóstico útil
-    console.log('[TV] headers:', headers);
+    let idxFecha = headers.findIndex(h=>/(date|fecha|start|inicio)/i.test(h));
+    if (idxFecha === -1) idxFecha = 0;
 
-    // Forzado por constantes (si las defines)
-    let idxFecha = (typeof TV_FORCE_DATE_COL === 'number') ? (TV_FORCE_DATE_COL-1) : -1;
-    let idxMin   = (typeof TV_FORCE_MIN_COL  === 'number') ? (TV_FORCE_MIN_COL-1)   : -1;
-
-    // Heurística si no están forzadas
-    if (idxFecha === -1){
-      idxFecha = headers.findIndex(h=>/(date|fecha|start|inicio)/i.test(h));
-      if (idxFecha === -1) idxFecha = 0; // primera por fallback
-    }
-    if (idxMin === -1){
-      idxMin = headers.findIndex(h=>/(minutes|minutos|duration|duración|time)/i.test(h));
-      if (idxMin === -1) idxMin = 7; // fallback: col 8
-    }
+    let idxConn  = headers.findIndex(h=>/(connections|conexiones)/i.test(h));
+    let idxMin   = headers.findIndex(h=>/(minutes|minutos|duration|duración|time)/i.test(h));
+    if (idxMin === -1) idxMin = 7; // fallback columna 8
 
     const { start, end } = getMonthRange();
     const from = start.startOf('day').valueOf();
@@ -1012,13 +814,9 @@ async function readTVRows(){
     let totalConn = 0;
     let totalMinutes = 0;
 
-    const body = lines.slice(1);
-    // Si el archivo tiene comas dentro de comillas, esto lo simplifica bastante;
-    // si vieras columnas corridas, pásame 3 líneas del CSV y lo cambio por un parser CSV estricto.
-    for (const l of body){
+    for (const l of lines.slice(1)){
       const cols = l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim());
       const fechaRaw = cols[idxFecha] || cols[0] || '';
-      // Soporta "YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY", "YYYY/MM/DD"
       const fISO = toISODate(fechaRaw) || dayjs(fechaRaw, ['YYYY-MM-DD','DD/MM/YYYY','MM/DD/YYYY','YYYY/MM/DD']).format('YYYY-MM-DD');
       const t = dayjs(fISO, 'YYYY-MM-DD', true);
       if (!t.isValid()) continue;
@@ -1026,37 +824,34 @@ async function readTVRows(){
       const tv = t.valueOf();
       if (tv < from || tv > to) continue;
 
+      // Conexiones: si hay columna, úsala; si no, cuenta 1 por fila
+      const connVal = idxConn>-1 ? Number(String(cols[idxConn]).replace(',','.'))||0 : 1;
+      totalConn += connVal;
+
       // Minutos: acepta "HH:mm[:ss]" o número
       const v = cols[idxMin] || '0';
       let minutes = 0;
       if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(v)) {
         const p = v.split(':').map(Number);
-        minutes = (p[0]*60) + (p[1]||0) + (p[2]||0)/60;
+        minutes = (p[0]*60) + (p[1]||0) + Math.floor((p[2]||0)/60);
       } else {
         const nm = Number(String(v).replace(',','.'));
         minutes = Number.isFinite(nm) ? nm : 0;
       }
-
-      // 1 fila = 1 conexión (si tu CSV tiene "Connections" explícito, súmalo en lugar de 1)
-      totalConn += 1;
       totalMinutes += minutes;
     }
 
-    console.log('[TV] month totals -> connections:', totalConn, 'minutes:', totalMinutes);
     return { rows:[], totalConn, totalHours: (totalMinutes/60) };
   }catch(e){
     console.warn('[TV] error leyendo CSV', e);
     return { rows:[], totalConn:0, totalHours:0 };
   }
 }
-
 async function renderTeamViewerChart(){
-  const c = document.getElementById('chartTV');
-  if (!c) return;
+  const c = document.getElementById('chartTV'); if (!c) return;
   const { totalConn, totalHours } = await readTVRows();
-
   if (c._chart) { c._chart.destroy(); c._chart = null; }
-  const chart = new Chart(c, {
+  c._chart = new Chart(c, {
     type: 'bar',
     data: {
       labels: [dayjs(getMonthRange().start).format('MMMM YYYY')],
@@ -1067,18 +862,13 @@ async function renderTeamViewerChart(){
     },
     options:{ responsive:true, maintainAspectRatio:false }
   });
-  c._chart = chart;
 }
-
 async function renderTeamViewerTable(){
-  const el = document.querySelector('#tvTable tbody');
-  if (!el) return;
+  const el = document.querySelector('#tvTable tbody'); if (!el) return;
   const { totalConn, totalHours } = await readTVRows();
   const { start } = getMonthRange();
-  // KPIs
-  const k1 = document.getElementById('kpiC_tvconn'); if (k1) k1.textContent = String(totalConn);
-  const k2 = document.getElementById('kpiC_tvhrs');  if (k2) k2.textContent = totalHours.toFixed(2);
-
+  $('#kpiC_tvconn').textContent = String(totalConn);
+  $('#kpiC_tvhrs').textContent  = totalHours.toFixed(2);
   el.innerHTML = `
     <tr class="border-t border-white/10">
       <td class="py-2 px-3">${dayjs(start).format('MMMM YYYY')}</td>
@@ -1088,8 +878,7 @@ async function renderTeamViewerTable(){
   `;
 }
 
-
-/* ===== Cálculo IVA y horas en captura ===== */
+/* ===== IVA/horas en captura ===== */
 function recalcIVA(){
   const f = document.getElementById('frm');
   const mo = Number(f.mo_monto.value||0);
@@ -1108,53 +897,107 @@ function recalcIVA(){
 ['mo_monto','refacciones_monto','viaticos_monto','equipos_valor_subtotal'].forEach(n=>{
   document.addEventListener('input', (e)=>{ if (e.target?.name===n) recalcIVA(); }, { passive:true });
 });
-function recalcHoras(){
-  const f = document.getElementById('frm');
+function recalcHorasFrom(bloques = null, hiOverride = '', hfOverride = ''){
   let h = 0;
-  try{
-    const bloques = JSON.parse(f.bloques_horas.value||'[]');
-    h = horasTotalesFromBloques(bloques);
-  }catch{}
-  if (!h && f.hora_inicio.value && f.hora_fin.value){
-    h = Math.max(0, minutosEntre(f.hora_inicio.value, f.hora_fin.value))/60;
+  const arr = bloques ?? collectBloquesFromUI();
+  if (arr.length){
+    h = horasTotalesFromBloques(arr);
+  } else {
+    const f = document.getElementById('frm');
+    const di = f.dt_inicio?.value || '';
+    const df = f.dt_fin?.value    || '';
+    const hi = hiOverride || (di.split('T')[1]||'');
+    const hf = hfOverride || (df.split('T')[1]||'');
+    if (hi && hf) h = Math.max(0, minutosEntre(hi.slice(0,5), hf.slice(0,5)))/60;
   }
-  f.horas_totales.value = (Math.round(h*100)/100) || 0;
+  const out = document.querySelector('[name=horas_totales]');
+  if (out) out.value = (Math.round(h*100)/100) || 0;
 }
-['bloques_horas','hora_inicio','hora_fin'].forEach(n=>{
-  document.addEventListener('input', (e)=>{ if (e.target?.name===n) recalcHoras(); }, { passive:true });
-});
 
-/* ===== Guardar ===== */
+/* ===== Bloques UI ===== */
+function addBloqueRow(b={fecha: dayjs().format('YYYY-MM-DD'), inicio:'08:00', fin:'13:00', breakMin:0}){
+  const tb = document.querySelector('#tblBloques tbody'); if(!tb) return;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="py-1 px-2"><input type="date"  class="formc px-2 py-1 rounded w-full" value="${b.fecha||''}"></td>
+    <td class="py-1 px-2"><input type="time"  class="formc px-2 py-1 rounded w-full" value="${b.inicio||''}"></td>
+    <td class="py-1 px-2"><input type="time"  class="formc px-2 py-1 rounded w-full" value="${b.fin||''}"></td>
+    <td class="py-1 px-2"><input type="number" step="1" min="0" class="formc px-2 py-1 rounded w-full" value="${b.breakMin||0}"></td>
+    <td class="py-1 px-2 text-right"><button type="button" class="btn" onclick="this.closest('tr').remove(); updateBloquesJson();">✖</button></td>
+  `;
+  tb.appendChild(tr);
+  updateBloquesJson();
+}
+function collectBloquesFromUI(){
+  const rows = [...document.querySelectorAll('#tblBloques tbody tr')];
+  return rows.map(tr=>{
+    const [f,i,e,br] = [...tr.querySelectorAll('input')].map(x=>x.value);
+    return { fecha:f, inicio:i, fin:e, breakMin:Number(br||0) };
+  }).filter(x=>x.fecha && x.inicio && x.fin);
+}
+function updateBloquesJson(){
+  const arr = collectBloquesFromUI();
+  const el = document.getElementById('bloquesJson');
+  if (el) el.value = JSON.stringify(arr);
+  recalcHorasFrom(arr);
+}
+document.getElementById('btnAddBloque')?.addEventListener('click', ()=> addBloqueRow());
+
+/* ===== Guardar (captura) ===== */
 document.getElementById('btnGuardar').onclick = async ()=>{
   const f = document.getElementById('frm');
-  recalcIVA(); recalcHoras();
+
+  // Split de datetime-local -> columnas separadas
+  const di = f.dt_inicio?.value || '';
+  const df = f.dt_fin?.value    || '';
+  const [fi, hi] = di ? di.split('T') : ['', ''];
+  const [ff, hf] = df ? df.split('T') : ['', ''];
+
+  // Bloques desde UI
+  const bloques = collectBloquesFromUI();
+  document.getElementById('bloquesJson').value = JSON.stringify(bloques);
+
+  recalcIVA(); 
+  recalcHorasFrom(bloques, hi, hf);
+
   const data = Object.fromEntries(new FormData(f).entries());
-  // Normaliza números
-  ['mo_monto','refacciones_monto','viaticos_monto','iva_monto','total_cobrado','equipos_valor_subtotal','equipos_iva','equipos_valor_total','horas_totales','lat','lng']
-    .forEach(k=> data[k] = Number(data[k]||0));
+  data.fecha_inicio = fi || data.fecha_inicio || '';
+  data.hora_inicio  = hi ? hi.slice(0,5) : (data.hora_inicio||'');
+  data.fecha_fin    = ff || data.fecha_fin || '';
+  data.hora_fin     = hf ? hf.slice(0,5) : (data.hora_fin||'');
+
+  // Números
+  ['mo_monto','refacciones_monto','viaticos_monto','iva_monto','total_cobrado',
+   'equipos_valor_subtotal','equipos_iva','equipos_valor_total','horas_totales',
+   'lat','lng'].forEach(k=> data[k]=Number(data[k]||0));
+
   try{
     await apiPost('create', { data });
     alert('Guardado');
     f.reset();
+    document.querySelector('#tblBloques tbody').innerHTML = '';
     await boot();
   }catch(e){ alert('Error al guardar: '+e.message); }
 };
-document.getElementById('btnLimpiarForm').onclick = ()=> document.getElementById('frm').reset();
+document.getElementById('btnLimpiarForm').onclick = ()=> {
+  document.getElementById('frm').reset();
+  document.querySelector('#tblBloques tbody').innerHTML = '';
+  updateBloquesJson();
+};
 
-/* ===== Render all ===== */
+/* ===== Render All ===== */
 function renderAll(){
   renderKpis();
   renderTable();
   renderCalendar();
   renderCharts();
-  renderTeamViewerTable();  // ya tenías esta
-  renderTeamViewerChart();  // <-- agrega esta
+  renderTeamViewerTable();
+  renderTeamViewerChart();
   renderMapMarkers();
 }
 
 /* ===== Boot ===== */
 async function boot(){
-  // llena selector de mes ANTES de pedir datos
   const sel = $('#fMes'); 
   if (sel && !sel._filled){
     const now = dayjs(); const items=[];
@@ -1190,16 +1033,34 @@ document.getElementById('btnExportPdf').addEventListener('click', async ()=>{
 boot();
 </script>
 
+<!-- Google Maps: componentes extendidos + API JS -->
 <script type="module" src="https://unpkg.com/@googlemaps/extended-component-library@0.6"></script>
-
-<!-- Google Maps + Places -->
 <script>
   // Mapa
   window.initMap = function(){
     const center = { lat: 23.6345, lng: -102.5528 };
     window.MAP = new google.maps.Map(document.getElementById('map'), { center, zoom: 5 });
     if (typeof window.renderMapMarkers === 'function') window.renderMapMarkers();
-    initAutocomplete(); // inicia el autocomplete al cargar el mapa
+
+    // Wire Autocomplete de captura
+    try {
+      const el = document.getElementById('capDireccion');
+      el.addEventListener('gmpx-placechange', () => {
+        const p = el.value; // string o PlaceResult según versión
+        // Si es PlaceResult con geometry:
+        if (p && p.geometry && p.geometry.location){
+          const lat = p.geometry.location.lat();
+          const lng = p.geometry.location.lng();
+          const comps = p.address_components || [];
+          const cityComp = comps.find(c=>c.types?.includes('locality') || c.types?.includes('administrative_area_level_2'));
+          const f = document.getElementById('frm');
+          if (f){
+            f.lat.value = lat; f.lng.value = lng;
+            if (!f.ciudad.value && cityComp) f.ciudad.value = cityComp.long_name;
+          }
+        }
+      });
+    } catch(e) { console.warn('Autocomplete extendido no disponible', e); }
   };
   // Marcadores (AdvancedMarker si existe)
   window.addMapMarker = function(map, lat, lng, title){
@@ -1211,189 +1072,7 @@ boot();
     } catch(e){}
     return new google.maps.Marker({ map, position:{lat,lng}, title:title||'' });
   };
-
-  // Autocomplete moderno con fallback
-  function initAutocomplete(){
-    const boxId = document.getElementById('placeBox');
-    if (!boxId) return;
-
-    try{
-      const el = document.createElement('gmpx-place-autocomplete');
-      el.className = 'formc px-3 py-2 rounded w-full';
-      el.placeholder = 'Escribe y selecciona la dirección';
-      el.fields = ['formatted_address','address_components','geometry'];
-      boxId.appendChild(el);
-
-      el.addEventListener('gmpx-placechange', () => {
-        const place = el.value;
-        if (!place || !place.geometry) return;
-        const lat = place.geometry.location.lat();
-        const lng = place.geometry.location.lng();
-        const cityComp = (place.address_components||[]).find(c=>c.types.includes('locality') || c.types.includes('administrative_area_level_2'));
-        const f = document.getElementById('frm');
-        if (f){
-          f.querySelector('[name=lat]')?.setAttribute('value', lat);
-          f.querySelector('[name=lng]')?.setAttribute('value', lng);
-          if (cityComp) f.querySelector('[name=ciudad]')?.setAttribute('value', cityComp.long_name);
-        }
-      });
-    }catch(e){
-      console.warn('PlaceAutocompleteElement no disponible, intento fallback', e);
-      try{
-        const legacy = document.createElement('input');
-        legacy.id = 'dirInput';
-        legacy.className = 'formc px-3 py-2 rounded w-full';
-        legacy.placeholder = 'Escribe y selecciona la dirección';
-        boxId.appendChild(legacy);
-        const ac = new google.maps.places.Autocomplete(legacy, { fields:['geometry','address_components','formatted_address'] });
-        ac.addListener('place_changed', ()=>{
-          const p = ac.getPlace();
-          if (!p || !p.geometry) return;
-          const lat = p.geometry.location.lat();
-          const lng = p.geometry.location.lng();
-          const city = (p.address_components||[]).find(c=>c.types.includes('locality')||c.types.includes('administrative_area_level_2'));
-          const f = document.getElementById('frm');
-          if (f){
-            f.querySelector('[name=lat]')?.setAttribute('value', lat);
-            f.querySelector('[name=lng]')?.setAttribute('value', lng);
-            if (city) f.querySelector('[name=ciudad]')?.setAttribute('value', city.long_name);
-          }
-        });
-      }catch(e2){ console.warn('Tampoco funcionó el fallback', e2); }
-    }
-  }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
-<!-- Modal Captura/Edición -->
-<div id="editModal" class="fixed inset-0 z-[80] hidden">
-  <div class="absolute inset-0 bg-black/60"></div>
-  <div class="relative mx-auto mt-10 w-[min(820px,95vw)] rounded-xl border border-white/10 bg-slate-900 shadow-2xl">
-    <div class="flex items-center justify-between px-5 py-3 border-b border-white/10">
-      <h3 id="edTitle" class="text-lg font-semibold">Nuevo registro</h3>
-      <button id="edClose" class="px-2 py-1 rounded hover:bg-white/10">✕</button>
-    </div>
-
-    <form id="edForm" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-      <input type="hidden" id="edId">
-
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Fecha inicio</span>
-        <input id="edFechaIni" type="date" class="formc px-3 py-2 rounded-lg">
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Hora inicio</span>
-        <input id="edHoraIni" type="time" class="formc px-3 py-2 rounded-lg">
-      </label>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Fecha fin</span>
-        <input id="edFechaFin" type="date" class="formc px-3 py-2 rounded-lg">
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Hora fin</span>
-        <input id="edHoraFin" type="time" class="formc px-3 py-2 rounded-lg">
-      </label>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Asesor</span>
-        <input id="edAsesor" class="formc px-3 py-2 rounded-lg" placeholder="Israel / Selene / Diego / …">
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Actividad</span>
-        <select id="edActividad" class="formc px-3 py-2 rounded-lg">
-          <option>Soporte de garantía</option>
-          <option>Soporte fuera de garantía</option>
-          <option>Instalación</option>
-          <option>Evento</option>
-          <option>Proyecto</option>
-          <option>Curso</option>
-          <option>Vacaciones</option>
-        </select>
-      </label>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Modalidad</span>
-        <select id="edModalidad" class="formc px-3 py-2 rounded-lg">
-          <option>Remoto</option>
-          <option>Presencial</option>
-        </select>
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Garantía</span>
-        <select id="edGarantia" class="formc px-3 py-2 rounded-lg">
-          <option>Sí</option>
-          <option>No</option>
-        </select>
-      </label>
-
-      <label class="flex flex-col gap-1 md:col-span-2">
-        <span class="text-slate-400">Cliente</span>
-        <input id="edCliente" class="formc px-3 py-2 rounded-lg">
-      </label>
-
-      <label class="flex flex-col gap-1 md:col-span-2">
-        <span class="text-slate-400">Dirección (con Autocomplete)</span>
-        <!-- Nuevo componente recomendado por Google -->
-        <gmpx-place-autocomplete id="edDireccion" class="formc px-3 py-2 rounded-lg" placeholder="Escribe y elige una dirección"></gmpx-place-autocomplete>
-      </label>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Lat</span>
-        <input id="edLat" class="formc px-3 py-2 rounded-lg" readonly>
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Lng</span>
-        <input id="edLng" class="formc px-3 py-2 rounded-lg" readonly>
-      </label>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Teléfono</span>
-        <input id="edTel" class="formc px-3 py-2 rounded-lg">
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Ciudad</span>
-        <input id="edCiudad" class="formc px-3 py-2 rounded-lg">
-      </label>
-
-      <label class="flex flex-col gap-1 md:col-span-2">
-        <span class="text-slate-400">Notas</span>
-        <textarea id="edNotas" rows="3" class="formc px-3 py-2 rounded-lg"></textarea>
-      </label>
-
-      <!-- Desgloses -->
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">MO $</span>
-        <input id="edMO" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0">
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Refacciones $</span>
-        <input id="edRef" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0">
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Viáticos $</span>
-        <input id="edVia" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0">
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">IVA $ (auto 16%)</span>
-        <input id="edIVA" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0" readonly>
-      </label>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Equipos Subtotal $</span>
-        <input id="edEqSub" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0">
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Equipos Total c/IVA $</span>
-        <input id="edEqTot" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0" readonly>
-      </label>
-
-      <div class="md:col-span-2 flex justify-end gap-2 pt-2">
-        <button type="button" id="edCancel" class="btn">Cancelar</button>
-        <button type="submit" id="edSave" class="btn btn-primary">💾 Guardar</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 </body>
 </html>
