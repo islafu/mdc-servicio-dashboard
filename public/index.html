@@ -50,7 +50,6 @@
     .chip-warn{background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.35)}
     .chip-ok{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35)}
 
-    /* Tabla legible */
     .table-viewport { max-height: 65vh; overflow: auto; }
     #tbl { table-layout: auto; border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
     #tbl thead th { position: sticky; top: 0; background: #0f172a; z-index: 1; }
@@ -58,8 +57,8 @@
     #tbl td { padding-top:.5rem; padding-bottom:.5rem; }
     .col-money { text-align: right; min-width: 7.5rem; }
     .col-horas { text-align: right; min-width: 6rem; }
-    .col-notas { white-space: normal; max-width: 40rem; }
-    .col-acciones { white-space: nowrap; min-width: 9rem; }
+    .col-notas { white-space: normal; min-width: 20rem; max-width: 40rem; }
+    .col-acciones { white-space: nowrap; min-width: 10rem; }
 
     canvas { max-width: 100%; }
     .chart-h { height: 320px; }
@@ -67,6 +66,10 @@
 
     #map{min-height:460px;height:460px}
     #calendar{min-height:960px;height:auto}
+
+    /* Modal calendario */
+    .modal-bg{position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal{background:#0b1220;border:1px solid rgba(255,255,255,.08);border-radius:1rem;max-width:42rem;width:92%;padding:1rem}
   </style>
 </head>
 <body class="h-full">
@@ -93,8 +96,8 @@
     <div class="card p-4"><div class="text-slate-400 text-xs">Soporte</div><div id="kpiC_soporte" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Instalaciones</div><div id="kpiC_inst" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Eventos/Proy./Cursos</div><div id="kpiC_eventos" class="text-3xl font-semibold mt-1">0</div></div>
-    <div class="card p-4"><div class="text-slate-400 text-xs">Conexiones TeamViewer (mes)</div><div id="kpiC_tvconn" class="text-3xl font-semibold mt-1">0</div></div>
-    <div class="card p-4"><div class="text-slate-400 text-xs">Horas TeamViewer (mes)</div><div id="kpiC_tvhrs" class="text-3xl font-semibold mt-1">0</div></div>
+    <div class="card p-4"><div class="text-slate-400 text-xs">Conexiones TV (mes)</div><div id="kpiC_tvconn" class="text-3xl font-semibold mt-1">0</div></div>
+    <div class="card p-4"><div class="text-slate-400 text-xs">Horas TV (mes)</div><div id="kpiC_tvhrs" class="text-3xl font-semibold mt-1">0</div></div>
   </section>
 
   <!-- KPIs financieros -->
@@ -118,16 +121,37 @@
     </div>
   </section>
 
-  <!-- Gráficas -->
+  <!-- Gráficas + TeamViewer totales -->
   <section class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
     <div class="card p-4"><h3 class="text-lg font-medium mb-3">Actividades por asesor (apilado por tipo)</h3><div class="chart-h"><canvas id="chartActAsesor"></canvas></div></div>
     <div class="card p-4"><h3 class="text-lg font-medium mb-3">Remoto vs Presencial</h3><div class="chart-h"><canvas id="chartRemoto"></canvas></div></div>
     <div class="card p-4"><h3 class="text-lg font-medium mb-3">Distribución por actividad</h3><div class="chart-h"><canvas id="chartActividad"></canvas></div></div>
     <div class="card p-4"><h3 class="text-lg font-medium mb-3">Garantía vs No garantía</h3><div class="chart-h"><canvas id="chartGarantia"></canvas></div></div>
+
+    <!-- TeamViewer junto con gráficas -->
+    <div class="card p-4 xl:col-span-2">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-medium">TeamViewer — Totales del mes</h3>
+        <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
+      </div>
+      <div class="table-viewport">
+        <table class="w-full" id="tvTable">
+          <thead>
+            <tr class="text-left text-slate-400">
+              <th class="py-2 px-3">Periodo</th>
+              <th class="py-2 px-3">Conexiones</th>
+              <th class="py-2 px-3">Horas</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="card p-4 xl:col-span-2"><h3 class="text-lg font-medium mb-3">Ingresos por asesor (MXN)</h3><div class="chart-h-lg"><canvas id="chartIngresos"></canvas></div></div>
   </section>
 
-  <!-- Mapa + Calendario (pantalla completa uno debajo del otro) -->
+  <!-- Mapa y Calendario (pantalla completa uno debajo del otro) -->
   <section class="grid grid-cols-1 gap-6 mb-6">
     <div class="card p-4">
       <div class="flex items-center justify-between mb-3">
@@ -145,24 +169,71 @@
     </div>
   </section>
 
-  <!-- TeamViewer resumen (solo totales del mes) -->
+  <!-- CAPTURA (debajo de calendario y arriba de registros) -->
   <section class="card p-4 mb-6">
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="text-lg font-medium">TeamViewer — Totales del mes</h3>
-      <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
-    </div>
-    <div class="table-viewport">
-      <table class="w-full" id="tvTable">
-        <thead>
-          <tr class="text-left text-slate-400">
-            <th class="py-2 px-3">Periodo</th>
-            <th class="py-2 px-3">Conexiones</th>
-            <th class="py-2 px-3">Horas</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
+    <h2 class="text-lg font-medium mb-3">Captura de registro</h2>
+    <form id="frm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <input class="formc px-3 py-2 rounded" name="fecha_inicio" placeholder="Fecha inicio (YYYY-MM-DD)" />
+      <input class="formc px-3 py-2 rounded" name="hora_inicio" placeholder="Hora inicio (HH:MM)" />
+      <input class="formc px-3 py-2 rounded" name="fecha_fin" placeholder="Fecha fin (YYYY-MM-DD)" />
+      <input class="formc px-3 py-2 rounded" name="hora_fin" placeholder="Hora fin (HH:MM)" />
+
+      <input class="formc px-3 py-2 rounded" name="asesor" placeholder="Asesor" />
+      <select class="formc px-3 py-2 rounded" name="actividad">
+        <option value="">Actividad</option>
+        <option>Soporte de garantía</option>
+        <option>Soporte fuera de garantía</option>
+        <option>Instalación</option>
+        <option>Evento</option>
+        <option>Proyecto</option>
+        <option>Curso</option>
+        <option>Vacaciones</option>
+      </select>
+      <select class="formc px-3 py-2 rounded" name="modalidad">
+        <option value="">Modalidad</option>
+        <option>Remoto</option>
+        <option>Presencial</option>
+      </select>
+      <select class="formc px-3 py-2 rounded" name="garantia">
+        <option value="">¿Garantía?</option>
+        <option>Sí</option>
+        <option>No</option>
+      </select>
+
+      <input class="formc px-3 py-2 rounded" name="cliente" placeholder="Cliente" />
+      <input class="formc px-3 py-2 rounded" name="telefono" placeholder="Teléfono" />
+      <input class="formc px-3 py-2 rounded" name="ciudad" placeholder="Ciudad" />
+
+      <!-- Autocomplete (dirección) -->
+      <div class="md:col-span-2">
+        <div class="text-xs text-slate-400 mb-1">Dirección (Maps)</div>
+        <div id="placeBox" class="w-full"></div>
+      </div>
+
+      <input class="formc px-3 py-2 rounded" name="lat" placeholder="Latitud" />
+      <input class="formc px-3 py-2 rounded" name="lng" placeholder="Longitud" />
+      <textarea class="formc px-3 py-2 rounded md:col-span-2" name="notas" placeholder="Notas"></textarea>
+
+      <!-- Costeo y desglose -->
+      <input class="formc px-3 py-2 rounded" name="mo_monto" placeholder="Mano de obra (sin IVA)" />
+      <input class="formc px-3 py-2 rounded" name="refacciones_monto" placeholder="Refacciones (sin IVA)" />
+      <input class="formc px-3 py-2 rounded" name="viaticos_monto" placeholder="Viáticos (sin IVA)" />
+      <input class="formc px-3 py-2 rounded" name="iva_monto" placeholder="IVA (auto 16%)" readonly />
+      <input class="formc px-3 py-2 rounded" name="total_cobrado" placeholder="Total cobrado" readonly />
+
+      <input class="formc px-3 py-2 rounded" name="equipos_valor_subtotal" placeholder="Equipos subtotal" />
+      <input class="formc px-3 py-2 rounded" name="equipos_iva" placeholder="Equipos IVA (auto 16%)" readonly />
+      <input class="formc px-3 py-2 rounded" name="equipos_valor_total" placeholder="Equipos total" readonly />
+
+      <!-- Bloques de horas JSON simple -->
+      <textarea class="formc px-3 py-2 rounded md:col-span-2" name="bloques_horas" placeholder='Bloques (JSON) p.e. [{"fecha":"2025-09-10","inicio":"08:00","fin":"13:00","breakMin":0}]'></textarea>
+      <input class="formc px-3 py-2 rounded" name="horas_totales" placeholder="Horas totales" readonly />
+
+      <div class="md:col-span-2 flex gap-2">
+        <button type="button" id="btnGuardar" class="btn btn-primary">💾 Guardar</button>
+        <button type="button" id="btnLimpiarForm" class="btn">Limpiar</button>
+      </div>
+    </form>
   </section>
 
   <!-- Filtros rápidos -->
@@ -231,6 +302,21 @@
   </section>
 </div>
 
+<!-- Modal calendario -->
+<div id="modalBg" class="modal-bg">
+  <div class="modal">
+    <div class="flex items-start justify-between">
+      <h3 id="mTitulo" class="text-lg font-semibold">Detalle</h3>
+      <button id="mClose" class="btn">✖</button>
+    </div>
+    <div id="mBody" class="mt-2 text-slate-300 text-sm whitespace-pre-wrap"></div>
+    <div class="mt-4 flex gap-2 justify-end">
+      <button id="mEdit" class="btn btn-primary">✏️ Editar</button>
+      <button id="mDel" class="btn">🗑️ Eliminar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================= JS ================= -->
 <script>
 /* ===== Config ===== */
@@ -238,12 +324,14 @@ const API_URL = '/.netlify/functions/gas-proxy';
 const EDIT_TOKEN = '42673';
 const TARIFA_GARANTIA = 1000;  // $/h
 const TARIFA_INTERNA_INST = 85; // $/h
+const IVA = 0.16;
 
 /* ===== Estado ===== */
 let ROWS = [];
 let FILTERED = [];
 let CAL = null;
-const CHARTS = {}; // para Chart.js
+const CHARTS = {};
+let CAL_EVENT_CLICKED = null;
 
 /* ===== Utils ===== */
 function $(q){ return document.querySelector(q); }
@@ -275,6 +363,16 @@ async function apiGet(){
   if (!ct.includes('application/json')) { console.error('API NO JSON', ct, txt.slice(0,400)); throw new Error('API no devolvió JSON'); }
   return JSON.parse(txt);
 }
+async function apiPost(op, payload){
+  const r = await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ op, token: EDIT_TOKEN, ...(payload||{}) })
+  });
+  const txt = await r.text();
+  if (!r.ok) throw new Error(txt||'API error');
+  return JSON.parse(txt);
+}
 
 /* ===== Derivados y filtros ===== */
 function deriveComputedFields(rows){
@@ -286,7 +384,6 @@ function deriveComputedFields(rows){
   });
   return rows;
 }
-
 function applyFilters(){
   const a = ($('#fAsesor')?.value||'').trim().toLowerCase();
   const act = ($('#fActividad')?.value||'').trim().toLowerCase();
@@ -296,13 +393,11 @@ function applyFilters(){
   const { start, end } = getMonthRange();
 
   let out = ROWS.filter(x=>{
-    // tomar la primera fecha válida
     const f = toISODate(x.fecha_inicio) || toISODate(x.fecha_fin);
     if (!f) return false;
     const t = dayjs(f, 'YYYY-MM-DD', true);
     return t.isValid() && t.isBetween(start, end, 'day', '[]');
   });
-
   if (a) out = out.filter(x => (x.asesor||'').toString().toLowerCase().includes(a));
   if (act) out = out.filter(x => (x.actividad||'').toString().toLowerCase() === act);
   if (mod) out = out.filter(x => (x.modalidad||'').toString().toLowerCase() === mod);
@@ -349,8 +444,6 @@ function renderKpis(){
   const sumValSub = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_subtotal)||0), 0);
   const sumValTot = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_total)||0), 0);
   const sumCostoInst = rowsInst.reduce((a,r)=> (Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0), 0);
-  $('#kpiInstValSub')?.textContent && ($('#kpiInstValSub').textContent = fmtMoney(sumValSub));
-  $('#kpiInstValTot')?.textContent && ($('#kpiInstValTot').textContent = fmtMoney(sumValTot));
   $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
 }
 
@@ -385,12 +478,39 @@ function renderTable(){
       <td class="py-2 px-3">${r.ciudad||''}</td>
       <td class="py-2 px-3 col-notas whitespace-pre-wrap">${r.notas||''}</td>
       <td class="py-2 px-3 col-acciones">
-        <button class="btn" data-edit="${r.id}">✏️</button>
-        <button class="btn" data-del="${r.id}">🗑️</button>
+        <button class="btn" data-edit="${r.id}">✏️ Editar</button>
+        <button class="btn" data-del="${r.id}">🗑️ Eliminar</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
+
+  // Delegación para editar/eliminar
+  tbody.onclick = async (ev)=>{
+    const b = ev.target.closest('button');
+    if (!b) return;
+    const id = b.dataset.edit || b.dataset.del;
+    if (!id) return;
+
+    if (b.dataset.del){
+      if (!confirm(`¿Eliminar registro #${id}?`)) return;
+      try{
+        await apiPost('delete', { id: Number(id) });
+        await boot();
+      }catch(e){ alert('Error al eliminar: ' + e.message); }
+      return;
+    }
+    if (b.dataset.edit){
+      const r = ROWS.find(x=> String(x.id)===String(id));
+      if (!r) return alert('No encontrado');
+      // Llena el form con valores del registro
+      for (const [k,v] of Object.entries(r)){
+        const el = document.querySelector(`#frm [name="${k}"]`);
+        if (el) el.value = (v==null?'':v);
+      }
+      window.scrollTo({ top: document.getElementById('frm').getBoundingClientRect().top + window.scrollY - 80, behavior:'smooth' });
+    }
+  };
 }
 
 /* ===== Mapa ===== */
@@ -406,7 +526,21 @@ window.renderMapMarkers = function(){
   });
 };
 
-/* ===== Calendario ===== */
+/* ===== Calendario + modal ===== */
+function openModal(evt, row){
+  $('#mTitulo').textContent = evt.title || 'Detalle';
+  $('#mBody').textContent = [
+    `Inicio: ${evt.start?.toISOString?.()||evt.startStr||''}`,
+    `Fin: ${evt.end?.toISOString?.()||evt.endStr||''}`,
+    `Asesor: ${row?.asesor||''}`,
+    `Actividad: ${row?.actividad||''}`,
+    `Ciudad: ${row?.ciudad||''}`,
+    `Notas: ${row?.notas||''}`
+  ].join('\n');
+  CAL_EVENT_CLICKED = row;
+  $('#modalBg').style.display = 'flex';
+}
+function closeModal(){ $('#modalBg').style.display = 'none'; CAL_EVENT_CLICKED=null; }
 function renderCalendar(){
   const el = document.getElementById('calendar');
   if (CAL) { CAL.destroy(); CAL = null; }
@@ -434,6 +568,7 @@ function renderCalendar(){
       end = hasTimes ? `${dEnd}T${(r.hora_fin||'00:00')}` : dayjs(dEnd).add(1,'day').format('YYYY-MM-DD');
     }
     events.push({
+      id: String(r.id||''),
       title: `${act} — ${r.asesor||''}`,
       start, end, allDay: !hasTimes,
       backgroundColor: COLOR[act] || '#60a5fa',
@@ -449,10 +584,35 @@ function renderCalendar(){
     locale: 'es',
     initialView: 'dayGridMonth',
     headerToolbar: { left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,dayGridDay' },
-    events
+    events,
+    eventClick: (info)=>{
+      const id = info.event.id;
+      const row = ROWS.find(r=> String(r.id)===id);
+      openModal(info.event, row);
+    }
   });
   CAL.render();
 }
+$('#mClose').onclick = closeModal;
+$('#modalBg').onclick = (e)=> { if (e.target.id==='modalBg') closeModal(); };
+$('#mEdit').onclick = ()=>{
+  if (!CAL_EVENT_CLICKED) return;
+  // Carga al form
+  for (const [k,v] of Object.entries(CAL_EVENT_CLICKED)){
+    const el = document.querySelector(`#frm [name="${k}"]`);
+    if (el) el.value = (v==null?'':v);
+  }
+  closeModal();
+  window.scrollTo({ top: document.getElementById('frm').getBoundingClientRect().top + window.scrollY - 80, behavior:'smooth' });
+};
+$('#mDel').onclick = async ()=>{
+  if (!CAL_EVENT_CLICKED) return;
+  if (!confirm(`¿Eliminar registro #${CAL_EVENT_CLICKED.id}?`)) return;
+  try{
+    await apiPost('delete', { id: Number(CAL_EVENT_CLICKED.id) });
+    closeModal(); await boot();
+  }catch(e){ alert('Error al eliminar: ' + e.message); }
+};
 
 /* ===== Gráficas ===== */
 function destroyCharts(){
@@ -561,7 +721,6 @@ async function renderTeamViewerTable(){
   const el = document.querySelector('#tvTable tbody');
   if (!el) return;
   const { totalConn, totalHours } = await readTVRows();
-  // KPIs del mes
   $('#kpiC_tvconn').textContent = totalConn.toString();
   $('#kpiC_tvhrs').textContent  = totalHours.toFixed(2);
 
@@ -573,6 +732,58 @@ async function renderTeamViewerTable(){
     </tr>
   `;
 }
+
+/* ===== Cálculo IVA y horas en captura ===== */
+function recalcIVA(){
+  const f = document.getElementById('frm');
+  const mo = Number(f.mo_monto.value||0);
+  const ref= Number(f.refacciones_monto.value||0);
+  const via= Number(f.viaticos_monto.value||0);
+  const iva = (mo+ref+via)*IVA;
+  const total = mo+ref+via+iva;
+  f.iva_monto.value = Math.round(iva);
+  f.total_cobrado.value = Math.round(total);
+
+  const eqSub = Number(f.equipos_valor_subtotal.value||0);
+  const eqIVA = eqSub*IVA;
+  f.equipos_iva.value = Math.round(eqIVA);
+  f.equipos_valor_total.value = Math.round(eqSub + eqIVA);
+}
+['mo_monto','refacciones_monto','viaticos_monto','equipos_valor_subtotal'].forEach(n=>{
+  document.addEventListener('input', (e)=>{ if (e.target?.name===n) recalcIVA(); }, { passive:true });
+});
+function recalcHoras(){
+  const f = document.getElementById('frm');
+  let h = 0;
+  try{
+    const bloques = JSON.parse(f.bloques_horas.value||'[]');
+    h = horasTotalesFromBloques(bloques);
+  }catch{}
+  if (!h && f.hora_inicio.value && f.hora_fin.value){
+    h = Math.max(0, minutosEntre(f.hora_inicio.value, f.hora_fin.value))/60;
+  }
+  f.horas_totales.value = (Math.round(h*100)/100) || 0;
+}
+['bloques_horas','hora_inicio','hora_fin'].forEach(n=>{
+  document.addEventListener('input', (e)=>{ if (e.target?.name===n) recalcHoras(); }, { passive:true });
+});
+
+/* ===== Guardar ===== */
+document.getElementById('btnGuardar').onclick = async ()=>{
+  const f = document.getElementById('frm');
+  recalcIVA(); recalcHoras();
+  const data = Object.fromEntries(new FormData(f).entries());
+  // Normaliza números
+  ['mo_monto','refacciones_monto','viaticos_monto','iva_monto','total_cobrado','equipos_valor_subtotal','equipos_iva','equipos_valor_total','horas_totales','lat','lng']
+    .forEach(k=> data[k] = Number(data[k]||0));
+  try{
+    await apiPost('create', { data });
+    alert('Guardado');
+    f.reset();
+    await boot();
+  }catch(e){ alert('Error al guardar: '+e.message); }
+};
+document.getElementById('btnLimpiarForm').onclick = ()=> document.getElementById('frm').reset();
 
 /* ===== Render all ===== */
 function renderAll(){
@@ -587,12 +798,13 @@ function renderAll(){
 
 /* ===== Boot ===== */
 async function boot(){
-  // llena selector de mes
+  // llena selector de mes ANTES de pedir datos
   const sel = $('#fMes'); 
   if (sel && !sel._filled){
     const now = dayjs(); const items=[];
     for(let i=0;i<18;i++){ const d=now.subtract(i,'month'); items.push(`<option value="${d.format('YYYY-MM')}">${d.format('MMMM YYYY')}</option>`); }
     sel.innerHTML = items.join(''); sel._filled=true;
+    if (!sel.value) sel.value = dayjs().format('YYYY-MM');
   }
   try{ ROWS = await apiGet(); }catch(e){ console.error(e); alert('Error obteniendo datos'); return; }
   deriveComputedFields(ROWS);
@@ -644,10 +856,8 @@ boot();
 
   // Autocomplete moderno con fallback
   function initAutocomplete(){
-    // Si no tienes un formulario de captura visible aquí, este bloque sólo demuestra cómo
-    // llenar lat/lng/ciudad cuando sí exista (#frm con inputs name=lat,lng,ciudad).
     const boxId = document.getElementById('placeBox');
-    if (!boxId) return; // si no hay contenedor, no hacemos nada
+    if (!boxId) return;
 
     try{
       const el = document.createElement('gmpx-place-autocomplete');
@@ -696,8 +906,5 @@ boot();
   }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
-
-<!-- Contenedor para el nuevo autocomplete (si lo usas en tu formulario de captura) -->
-<div id="placeBox" class="hidden"></div>
 </body>
 </html>
