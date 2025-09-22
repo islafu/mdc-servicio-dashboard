@@ -696,6 +696,130 @@ window.showEventModal = function({id, title, inicio, fin, asesor, actividad, mod
   window.toggleEventModal(true);
 };
 
+// ===== Modal Captura/Edición =====
+function toggleEditModal(show){
+  const m = document.getElementById('editModal');
+  if (!m) return;
+  m.classList.toggle('hidden', !show);
+}
+
+function iva16(mo, ref, via){ const base=(+mo||0)+(+ref||0)+(+via||0); return Math.round(base*0.16*100)/100; }
+function eqTotal16(sub){ return Math.round((+sub||0)*1.16*100)/100; }
+
+// Autocomplete → actualiza Lat/Lng y, si no has escrito "Ciudad", rellena ciudad con locality
+function wireAutocomplete(){
+  const el = document.getElementById('edDireccion');
+  if (!el || el._wired) return;
+  el.addEventListener('gmpx-placechange', () => {
+    const place = el.value; // texto seleccionado (componente devuelve string)
+    // Obtenemos geocoding desde Maps JS si lo necesitas; aquí hacemos un fetch rápido usando Geocoder si ya cargas API Maps
+    // Para simplificar: si en tu flujo ya guardas lat/lng al seleccionar, déjalo así.
+  });
+  el._wired = true;
+}
+
+function fillFormFromRow(r){
+  $('#edId').value        = r?.id || '';
+  $('#edFechaIni').value  = toISODate(r?.fecha_inicio) || '';
+  $('#edHoraIni').value   = extractHHmm(r?.hora_inicio) || '';
+  $('#edFechaFin').value  = toISODate(r?.fecha_fin) || '';
+  $('#edHoraFin').value   = extractHHmm(r?.hora_fin) || '';
+  $('#edAsesor').value    = r?.asesor || '';
+  $('#edActividad').value = r?.actividad || 'Soporte de garantía';
+  $('#edModalidad').value = r?.modalidad || 'Remoto';
+  $('#edGarantia').value  = (String(r?.garantia||'').toLowerCase().startsWith('s')?'Sí':'No');
+  $('#edCliente').value   = r?.cliente || '';
+  document.getElementById('edDireccion').value = r?.ciudad || '';
+  $('#edLat').value       = r?.lat || '';
+  $('#edLng').value       = r?.lng || '';
+  $('#edTel').value       = r?.telefono || '';
+  $('#edCiudad').value    = r?.ciudad || '';
+  $('#edNotas').value     = r?.notas || '';
+  $('#edMO').value        = r?.mo_monto || 0;
+  $('#edRef').value       = r?.refacciones_monto || 0;
+  $('#edVia').value       = r?.viaticos_monto || 0;
+  $('#edIVA').value       = r?.iva_monto || iva16(r?.mo_monto, r?.refacciones_monto, r?.viaticos_monto);
+  $('#edEqSub').value     = r?.equipos_valor_subtotal || 0;
+  $('#edEqTot').value     = r?.equipos_valor_total || eqTotal16(r?.equipos_valor_subtotal);
+}
+
+function collectFormData(){
+  const data = {
+    fecha_inicio: $('#edFechaIni').value,
+    hora_inicio:  $('#edHoraIni').value,
+    fecha_fin:    $('#edFechaFin').value,
+    hora_fin:     $('#edHoraFin').value,
+    asesor:       $('#edAsesor').value,
+    actividad:    $('#edActividad').value,
+    modalidad:    $('#edModalidad').value,
+    garantia:     $('#edGarantia').value,
+    cliente:      $('#edCliente').value,
+    ciudad:       document.getElementById('edDireccion').value || $('#edCiudad').value,
+    telefono:     $('#edTel').value,
+    notas:        $('#edNotas').value,
+    lat:          $('#edLat').value,
+    lng:          $('#edLng').value,
+    mo_monto:            Number($('#edMO').value||0),
+    refacciones_monto:   Number($('#edRef').value||0),
+    viaticos_monto:      Number($('#edVia').value||0),
+    iva_monto:           Number($('#edIVA').value||0),
+    equipos_valor_subtotal: Number($('#edEqSub').value||0),
+    equipos_valor_total:    Number($('#edEqTot').value||0),
+  };
+  // Recalcular IVA/Total equipos por si cambió algo:
+  data.iva_monto = iva16(data.mo_monto, data.refacciones_monto, data.viaticos_monto);
+  data.equipos_valor_total = eqTotal16(data.equipos_valor_subtotal);
+  return data;
+}
+
+function bindCalcAuto(){
+  const recalc = ()=>{
+    const mo  = Number($('#edMO').value||0);
+    const ref = Number($('#edRef').value||0);
+    const via = Number($('#edVia').value||0);
+    $('#edIVA').value = iva16(mo,ref,via);
+    $('#edEqTot').value = eqTotal16(Number($('#edEqSub').value||0));
+  };
+  ['edMO','edRef','edVia','edEqSub'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el && !el._wired){ el.addEventListener('input', recalc); el._wired=true; }
+  });
+}
+
+function openCreate(){
+  document.getElementById('edTitle').textContent = 'Nuevo registro';
+  fillFormFromRow({});
+  wireAutocomplete(); bindCalcAuto();
+  toggleEditModal(true);
+}
+
+window.startEdit = function(id){
+  const row = ROWS.find(r => Number(r.id) === Number(id));
+  document.getElementById('edTitle').textContent = `Editar registro #${id}`;
+  fillFormFromRow(row||{});
+  wireAutocomplete(); bindCalcAuto();
+  toggleEditModal(true);
+};
+
+async function saveRecord(e){
+  e?.preventDefault?.();
+  const id = $('#edId').value;
+  const data = collectFormData();
+  try{
+    const body = id ? { op:'update', token:EDIT_TOKEN, id:Number(id), data } :
+                      { op:'create', token:EDIT_TOKEN, data };
+    const r = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    if(!r.ok) throw new Error('Error API');
+    toggleEditModal(false);
+    await boot();
+  }catch(err){ alert('No se pudo guardar: '+err.message); }
+}
+
+document.getElementById('edForm')?.addEventListener('submit', saveRecord);
+document.getElementById('edCancel')?.addEventListener('click', ()=> toggleEditModal(false));
+document.getElementById('edClose')?.addEventListener('click', ()=> toggleEditModal(false));
+
+
 function renderCalendar(){
   const el = document.getElementById('calendar');
   if (!el) return;
@@ -848,22 +972,38 @@ function renderCharts(){
 }
 
 /* ===== TeamViewer (totales del mes) ===== */
+
+// Si conoces las columnas exactas de tu archivo, descomenta y fija (base 1):
+// const TV_FORCE_DATE_COL = 1;   // p. ej. 1 = primera columna
+// const TV_FORCE_MIN_COL  = 8;   // p. ej. 8 = minutos
+
 async function readTVRows(){
   try{
     const txt = await fetch('/connectionreport.csv', { cache:'no-store' }).then(r=>r.ok?r.text():'');
     if (!txt) return { rows:[], totalConn:0, totalHours:0 };
 
-    const lines = txt.trim().split(/\r?\n/);
+    const lines = txt.trim().split(/\r?\n/).filter(Boolean);
     if (lines.length < 2) return { rows:[], totalConn:0, totalHours:0 };
 
-    // Detecta separador ; o ,
     const sep = (lines[0].includes(';') && !lines[0].includes(',')) ? ';' : ',';
     const headers = lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));
 
-    const idxFecha = headers.findIndex(h=>/(date|fecha)/i.test(h));
-    const idxConn  = headers.findIndex(h=>/(connections|conexiones)/i.test(h));
-    let idxMin     = headers.findIndex(h=>/(minutes|minutos|duration|duración|time)/i.test(h));
-    if (idxMin === -1) idxMin = 7; // fallback: columna 8 (base 1)
+    // Diagnóstico útil
+    console.log('[TV] headers:', headers);
+
+    // Forzado por constantes (si las defines)
+    let idxFecha = (typeof TV_FORCE_DATE_COL === 'number') ? (TV_FORCE_DATE_COL-1) : -1;
+    let idxMin   = (typeof TV_FORCE_MIN_COL  === 'number') ? (TV_FORCE_MIN_COL-1)   : -1;
+
+    // Heurística si no están forzadas
+    if (idxFecha === -1){
+      idxFecha = headers.findIndex(h=>/(date|fecha|start|inicio)/i.test(h));
+      if (idxFecha === -1) idxFecha = 0; // primera por fallback
+    }
+    if (idxMin === -1){
+      idxMin = headers.findIndex(h=>/(minutes|minutos|duration|duración|time)/i.test(h));
+      if (idxMin === -1) idxMin = 7; // fallback: col 8
+    }
 
     const { start, end } = getMonthRange();
     const from = start.startOf('day').valueOf();
@@ -872,45 +1012,40 @@ async function readTVRows(){
     let totalConn = 0;
     let totalMinutes = 0;
 
-    const rows = lines.slice(1).map(l=>{
+    const body = lines.slice(1);
+    // Si el archivo tiene comas dentro de comillas, esto lo simplifica bastante;
+    // si vieras columnas corridas, pásame 3 líneas del CSV y lo cambio por un parser CSV estricto.
+    for (const l of body){
       const cols = l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim());
-
-      // Fecha
-      const fechaRaw = (idxFecha >= 0 ? cols[idxFecha] : (cols[0] || ''));
-      const fISO = toISODate(fechaRaw) || dayjs(fechaRaw).format('YYYY-MM-DD');
+      const fechaRaw = cols[idxFecha] || cols[0] || '';
+      // Soporta "YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY", "YYYY/MM/DD"
+      const fISO = toISODate(fechaRaw) || dayjs(fechaRaw, ['YYYY-MM-DD','DD/MM/YYYY','MM/DD/YYYY','YYYY/MM/DD']).format('YYYY-MM-DD');
       const t = dayjs(fISO, 'YYYY-MM-DD', true);
+      if (!t.isValid()) continue;
 
-      // Conexiones: si no existe la col, cuenta 1 por fila
-      let conn = 1;
-      if (idxConn >= 0) {
-        const vConn = Number((cols[idxConn]||'').replace(',','.'));
-        conn = Number.isFinite(vConn) ? vConn : 0;
-      }
+      const tv = t.valueOf();
+      if (tv < from || tv > to) continue;
 
-      // Minutos: acepta "HH:mm[:ss]" o número (minutos)
+      // Minutos: acepta "HH:mm[:ss]" o número
+      const v = cols[idxMin] || '0';
       let minutes = 0;
-      const v = (cols[idxMin] || '0');
       if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(v)) {
-        const p = v.split(':').map(Number);      // [HH, mm, (ss)]
-        minutes = (p[0] * 60) + (p[1] || 0) + (p[2] || 0) / 60; // minutos decimales
+        const p = v.split(':').map(Number);
+        minutes = (p[0]*60) + (p[1]||0) + (p[2]||0)/60;
       } else {
-        const nm = Number(v.replace(',','.'));
+        const nm = Number(String(v).replace(',','.'));
         minutes = Number.isFinite(nm) ? nm : 0;
       }
 
-      return { date:t, conexiones: conn, minutos: minutes };
-    }).filter(r => r.date?.isValid());
+      // 1 fila = 1 conexión (si tu CSV tiene "Connections" explícito, súmalo en lugar de 1)
+      totalConn += 1;
+      totalMinutes += minutes;
+    }
 
-    rows.forEach(r=>{
-      const tv = r.date.valueOf();
-      if (tv >= from && tv <= to) {
-        totalConn += r.conexiones;
-        totalMinutes += r.minutos;
-      }
-    });
-
-    return { rows, totalConn, totalHours: (totalMinutes/60) };
-  }catch{
+    console.log('[TV] month totals -> connections:', totalConn, 'minutes:', totalMinutes);
+    return { rows:[], totalConn, totalHours: (totalMinutes/60) };
+  }catch(e){
+    console.warn('[TV] error leyendo CSV', e);
     return { rows:[], totalConn:0, totalHours:0 };
   }
 }
@@ -921,7 +1056,6 @@ async function renderTeamViewerChart(){
   const { totalConn, totalHours } = await readTVRows();
 
   if (c._chart) { c._chart.destroy(); c._chart = null; }
-
   const chart = new Chart(c, {
     type: 'bar',
     data: {
@@ -939,16 +1073,12 @@ async function renderTeamViewerChart(){
 async function renderTeamViewerTable(){
   const el = document.querySelector('#tvTable tbody');
   if (!el) return;
-
   const { totalConn, totalHours } = await readTVRows();
-
-  // KPIs si existen en la UI
-  const k1 = document.getElementById('kpiC_tvconn');
-  if (k1) k1.textContent = String(totalConn);
-  const k2 = document.getElementById('kpiC_tvhrs');
-  if (k2) k2.textContent = totalHours.toFixed(2);
-
   const { start } = getMonthRange();
+  // KPIs
+  const k1 = document.getElementById('kpiC_tvconn'); if (k1) k1.textContent = String(totalConn);
+  const k2 = document.getElementById('kpiC_tvhrs');  if (k2) k2.textContent = totalHours.toFixed(2);
+
   el.innerHTML = `
     <tr class="border-t border-white/10">
       <td class="py-2 px-3">${dayjs(start).format('MMMM YYYY')}</td>
@@ -957,6 +1087,7 @@ async function renderTeamViewerTable(){
     </tr>
   `;
 }
+
 
 /* ===== Cálculo IVA y horas en captura ===== */
 function recalcIVA(){
@@ -1059,6 +1190,8 @@ document.getElementById('btnExportPdf').addEventListener('click', async ()=>{
 boot();
 </script>
 
+<script type="module" src="https://unpkg.com/@googlemaps/extended-component-library@0.6"></script>
+
 <!-- Google Maps + Places -->
 <script>
   // Mapa
@@ -1131,36 +1264,136 @@ boot();
   }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
-<!-- Modal evento calendario -->
-<div id="eventModal" class="fixed inset-0 z-[70] hidden">
-  <!-- backdrop -->
+<!-- Modal Captura/Edición -->
+<div id="editModal" class="fixed inset-0 z-[80] hidden">
   <div class="absolute inset-0 bg-black/60"></div>
-
-  <!-- card -->
-  <div class="relative mx-auto mt-20 w-[min(680px,94vw)] rounded-xl border border-white/10 bg-slate-900 shadow-2xl">
+  <div class="relative mx-auto mt-10 w-[min(820px,95vw)] rounded-xl border border-white/10 bg-slate-900 shadow-2xl">
     <div class="flex items-center justify-between px-5 py-3 border-b border-white/10">
-      <h3 id="emTitle" class="text-lg font-semibold">Detalle de evento</h3>
-      <button id="emClose" class="px-2 py-1 rounded hover:bg-white/10">✕</button>
+      <h3 id="edTitle" class="text-lg font-semibold">Nuevo registro</h3>
+      <button id="edClose" class="px-2 py-1 rounded hover:bg-white/10">✕</button>
     </div>
 
-    <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-      <div><div class="text-slate-400">Inicio</div><div id="emInicio" class="font-medium"></div></div>
-      <div><div class="text-slate-400">Fin</div><div id="emFin" class="font-medium"></div></div>
-      <div><div class="text-slate-400">Asesor</div><div id="emAsesor" class="font-medium"></div></div>
-      <div><div class="text-slate-400">Actividad</div><div id="emActividad" class="font-medium"></div></div>
-      <div><div class="text-slate-400">Modalidad</div><div id="emModalidad" class="font-medium"></div></div>
-      <div><div class="text-slate-400">Ciudad / Dirección</div><div id="emCiudad" class="font-medium"></div></div>
-      <div class="sm:col-span-2">
-        <div class="text-slate-400">Notas</div>
-        <div id="emNotas" class="font-medium whitespace-pre-wrap"></div>
+    <form id="edForm" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+      <input type="hidden" id="edId">
+
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Fecha inicio</span>
+        <input id="edFechaIni" type="date" class="formc px-3 py-2 rounded-lg">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Hora inicio</span>
+        <input id="edHoraIni" type="time" class="formc px-3 py-2 rounded-lg">
+      </label>
+
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Fecha fin</span>
+        <input id="edFechaFin" type="date" class="formc px-3 py-2 rounded-lg">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Hora fin</span>
+        <input id="edHoraFin" type="time" class="formc px-3 py-2 rounded-lg">
+      </label>
+
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Asesor</span>
+        <input id="edAsesor" class="formc px-3 py-2 rounded-lg" placeholder="Israel / Selene / Diego / …">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Actividad</span>
+        <select id="edActividad" class="formc px-3 py-2 rounded-lg">
+          <option>Soporte de garantía</option>
+          <option>Soporte fuera de garantía</option>
+          <option>Instalación</option>
+          <option>Evento</option>
+          <option>Proyecto</option>
+          <option>Curso</option>
+          <option>Vacaciones</option>
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Modalidad</span>
+        <select id="edModalidad" class="formc px-3 py-2 rounded-lg">
+          <option>Remoto</option>
+          <option>Presencial</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Garantía</span>
+        <select id="edGarantia" class="formc px-3 py-2 rounded-lg">
+          <option>Sí</option>
+          <option>No</option>
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-1 md:col-span-2">
+        <span class="text-slate-400">Cliente</span>
+        <input id="edCliente" class="formc px-3 py-2 rounded-lg">
+      </label>
+
+      <label class="flex flex-col gap-1 md:col-span-2">
+        <span class="text-slate-400">Dirección (con Autocomplete)</span>
+        <!-- Nuevo componente recomendado por Google -->
+        <gmpx-place-autocomplete id="edDireccion" class="formc px-3 py-2 rounded-lg" placeholder="Escribe y elige una dirección"></gmpx-place-autocomplete>
+      </label>
+
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Lat</span>
+        <input id="edLat" class="formc px-3 py-2 rounded-lg" readonly>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Lng</span>
+        <input id="edLng" class="formc px-3 py-2 rounded-lg" readonly>
+      </label>
+
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Teléfono</span>
+        <input id="edTel" class="formc px-3 py-2 rounded-lg">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Ciudad</span>
+        <input id="edCiudad" class="formc px-3 py-2 rounded-lg">
+      </label>
+
+      <label class="flex flex-col gap-1 md:col-span-2">
+        <span class="text-slate-400">Notas</span>
+        <textarea id="edNotas" rows="3" class="formc px-3 py-2 rounded-lg"></textarea>
+      </label>
+
+      <!-- Desgloses -->
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">MO $</span>
+        <input id="edMO" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Refacciones $</span>
+        <input id="edRef" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Viáticos $</span>
+        <input id="edVia" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">IVA $ (auto 16%)</span>
+        <input id="edIVA" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0" readonly>
+      </label>
+
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Equipos Subtotal $</span>
+        <input id="edEqSub" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0">
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="text-slate-400">Equipos Total c/IVA $</span>
+        <input id="edEqTot" type="number" step="0.01" class="formc px-3 py-2 rounded-lg" value="0" readonly>
+      </label>
+
+      <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+        <button type="button" id="edCancel" class="btn">Cancelar</button>
+        <button type="submit" id="edSave" class="btn btn-primary">💾 Guardar</button>
       </div>
-    </div>
-
-    <div class="flex justify-end gap-2 px-5 pb-5">
-      <button id="emBtnEdit" class="btn btn-primary">✏️ Editar</button>
-      <button id="emBtnDelete" class="btn bg-red-600/80 hover:bg-red-600 text-white">🗑 Eliminar</button>
-    </div>
+    </form>
   </div>
 </div>
+
 </body>
 </html>
