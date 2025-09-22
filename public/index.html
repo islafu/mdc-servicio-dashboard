@@ -573,8 +573,24 @@ function openModal(evt, row){
   $('#modalBg').style.display = 'flex';
 }
 function closeModal(){ $('#modalBg').style.display = 'none'; CAL_EVENT_CLICKED=null; }
+function extractHHmm(v){
+  if (!v) return null;
+  const s = String(v);
+  // HH:mm directo
+  const m1 = s.match(/\b(\d{1,2}):(\d{2})\b/);
+  if (m1) {
+    const hh = String(m1[1]).padStart(2,'0');
+    const mm = String(m1[2]).padStart(2,'0');
+    return `${hh}:${mm}`;
+  }
+  // ISO con "T.."
+  const m2 = s.match(/T(\d{2}):(\d{2})/);
+  if (m2) return `${m2[1]}:${m2[2]}`;
+  return null;
+}
 function renderCalendar(){
   const el = document.getElementById('calendar');
+  if (!el) return;
   if (CAL) { CAL.destroy(); CAL = null; }
 
   const COLOR = {
@@ -589,42 +605,66 @@ function renderCalendar(){
 
   const events = [];
   (FILTERED||[]).forEach(r=>{
-    const act = r.actividad || 'Otro';
     const dStart = toISODate(r.fecha_inicio) || toISODate(r.fecha_fin);
     const dEnd   = toISODate(r.fecha_fin)    || toISODate(r.fecha_inicio);
     if (!dStart) return;
-    const hasTimes = !!((r.hora_inicio||'') || (r.hora_fin||''));
-    const start = hasTimes ? `${dStart}T${(r.hora_inicio||'00:00')}` : dStart;
-    let end;
-    if (dEnd) {
-      end = hasTimes ? `${dEnd}T${(r.hora_fin||'00:00')}` : dayjs(dEnd).add(1,'day').format('YYYY-MM-DD');
+
+    const tStart = extractHHmm(r.hora_inicio);
+    const tEnd   = extractHHmm(r.hora_fin);
+
+    const act = r.actividad || 'Otro';
+    const hasTimes = !!(tStart || tEnd);
+
+    let start = dStart, end;
+    if (hasTimes) {
+      start = `${dStart}T${tStart || '00:00'}`;
+      if (dEnd) end = `${dEnd}T${tEnd || tStart || '00:00'}`;
+    } else {
+      // allDay -> end exclusivo (+1 día si hay dEnd, si no, mismo día +1)
+      const endDate = dEnd || dStart;
+      end = dayjs(endDate, 'YYYY-MM-DD', true).add(1,'day').format('YYYY-MM-DD');
     }
+
     events.push({
-      id: String(r.id||''),
       title: `${act} — ${r.asesor||''}`,
       start, end, allDay: !hasTimes,
       backgroundColor: COLOR[act] || '#60a5fa',
-      borderColor: COLOR[act] || '#60a5fa'
+      borderColor: COLOR[act] || '#60a5fa',
+      extendedProps: {
+        rjson: r
+      }
     });
   });
 
   CAL = new FullCalendar.Calendar(el, {
     height: 'auto',
-    contentHeight: 960,
+    contentHeight: 900,
     expandRows: true,
     handleWindowResize: true,
     locale: 'es',
     initialView: 'dayGridMonth',
     headerToolbar: { left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,dayGridDay' },
     events,
-    eventClick: (info)=>{
-      const id = info.event.id;
-      const row = ROWS.find(r=> String(r.id)===id);
-      openModal(info.event, row);
+    eventClick(info){
+      const r = info.event.extendedProps?.rjson || {};
+      // Abre modal de detalle (usa el que ya tienes si existía)
+      showEventModal({
+        title: info.event.title,
+        inicio: info.event.start,
+        fin: info.event.end,
+        asesor: r.asesor,
+        actividad: r.actividad,
+        modalidad: r.modalidad,
+        ciudad: r.ciudad,
+        notas: r.notas,
+        id: r.id
+      });
     }
   });
   CAL.render();
+  console.log('Calendar events:', events.length);
 }
+
 $('#mClose').onclick = closeModal;
 $('#modalBg').onclick = (e)=> { if (e.target.id==='modalBg') closeModal(); };
 $('#mEdit').onclick = ()=>{
@@ -704,40 +744,58 @@ async function readTVRows(){
   try{
     const txt = await fetch('/connectionreport.csv', { cache:'no-store' }).then(r=>r.ok?r.text():'');
     if (!txt) return { rows:[], totalConn:0, totalHours:0 };
+
     const lines = txt.trim().split(/\r?\n/);
     if (lines.length < 2) return { rows:[], totalConn:0, totalHours:0 };
 
+    // Detecta separador ; o ,
     const sep = (lines[0].includes(';') && !lines[0].includes(',')) ? ';' : ',';
     const headers = lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));
 
     const idxFecha = headers.findIndex(h=>/(date|fecha)/i.test(h));
     const idxConn  = headers.findIndex(h=>/(connections|conexiones)/i.test(h));
-    let idxMin = headers.findIndex(h=>/(minutes|minutos|duration|duración|time)/i.test(h));
-    if (idxMin === -1) idxMin = 7; // fallback columna 8
+    let idxMin     = headers.findIndex(h=>/(minutes|minutos|duration|duración|time)/i.test(h));
+    if (idxMin === -1) idxMin = 7; // fallback: columna 8 (base 1)
 
     const { start, end } = getMonthRange();
+    const from = start.startOf('day').valueOf();
+    const to   = end.endOf('day').valueOf();
+
     let totalConn = 0;
     let totalMinutes = 0;
 
     const rows = lines.slice(1).map(l=>{
       const cols = l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim());
-      const fechaRaw = cols[idxFecha] ?? cols[0] ?? '';
+
+      // Fecha
+      const fechaRaw = (idxFecha >= 0 ? cols[idxFecha] : (cols[0] || ''));
       const fISO = toISODate(fechaRaw) || dayjs(fechaRaw).format('YYYY-MM-DD');
       const t = dayjs(fISO, 'YYYY-MM-DD', true);
-      const conn = Number(cols[idxConn] || 0);
-      let minutes = 0;
-      const v = cols[idxMin] || '0';
-      if (/^\d+:\d{2}(:\d{2})?$/.test(v)){
-        const p = v.split(':').map(Number);
-        minutes = (p[0]*60) + (p[1]||0) + (p[2]||0)/60;
-      } else {
-        minutes = Number(v.replace(',','.')) || 0;
+
+      // Conexiones: si no existe la col, cuenta 1 por fila
+      let conn = 1;
+      if (idxConn >= 0) {
+        const vConn = Number((cols[idxConn]||'').replace(',','.'));
+        conn = Number.isFinite(vConn) ? vConn : 0;
       }
+
+      // Minutos: acepta "HH:mm[:ss]" o número (minutos)
+      let minutes = 0;
+      const v = (cols[idxMin] || '0');
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(v)) {
+        const p = v.split(':').map(Number);      // [HH, mm, (ss)]
+        minutes = (p[0] * 60) + (p[1] || 0) + (p[2] || 0) / 60; // minutos decimales
+      } else {
+        const nm = Number(v.replace(',','.'));
+        minutes = Number.isFinite(nm) ? nm : 0;
+      }
+
       return { date:t, conexiones: conn, minutos: minutes };
     }).filter(r => r.date?.isValid());
 
     rows.forEach(r=>{
-      if (r.date.isBetween(start, end, 'day', '[]')){
+      const tv = r.date.valueOf();
+      if (tv >= from && tv <= to) {
         totalConn += r.conexiones;
         totalMinutes += r.minutos;
       }
@@ -752,13 +810,19 @@ async function readTVRows(){
 async function renderTeamViewerTable(){
   const el = document.querySelector('#tvTable tbody');
   if (!el) return;
-  const { totalConn, totalHours } = await readTVRows();
-  $('#kpiC_tvconn').textContent = totalConn.toString();
-  $('#kpiC_tvhrs').textContent  = totalHours.toFixed(2);
 
+  const { totalConn, totalHours } = await readTVRows();
+
+  // KPIs si existen en la UI
+  const k1 = document.getElementById('kpiC_tvconn');
+  if (k1) k1.textContent = String(totalConn);
+  const k2 = document.getElementById('kpiC_tvhrs');
+  if (k2) k2.textContent = totalHours.toFixed(2);
+
+  const { start } = getMonthRange();
   el.innerHTML = `
     <tr class="border-t border-white/10">
-      <td class="py-2 px-3">${dayjs(getMonthRange().start).format('MMMM YYYY')}</td>
+      <td class="py-2 px-3">${dayjs(start).format('MMMM YYYY')}</td>
       <td class="py-2 px-3">${totalConn}</td>
       <td class="py-2 px-3">${totalHours.toFixed(2)}</td>
     </tr>
