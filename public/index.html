@@ -344,8 +344,30 @@ function isGarantia(r){ return String(r.garantia||'').trim().toLowerCase().start
 function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().includes('instal'); }
 
 function toISODate(d){
-  const m = dayjs(d, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD','DD-MM-YYYY','MM-DD-YYYY'], true);
-  return m.isValid() ? m.format('YYYY-MM-DD') : null;
+  if (d == null) return null;
+  const s = String(d).trim();
+
+  // 1) Try strict common formats
+  let m = dayjs(s, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD','DD-MM-YYYY','MM-DD-YYYY'], true);
+  if (m.isValid()) return m.format('YYYY-MM-DD');
+
+  // 2) If it has time, strip time and retry
+  //    - "2025-09-20T00:00:00.000Z"  -> "2025-09-20"
+  //    - "20/09/2025 0:00:00"        -> "20/09/2025"
+  const justDate =
+    (s.match(/^\d{4}-\d{2}-\d{2}/)?.[0]) ||         // 2025-09-20...
+    (s.match(/^\d{2}\/\d{2}\/\d{4}/)?.[0]) ||       // 20/09/2025...
+    (s.match(/^\d{2}-\d{2}-\d{4}/)?.[0]);           // 20-09-2025...
+  if (justDate) {
+    m = dayjs(justDate, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD','DD-MM-YYYY','MM-DD-YYYY'], true);
+    if (m.isValid()) return m.format('YYYY-MM-DD');
+  }
+
+  // 3) Last resort: non-strict parse
+  m = dayjs(s);
+  if (m.isValid()) return m.format('YYYY-MM-DD');
+
+  return null;
 }
 function getMonthRange(){
   const sel = ($('#fMes')?.value || dayjs().format('YYYY-MM'));
@@ -385,36 +407,40 @@ function deriveComputedFields(rows){
   return rows;
 }
 function applyFilters(){
-  const a = ($('#fAsesor')?.value||'').trim().toLowerCase();
+  const a   = ($('#fAsesor')?.value||'').trim().toLowerCase();
   const act = ($('#fActividad')?.value||'').trim().toLowerCase();
   const mod = ($('#fModalidad')?.value||'').trim().toLowerCase();
-  const c  = ($('#fCiudad')?.value||'').trim().toLowerCase();
+  const c   = ($('#fCiudad')?.value||'').trim().toLowerCase();
   const rng = ($('#fRango')?.value||'').trim();
   const { start, end } = getMonthRange();
 
   let out = ROWS.filter(x=>{
     const f = toISODate(x.fecha_inicio) || toISODate(x.fecha_fin);
-    if (!f) return false;
+    if (!f) return false; // sin fecha no entra al mensual
     const t = dayjs(f, 'YYYY-MM-DD', true);
     return t.isValid() && t.isBetween(start, end, 'day', '[]');
   });
-  if (a) out = out.filter(x => (x.asesor||'').toString().toLowerCase().includes(a));
+
+  if (a)   out = out.filter(x => (x.asesor||'').toString().toLowerCase().includes(a));
   if (act) out = out.filter(x => (x.actividad||'').toString().toLowerCase() === act);
   if (mod) out = out.filter(x => (x.modalidad||'').toString().toLowerCase() === mod);
-  if (c) out = out.filter(x => (x.ciudad||'').toString().toLowerCase().includes(c));
+  if (c)   out = out.filter(x => (x.ciudad||'').toString().toLowerCase().includes(c));
+
   if (rng && rng.includes('a')) {
     const [d1,d2] = rng.split('a').map(s=>s.trim());
     if (d1 && d2) {
       const t1=dayjs(d1,'YYYY-MM-DD'), t2=dayjs(d2,'YYYY-MM-DD').endOf('day');
       out = out.filter(x=>{
-        const f = String(x.fecha_inicio||x.fecha_fin||'');
-        const t = dayjs(toISODate(f),'YYYY-MM-DD',true);
-        return t.isValid() ? (t.isAfter(t1.subtract(1,'day')) && t.isBefore(t2.add(1,'second'))) : true;
+        const f = toISODate(x.fecha_inicio) || toISODate(x.fecha_fin);
+        if (!f) return false;
+        const t = dayjs(f,'YYYY-MM-DD',true);
+        return t.isValid() ? (t.isAfter(t1.subtract(1,'day')) && t.isBefore(t2.add(1,'second'))) : false;
       });
     }
   }
   FILTERED = out;
 }
+
 
 /* ===== KPIs ===== */
 function renderKpis(){
