@@ -5,16 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MDC Digital — Reporte de Actividades Asesores CAD-CAM</title>
 
-  <!-- Tailwind (build) -->
+  <!-- CSS de producción (Tailwind compilado). Si no existe o pesa ~0, inyectamos CDN como fallback -->
   <link rel="stylesheet" href="/styles.css">
   <script>
-    // Fallback a CDN si styles.css no está generado
     (async () => {
       try {
         const r = await fetch('/styles.css', { cache: 'no-store' });
         if (!r.ok) throw 0;
         const len = +(r.headers.get('content-length') || 0);
-        if (len < 10240) throw 0; // <10KB = probablemente vacío
+        if (len < 10240) throw 0;
       } catch {
         const s = document.createElement('script');
         s.src = 'https://cdn.tailwindcss.com';
@@ -24,30 +23,26 @@
     })();
   </script>
 
-  <!-- FullCalendar -->
+  <!-- Librerías -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css">
-
-  <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/isoWeek.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.min.js"></script>
   <script>dayjs.extend(window.dayjs_plugin_isoWeek); dayjs.extend(window.dayjs_plugin_customParseFormat);</script>
-
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/core/locales-all.global.min.js"></script>
-
-  <!-- Export PDF -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
   <style>
+    :root{color-scheme:dark}
     body{background:#0b0d10;color:#e5e7eb}
     .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.06);border-radius:1rem}
     .formc{background-color:#1e293b;color:#f1f5f9;border:1px solid #334155}
     .formc::placeholder{color:#cbd5e1}
     select.formc option{color:#000}
-    .btn{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(255,255,255,.12);padding:.45rem .7rem;border-radius:.5rem}
+    .btn{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(255,255,255,.12);padding:.35rem .6rem;border-radius:.5rem}
     .btn:hover{background:rgba(255,255,255,.06)}
     .btn-primary{border-color:rgba(59,130,246,.5)}
     .btn-primary:hover{background:rgba(59,130,246,.12)}
@@ -55,49 +50,35 @@
     .chip-warn{background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.35)}
     .chip-ok{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35)}
 
-    /* --- Tabla legible --- */
-    .table-viewport{max-height:65vh;overflow:auto}
-    #tbl{table-layout:auto;border-collapse:separate;border-spacing:0;min-width:100%}
-    #tbl thead th{position:sticky;top:0;background:#0f172a;z-index:1}
-    #tbl th,#tbl td{font-size:.92rem;line-height:1.25rem;white-space:nowrap;vertical-align:top}
-    .col-money{text-align:right;min-width:7.5rem}
-    .col-horas{text-align:right;min-width:6rem}
-    .col-notas{white-space:normal;max-width:34rem;word-break:break-word}
-    .col-acciones{white-space:nowrap;min-width:8.5rem;text-align:right}
-    /* opcional: dejar acciones fijas a la derecha */
-    /* #tbl td.col-acciones,#tbl th.col-acciones{position:sticky;right:0;background:#0b1220} */
+    /* Tabla legible */
+    .table-viewport { max-height: 65vh; overflow: auto; }
+    #tbl { table-layout: auto; border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+    #tbl thead th { position: sticky; top: 0; background: #0f172a; z-index: 1; }
+    #tbl th, #tbl td { font-size: .92rem; line-height: 1.25rem; white-space: nowrap; vertical-align: top; }
+    #tbl td { padding-top:.5rem; padding-bottom:.5rem; }
+    .col-money { text-align: right; min-width: 7.5rem; }
+    .col-horas { text-align: right; min-width: 6rem; }
+    .col-notas { white-space: normal; max-width: 40rem; }
+    .col-acciones { white-space: nowrap; min-width: 9rem; }
 
-    /* Gráficas */
-    canvas{max-width:100%}
-    .chart-h{height:320px}
-    .chart-h-lg{height:360px}
+    canvas { max-width: 100%; }
+    .chart-h { height: 320px; }
+    .chart-h-lg { height: 360px; }
 
-    /* Mapa / Calendario */
     #map{min-height:460px;height:460px}
-    #calendar{min-height:900px;height:auto}
-
-    /* --- Modal calendario --- */
-    .modal-backdrop{
-      position:fixed;inset:0;background:rgba(0,0,0,.65);
-      display:flex;align-items:center;justify-content:center;z-index:50;
-    }
-    .modal-card{
-      width:min(680px,92vw);background:#0f172a;border:1px solid #1f2937;border-radius:.75rem;
-      padding:1rem 1.25rem;box-shadow:0 10px 30px rgba(0,0,0,.45)
-    }
-    .modal-actions{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem}
+    #calendar{min-height:960px;height:auto}
   </style>
 </head>
 <body class="h-full">
 <div class="max-w-7xl mx-auto p-4 sm:p-6">
 
-  <!-- HEADER -->
+  <!-- Header -->
   <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
     <div class="flex items-center gap-3">
       <img src="/logo-mdc.png" alt="MDC Digital" class="h-10 w-auto rounded-sm">
       <div>
         <h1 class="text-2xl font-semibold">MDC Digital — Reporte de Actividades Asesores CAD-CAM</h1>
-        <p class="text-slate-400 text-sm">KPIs · Gráficas · Mapas · Calendario · Captura · PDF</p>
+        <p class="text-slate-400 text-sm">Captura · KPIs · Gráficas · Mapas · Calendario · PDF</p>
       </div>
     </div>
     <div class="flex flex-wrap gap-2">
@@ -106,23 +87,17 @@
     </div>
   </header>
 
-  <!-- KPIs -->
+  <!-- KPIs principales -->
   <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
     <div class="card p-4"><div class="text-slate-400 text-xs">Total registros</div><div id="kpiC_total" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Soporte</div><div id="kpiC_soporte" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Instalaciones</div><div id="kpiC_inst" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Eventos/Proy./Cursos</div><div id="kpiC_eventos" class="text-3xl font-semibold mt-1">0</div></div>
-    <div class="card p-4"><div class="text-slate-400 text-xs">Horas TeamViewer</div><div id="kpiC_tvhrs" class="text-3xl font-semibold mt-1">0</div></div>
-    <div class="card p-4">
-      <div class="text-slate-400 text-xs">Total cobrado</div>
-      <div class="text-3xl font-semibold mt-1" id="kpiCobradoTotal">$0</div>
-      <div class="text-slate-400 text-xs mt-1">
-        MO: <span id="kpiMo">$0</span> · Ref: <span id="kpiRef">$0</span> · Via: <span id="kpiVia">$0</span> · IVA: <span id="kpiIva">$0</span>
-      </div>
-    </div>
+    <div class="card p-4"><div class="text-slate-400 text-xs">Conexiones TeamViewer (mes)</div><div id="kpiC_tvconn" class="text-3xl font-semibold mt-1">0</div></div>
+    <div class="card p-4"><div class="text-slate-400 text-xs">Horas TeamViewer (mes)</div><div id="kpiC_tvhrs" class="text-3xl font-semibold mt-1">0</div></div>
   </section>
 
-  <!-- KPIs extras -->
+  <!-- KPIs financieros -->
   <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
     <div class="card p-4">
       <div class="text-slate-400 text-xs">Potencial no cobrado (garantía)</div>
@@ -130,220 +105,101 @@
       <div class="text-slate-400 text-xs mt-1">Tarifa $1,000/h</div>
     </div>
     <div class="card p-4">
+      <div class="text-slate-400 text-xs">Total cobrado</div>
+      <div class="text-3xl font-semibold mt-1" id="kpiCobradoTotal">$0</div>
+      <div class="text-slate-400 text-xs mt-1">
+        MO: <span id="kpiMo">$0</span> · Ref: <span id="kpiRef">$0</span> · Via: <span id="kpiVia">$0</span> · IVA: <span id="kpiIva">$0</span>
+      </div>
+    </div>
+    <div class="card p-4">
       <div class="text-slate-400 text-xs">Instalaciones — Costo empresa</div>
       <div id="kpiInstCosto" class="text-3xl font-semibold mt-1">$0</div>
       <div class="text-slate-400 text-xs mt-1">85/h + viáticos</div>
     </div>
-    <div class="card p-4">
-      <div class="text-slate-400 text-xs">Valor equipos instalados (Subtotal)</div>
-      <div id="kpiInstValSub" class="text-2xl font-semibold mt-1">$0</div>
-      <div class="text-slate-400 text-xs mt-1">Total c/IVA: <span id="kpiInstValTot">$0</span> · Ratio: <span id="kpiInstRatio">—</span></div>
-    </div>
   </section>
 
-  <!-- GRÁFICAS -->
-  <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <!-- Gráficas -->
+  <section class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+    <div class="card p-4"><h3 class="text-lg font-medium mb-3">Actividades por asesor (apilado por tipo)</h3><div class="chart-h"><canvas id="chartActAsesor"></canvas></div></div>
+    <div class="card p-4"><h3 class="text-lg font-medium mb-3">Remoto vs Presencial</h3><div class="chart-h"><canvas id="chartRemoto"></canvas></div></div>
+    <div class="card p-4"><h3 class="text-lg font-medium mb-3">Distribución por actividad</h3><div class="chart-h"><canvas id="chartActividad"></canvas></div></div>
+    <div class="card p-4"><h3 class="text-lg font-medium mb-3">Garantía vs No garantía</h3><div class="chart-h"><canvas id="chartGarantia"></canvas></div></div>
+    <div class="card p-4 xl:col-span-2"><h3 class="text-lg font-medium mb-3">Ingresos por asesor (MXN)</h3><div class="chart-h-lg"><canvas id="chartIngresos"></canvas></div></div>
+  </section>
+
+  <!-- Mapa + Calendario (pantalla completa uno debajo del otro) -->
+  <section class="grid grid-cols-1 gap-6 mb-6">
     <div class="card p-4">
-      <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Actividades por asesor (apilado por tipo)</h3></div>
-      <div class="chart-h"><canvas id="chartActAsesor"></canvas></div>
-    </div>
-    <div class="card p-4">
-      <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Remoto vs Presencial</h3></div>
-      <div class="chart-h"><canvas id="chartRemoto"></canvas></div>
-    </div>
-    <div class="card p-4">
-      <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Distribución por actividad</h3></div>
-      <div class="chart-h"><canvas id="chartActividad"></canvas></div>
-    </div>
-    <div class="card p-4">
-      <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Garantía vs No garantía</h3></div>
-      <div class="chart-h"><canvas id="chartGarantia"></canvas></div>
-    </div>
-    <div class="card p-4 lg:col-span-2">
-      <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium">Ingresos por asesor (MXN)</h3></div>
-      <div class="chart-h-lg"><canvas id="chartIngresos"></canvas></div>
-    </div>
-    <div class="card p-4 lg:col-span-2">
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="text-lg font-medium">TeamViewer — Conexiones y horas (CSV)</h3>
-        <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-medium">Mapa</h3>
+        <div class="text-xs text-slate-400">Geolocalización por registro (lat/lng)</div>
       </div>
-      <div class="chart-h-lg"><canvas id="chartTV"></canvas></div>
-
-      <section class="card p-4 mt-4">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-lg font-medium">TeamViewer — Tabla (CSV)</h3>
-          <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
-        </div>
-        <div class="table-viewport">
-          <table class="w-full" id="tvTable">
-            <thead>
-              <tr class="text-left text-slate-400">
-                <th class="py-2 px-3">Fecha</th>
-                <th class="py-2 px-3">Conexiones</th>
-                <th class="py-2 px-3">Horas</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
+      <div id="map" class="rounded-lg overflow-hidden"></div>
+    </div>
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-medium">Calendario de actividades</h3>
+        <div class="text-xs text-slate-400">Vista mensual · colores por actividad</div>
+      </div>
+      <div id="calendar" class="rounded-lg bg-slate-900"></div>
     </div>
   </section>
 
-  <!-- MAPA -->
+  <!-- TeamViewer resumen (solo totales del mes) -->
   <section class="card p-4 mb-6">
     <div class="flex items-center justify-between mb-3">
-      <h3 class="text-lg font-medium">Mapa</h3>
-      <div class="text-xs text-slate-400">Geolocalización por registro (lat/lng)</div>
+      <h3 class="text-lg font-medium">TeamViewer — Totales del mes</h3>
+      <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
     </div>
-    <div id="map" class="rounded-lg overflow-hidden"></div>
+    <div class="table-viewport">
+      <table class="w-full" id="tvTable">
+        <thead>
+          <tr class="text-left text-slate-400">
+            <th class="py-2 px-3">Periodo</th>
+            <th class="py-2 px-3">Conexiones</th>
+            <th class="py-2 px-3">Horas</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </section>
 
-  <!-- CALENDARIO -->
+  <!-- Filtros rápidos -->
   <section class="card p-4 mb-6">
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="text-lg font-medium">Calendario de actividades</h3>
-      <div class="text-xs text-slate-400">Vista mensual · colores por actividad</div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <select id="fAsesor" class="px-3 py-2 rounded-lg formc">
+        <option value="">Todos los asesores</option>
+        <option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option><option>Gabriel</option>
+      </select>
+      <select id="fActividad" class="px-3 py-2 rounded-lg formc">
+        <option value="">Todas las actividades</option>
+        <option>Soporte de garantía</option>
+        <option>Soporte fuera de garantía</option>
+        <option>Instalación</option>
+        <option>Evento</option>
+        <option>Proyecto</option>
+        <option>Curso</option>
+        <option>Vacaciones</option>
+      </select>
+      <select id="fModalidad" class="px-3 py-2 rounded-lg formc">
+        <option value="">Todas las modalidades</option>
+        <option>Remoto</option>
+        <option>Presencial</option>
+      </select>
+      <input id="fCiudad" class="px-3 py-2 rounded-lg formc" placeholder="Ciudad" />
+      <input id="fRango" class="px-3 py-2 rounded-lg formc" placeholder="Rango fechas (YYYY-MM-DD a YYYY-MM-DD)" />
     </div>
-    <div id="calendar" class="rounded-lg bg-slate-900"></div>
-  </section>
-
-  <!-- CAPTURA (crear/editar) -->
-  <section class="card p-4 mb-6" id="captureCard">
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="text-lg font-medium">Captura</h2>
-      <div class="text-xs text-slate-400">IVA 16% se calcula automáticamente</div>
-    </div>
-    <form id="frm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      <input class="formc px-3 py-2 rounded" name="id" type="hidden">
-      <div>
-        <label class="text-xs text-slate-400">Fecha inicio</label>
-        <input class="formc px-3 py-2 rounded w-full" name="fecha_inicio" placeholder="YYYY-MM-DD">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Hora inicio</label>
-        <input class="formc px-3 py-2 rounded w-full" name="hora_inicio" placeholder="HH:MM">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Fecha fin</label>
-        <input class="formc px-3 py-2 rounded w-full" name="fecha_fin" placeholder="YYYY-MM-DD">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Hora fin</label>
-        <input class="formc px-3 py-2 rounded w-full" name="hora_fin" placeholder="HH:MM">
-      </div>
-
-      <div>
-        <label class="text-xs text-slate-400">Asesor</label>
-        <select class="formc px-3 py-2 rounded w-full" name="asesor">
-          <option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option><option>Gabriel</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Actividad</label>
-        <select class="formc px-3 py-2 rounded w-full" name="actividad">
-          <option>Soporte de garantía</option>
-          <option>Soporte fuera de garantía</option>
-          <option>Instalación</option>
-          <option>Evento</option>
-          <option>Proyecto</option>
-          <option>Curso</option>
-          <option>Vacaciones</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Modalidad</label>
-        <select class="formc px-3 py-2 rounded w-full" name="modalidad">
-          <option>Remoto</option><option>Presencial</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Cobrado</label>
-        <select class="formc px-3 py-2 rounded w-full" name="cobrado">
-          <option>Sí</option><option>No</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Cliente</label>
-        <input class="formc px-3 py-2 rounded w-full" name="cliente" placeholder="Nombre del cliente">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Teléfono</label>
-        <input class="formc px-3 py-2 rounded w-full" name="telefono" placeholder="Teléfono">
-      </div>
-
-      <!-- Dirección con Autocomplete -->
-      <div class="md:col-span-2">
-        <label class="text-xs text-slate-400">Dirección (Maps)</label>
-        <input id="dirInput" class="formc px-3 py-2 rounded w-full" placeholder="Escribe y selecciona la dirección">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Ciudad</label>
-        <input class="formc px-3 py-2 rounded w-full" name="ciudad" placeholder="Ciudad">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Lat</label>
-        <input class="formc px-3 py-2 rounded w-full" name="lat" placeholder="latitud">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Lng</label>
-        <input class="formc px-3 py-2 rounded w-full" name="lng" placeholder="longitud">
-      </div>
-
-      <!-- Desglose (sin IVA) -->
-      <div>
-        <label class="text-xs text-slate-400">MO (sin IVA)</label>
-        <input class="formc px-3 py-2 rounded w-full money" name="mo_monto" value="0">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Refacciones (sin IVA)</label>
-        <input class="formc px-3 py-2 rounded w-full money" name="refacciones_monto" value="0">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Viáticos</label>
-        <input class="formc px-3 py-2 rounded w-full money" name="viaticos_monto" value="0">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">IVA (auto)</label>
-        <input class="formc px-3 py-2 rounded w-full" name="iva_monto" value="0" readonly>
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Total (auto)</label>
-        <input class="formc px-3 py-2 rounded w-full" name="total_cobrado" value="0" readonly>
-      </div>
-
-      <!-- Equipos (instalaciones) -->
-      <div>
-        <label class="text-xs text-slate-400">Equipos - Subtotal</label>
-        <input class="formc px-3 py-2 rounded w-full money" name="equipos_valor_subtotal" value="0">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Equipos - IVA (auto)</label>
-        <input class="formc px-3 py-2 rounded w-full" name="equipos_iva" value="0" readonly>
-      </div>
-      <div>
-        <label class="text-xs text-slate-400">Equipos - Total (auto)</label>
-        <input class="formc px-3 py-2 rounded w-full" name="equipos_valor_total" value="0" readonly>
-      </div>
-
-      <div class="md:col-span-2 lg:col-span-3">
-        <label class="text-xs text-slate-400">Notas</label>
-        <textarea class="formc px-3 py-2 rounded w-full" name="notas" rows="3" placeholder="Notas..."></textarea>
-      </div>
-    </form>
     <div class="mt-3 flex gap-2">
-      <button id="btnCrear" class="btn btn-primary">💾 Guardar</button>
-      <button id="btnLimpiar" class="btn">Limpiar</button>
+      <button id="btnAplicarFiltros" class="btn btn-primary">Aplicar filtros</button>
+      <button id="btnLimpiarFiltros" class="btn">Limpiar</button>
+      <button id="btnReload" class="btn">🔄 Recargar</button>
     </div>
   </section>
 
-  <!-- Tabla Registros -->
+  <!-- Tabla de registros -->
   <section class="card p-4">
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="text-lg font-medium">Registros</h2>
-      <div class="flex gap-2"><button id="btnReload" class="btn">🔄 Recargar</button></div>
-    </div>
+    <h2 class="text-lg font-medium mb-3">Registros</h2>
     <div class="table-viewport">
       <table id="tbl">
         <thead>
@@ -375,21 +231,21 @@
   </section>
 </div>
 
-<!-- ===================== SCRIPTS ===================== -->
+<!-- ================= JS ================= -->
 <script>
-/* ====== CONFIG ====== */
-const API_URL = '/.netlify/functions/gas-proxy';  // proxy Netlify
+/* ===== Config ===== */
+const API_URL = '/.netlify/functions/gas-proxy';
 const EDIT_TOKEN = '42673';
-const TARIFA_GARANTIA = 1000; // $/hora
-const TARIFA_INTERNA_INST = 85; // $/hora
-const IVA_RATE = 0.16;
+const TARIFA_GARANTIA = 1000;  // $/h
+const TARIFA_INTERNA_INST = 85; // $/h
 
-/* ====== STATE ====== */
+/* ===== Estado ===== */
 let ROWS = [];
 let FILTERED = [];
 let CAL = null;
+const CHARTS = {}; // para Chart.js
 
-/* ====== UTILS ====== */
+/* ===== Utils ===== */
 function $(q){ return document.querySelector(q); }
 function fmtMoney(n){ n = Number(n)||0; return n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}); }
 function minutosEntre(h1,h2){ if(!h1||!h2) return 0; const [a,b]=h1.split(':').map(Number),[c,d]=h2.split(':').map(Number); return (c*60+d)-(a*60+b); }
@@ -398,10 +254,19 @@ function horasTotalesFromBloques(bloques){ const mins=bloques.reduce((acc,b)=>ac
 function totalCobrado(r){ return ['mo_monto','refacciones_monto','viaticos_monto','iva_monto'].reduce((a,k)=>a+(Number(r[k])||0),0); }
 function isGarantia(r){ return String(r.garantia||'').trim().toLowerCase().startsWith('s'); }
 function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().includes('instal'); }
-function toISODate(d){ const m = dayjs(d,['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD'],true); return m.isValid()?m.format('YYYY-MM-DD'):null; }
-function getMonthRange(){ const sel = ($('#fMes')?.value || dayjs().format('YYYY-MM')); const start = dayjs(sel + '-01').startOf('month'); const end = start.endOf('month'); return {start,end}; }
 
-/* ====== API ====== */
+function toISODate(d){
+  const m = dayjs(d, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD','DD-MM-YYYY','MM-DD-YYYY'], true);
+  return m.isValid() ? m.format('YYYY-MM-DD') : null;
+}
+function getMonthRange(){
+  const sel = ($('#fMes')?.value || dayjs().format('YYYY-MM'));
+  const start = dayjs(sel + '-01').startOf('month');
+  const end = start.endOf('month');
+  return { start, end };
+}
+
+/* ===== API ===== */
 async function apiGet(){
   const r = await fetch(API_URL, { method:'GET' });
   const ct = r.headers.get('content-type') || '';
@@ -410,154 +275,58 @@ async function apiGet(){
   if (!ct.includes('application/json')) { console.error('API NO JSON', ct, txt.slice(0,400)); throw new Error('API no devolvió JSON'); }
   return JSON.parse(txt);
 }
-async function apiPost(payload){
-  const r = await fetch(API_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
-  const out = await r.json().catch(()=>({}));
-  if (!r.ok || out.error){ throw new Error(out.error||'Error API'); }
-  return out;
-}
 
-/* ====== CAPTURA: IVA auto ====== */
-function recalcIVA(){
-  const f = $('#frm');
-  const mo  = Number(f.mo_monto.value||0);
-  const ref = Number(f.refacciones_monto.value||0);
-  const via = Number(f.viaticos_monto.value||0);
-  const base = mo + ref + via;
-  const iva  = Math.round(base * IVA_RATE);
-  f.iva_monto.value = iva;
-  f.total_cobrado.value = base + iva;
-
-  const eq = Number(f.equipos_valor_subtotal.value||0);
-  const eqIva = Math.round(eq * IVA_RATE);
-  f.equipos_iva.value = eqIva;
-  f.equipos_valor_total.value = eq + eqIva;
-}
-document.addEventListener('input', e=>{
-  if (e.target.closest('.money') || e.target.name==='equipos_valor_subtotal') recalcIVA();
-});
-
-/* ====== Autocomplete Dirección (llenar lat/lng/ciudad) ====== */
-let AUTOCOMPLETE = null;
-function initAutocomplete(){
-  try{
-    AUTOCOMPLETE = new google.maps.places.Autocomplete($('#dirInput'), {
-      fields: ['geometry','address_components','formatted_address']
-    });
-    AUTOCOMPLETE.addListener('place_changed', ()=>{
-      const place = AUTOCOMPLETE.getPlace();
-      if (!place || !place.geometry) return;
-      const lat = place.geometry.location.lat();
-      const lng = place.geometry.location.lng();
-      const cityComp = (place.address_components||[]).find(c=>c.types.includes('locality') || c.types.includes('administrative_area_level_2'));
-      $('#frm [name=lat]').value = lat;
-      $('#frm [name=lng]').value = lng;
-      if (cityComp) $('#frm [name=ciudad]').value = cityComp.long_name;
-    });
-  }catch(e){
-    console.warn('Autocomplete no disponible', e);
-  }
-}
-
-/* ====== CSV TeamViewer ====== */
-async function readTVRows(){
-  try{
-    const txt = await fetch('/connectionreport.csv',{cache:'no-store'}).then(r=>r.ok?r.text():'');
-    if (!txt) return [];
-    const lines = txt.trim().split(/\r?\n/);
-    if (lines.length < 2) return [];
-    const sep = (lines[0].includes(';') && !lines[0].includes(',')) ? ';' : ',';
-    const headers = lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));
-    const idxFecha = headers.findIndex(h=>/(date|fecha)/i.test(h)); 
-    const idxConn  = headers.findIndex(h=>/(connections|conexiones)/i.test(h));
-    const idxHrs   = headers.findIndex(h=>/(hours|horas|duration|duración)/i.test(h));
-    const parseHours = (v)=>{
-      v = String(v||'').replace(/"/g,'').trim();
-      if (/^\d+:\d{2}(:\d{2})?$/.test(v)){
-        const p=v.split(':').map(Number);
-        return p[0] + (p[1]||0)/60 + (p[2]||0)/3600;
-      }
-      const num = Number(v.replace(/,/g,'.'));
-      return isFinite(num) ? num : 0;
-    };
-    const rows = lines.slice(1).map(l=>{
-      const cols = l.split(sep);
-      return {
-        fecha: (cols[idxFecha]??cols[0]??'').toString().replace(/^"|"$/g,'') || 'User',
-        conexiones: isFinite(Number(cols[idxConn])) ? Number(cols[idxConn]) : 0,
-        horas: parseHours(cols[idxHrs])
-      };
-    }).filter(r=>r.fecha && !/^total/i.test(r.fecha));
-    return rows;
-  }catch{ return []; }
-}
-
-/* ====== PIPELINE ====== */
+/* ===== Derivados y filtros ===== */
 function deriveComputedFields(rows){
   rows.forEach(r=>{
-    let h = 0;
-    const bloques = parseBloques(r.bloques_horas);
-    if (bloques?.length){
-      h = horasTotalesFromBloques(bloques);
-    } else if (r.hora_inicio && r.hora_fin){
-      h = Math.max(0, minutosEntre(r.hora_inicio, r.hora_fin)) / 60;
-    }
+    const h = horasTotalesFromBloques(parseBloques(r.bloques_horas));
     r.horas_totales = Number(h || r.horas_totales || 0);
-
-    const g = String(r.garantia||'').trim().toLowerCase();
-    const esG = g.startsWith('s') || g==='si' || g==='sí' || g==='true' || /garant/i.test(r.actividad||'');
-    r.potencial_garantia = esG ? Math.round(r.horas_totales * TARIFA_GARANTIA) : 0;
-
+    r.potencial_garantia = isGarantia(r) ? Math.round(r.horas_totales * TARIFA_GARANTIA) : 0;
     r.total_cobrado = totalCobrado(r);
   });
   return rows;
 }
 
 function applyFilters(){
-  const a   = ($('#fAsesor')?.value||'').trim().toLowerCase();
+  const a = ($('#fAsesor')?.value||'').trim().toLowerCase();
   const act = ($('#fActividad')?.value||'').trim().toLowerCase();
   const mod = ($('#fModalidad')?.value||'').trim().toLowerCase();
-  const c   = ($('#fCiudad')?.value||'').trim().toLowerCase();
+  const c  = ($('#fCiudad')?.value||'').trim().toLowerCase();
   const rng = ($('#fRango')?.value||'').trim();
+  const { start, end } = getMonthRange();
 
-  const {start,end} = getMonthRange();
-
-  let out = ROWS.slice();
-
-  // Filtro mensual
-  out = out.filter(x=>{
+  let out = ROWS.filter(x=>{
+    // tomar la primera fecha válida
     const f = toISODate(x.fecha_inicio) || toISODate(x.fecha_fin);
     if (!f) return false;
-    const t = dayjs(f,'YYYY-MM-DD',true);
-    return t.isValid() && t.isBetween(start,end,'day','[]');
+    const t = dayjs(f, 'YYYY-MM-DD', true);
+    return t.isValid() && t.isBetween(start, end, 'day', '[]');
   });
 
-  if (a)   out = out.filter(x => (x.asesor||'').toString().toLowerCase().includes(a));
+  if (a) out = out.filter(x => (x.asesor||'').toString().toLowerCase().includes(a));
   if (act) out = out.filter(x => (x.actividad||'').toString().toLowerCase() === act);
   if (mod) out = out.filter(x => (x.modalidad||'').toString().toLowerCase() === mod);
-  if (c)   out = out.filter(x => (x.ciudad||'').toString().toLowerCase().includes(c));
-
-  if (rng && rng.includes('a')){
+  if (c) out = out.filter(x => (x.ciudad||'').toString().toLowerCase().includes(c));
+  if (rng && rng.includes('a')) {
     const [d1,d2] = rng.split('a').map(s=>s.trim());
-    if (d1 && d2){
-      const t1=dayjs(d1,'YYYY-MM-DD'); const t2=dayjs(d2,'YYYY-MM-DD').endOf('day');
+    if (d1 && d2) {
+      const t1=dayjs(d1,'YYYY-MM-DD'), t2=dayjs(d2,'YYYY-MM-DD').endOf('day');
       out = out.filter(x=>{
-        const f = toISODate(x.fecha_inicio) || toISODate(x.fecha_fin);
-        if (!f) return false;
-        const t = dayjs(f,'YYYY-MM-DD',true);
-        return t.isValid() && t.isBetween(t1,t2,'day','[]');
+        const f = String(x.fecha_inicio||x.fecha_fin||'');
+        const t = dayjs(toISODate(f),'YYYY-MM-DD',true);
+        return t.isValid() ? (t.isAfter(t1.subtract(1,'day')) && t.isBefore(t2.add(1,'second'))) : true;
       });
     }
   }
-
   FILTERED = out;
 }
 
-/* ====== KPIs ====== */
+/* ===== KPIs ===== */
 function renderKpis(){
   const isSoporte = r => (r.actividad||'').toLowerCase().includes('soporte');
   const isInst    = r => (r.actividad||'').toLowerCase().includes('instal');
   const isEvento  = r => /(evento|proy|curso)/i.test(r.actividad||'');
+
   $('#kpiC_total').textContent    = FILTERED.length;
   $('#kpiC_soporte').textContent  = FILTERED.filter(isSoporte).length;
   $('#kpiC_inst').textContent     = FILTERED.filter(isInst).length;
@@ -580,13 +349,12 @@ function renderKpis(){
   const sumValSub = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_subtotal)||0), 0);
   const sumValTot = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_total)||0), 0);
   const sumCostoInst = rowsInst.reduce((a,r)=> (Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0), 0);
-  $('#kpiInstValSub').textContent = fmtMoney(sumValSub);
-  $('#kpiInstValTot').textContent = fmtMoney(sumValTot);
+  $('#kpiInstValSub')?.textContent && ($('#kpiInstValSub').textContent = fmtMoney(sumValSub));
+  $('#kpiInstValTot')?.textContent && ($('#kpiInstValTot').textContent = fmtMoney(sumValTot));
   $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
-  $('#kpiInstRatio').textContent  = (sumCostoInst>0) ? (sumValSub/sumCostoInst).toFixed(2) : '—';
 }
 
-/* ====== TABLA ====== */
+/* ===== Tabla ===== */
 function renderTable(){
   const tbody = $('#tbody'); tbody.innerHTML = '';
   FILTERED.forEach(r=>{
@@ -623,13 +391,9 @@ function renderTable(){
     `;
     tbody.appendChild(tr);
   });
-
-  // acciones
-  tbody.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>startEditRecord(Number(b.dataset.edit)));
-  tbody.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>deleteRecord(Number(b.dataset.del)));
 }
 
-/* ====== MAPA ====== */
+/* ===== Mapa ===== */
 window.renderMapMarkers = function(){
   if (!window.MAP) return;
   if (window._MAP_MARKERS) window._MAP_MARKERS.forEach(m=>m.setMap && m.setMap(null));
@@ -642,7 +406,7 @@ window.renderMapMarkers = function(){
   });
 };
 
-/* ====== CALENDARIO ====== */
+/* ===== Calendario ===== */
 function renderCalendar(){
   const el = document.getElementById('calendar');
   if (CAL) { CAL.destroy(); CAL = null; }
@@ -666,79 +430,44 @@ function renderCalendar(){
     const hasTimes = !!((r.hora_inicio||'') || (r.hora_fin||''));
     const start = hasTimes ? `${dStart}T${(r.hora_inicio||'00:00')}` : dStart;
     let end;
-    if (dEnd) end = hasTimes ? `${dEnd}T${(r.hora_fin||'00:00')}` : dayjs(dEnd).add(1,'day').format('YYYY-MM-DD');
+    if (dEnd) {
+      end = hasTimes ? `${dEnd}T${(r.hora_fin||'00:00')}` : dayjs(dEnd).add(1,'day').format('YYYY-MM-DD');
+    }
     events.push({
       title: `${act} — ${r.asesor||''}`,
       start, end, allDay: !hasTimes,
       backgroundColor: COLOR[act] || '#60a5fa',
-      borderColor: COLOR[act] || '#60a5fa',
-      raw: r
+      borderColor: COLOR[act] || '#60a5fa'
     });
   });
 
   CAL = new FullCalendar.Calendar(el, {
-    height:'auto',
-    contentHeight: 900,
-    expandRows:true,
-    handleWindowResize:true,
-    locale:'es',
-    initialView:'dayGridMonth',
-    headerToolbar:{ left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,dayGridDay' },
-    events,
-    eventClick: ({ event })=>{
-      const r = event.extendedProps?.raw || {};
-      openEventModal({
-        id: r.id, 
-        titulo: event.title,
-        fechaInicio: event.startStr,
-        fechaFin: event.endStr || '',
-        actividad: r.actividad || '',
-        asesor: r.asesor || '',
-        notas: r.notas || ''
-      });
-    }
+    height: 'auto',
+    contentHeight: 960,
+    expandRows: true,
+    handleWindowResize: true,
+    locale: 'es',
+    initialView: 'dayGridMonth',
+    headerToolbar: { left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,dayGridDay' },
+    events
   });
   CAL.render();
 }
 
-/* ====== MODAL calendario ====== */
-function openEventModal(data){
-  closeEventModal();
-  const wrap = document.createElement('div');
-  wrap.className = 'modal-backdrop';
-  wrap.innerHTML = `
-    <div class="modal-card">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <div class="text-slate-400 text-xs mb-1">${dayjs(data.fechaInicio).format('DD MMM YYYY')}</div>
-          <h3 class="text-xl font-semibold">${data.titulo||'Actividad'}</h3>
-          <div class="mt-1 text-slate-300 text-sm">${data.actividad||''} — ${data.asesor||''}</div>
-        </div>
-        <button class="btn" id="btnCloseModal">✖</button>
-      </div>
-      <div class="mt-3 text-slate-300 whitespace-pre-wrap">${data.notas||'Sin notas'}</div>
-      <div class="modal-actions">
-        <button class="btn" id="btnEditEvt">✏️ Editar</button>
-        <button class="btn" id="btnDelEvt">🗑️ Eliminar</button>
-      </div>
-    </div>`;
-  document.body.appendChild(wrap);
-  wrap.querySelector('#btnCloseModal').onclick = closeEventModal;
-  wrap.onclick = (e)=>{ if(e.target===wrap) closeEventModal(); };
-  wrap.querySelector('#btnEditEvt').onclick = ()=> startEditRecord(data.id);
-  wrap.querySelector('#btnDelEvt').onclick  = ()=> deleteRecord(data.id);
+/* ===== Gráficas ===== */
+function destroyCharts(){
+  Object.values(CHARTS).forEach(ch => { try{ ch.destroy(); }catch{} });
+  for (const k of Object.keys(CHARTS)) delete CHARTS[k];
 }
-function closeEventModal(){ const m = document.querySelector('.modal-backdrop'); if (m) m.remove(); }
-
-/* ====== CHARTS ====== */
 function renderCharts(){
-  // Actividades por asesor (apilado)
+  // Actividades por asesor
   (function(){
     const c = document.getElementById('chartActAsesor'); if(!c) return;
     const asesores = [...new Set(FILTERED.map(r=>r.asesor||'Sin dato'))];
     const tipos = ['Soporte de garantía','Soporte fuera de garantía','Instalación','Evento','Proyecto','Curso','Vacaciones'];
     const series = tipos.map(t => asesores.map(a => FILTERED.filter(r=> (r.asesor||'Sin dato')===a && (r.actividad||'')===t).length));
-    new Chart(c,{type:'bar',
+    if (CHARTS.chartActAsesor) CHARTS.chartActAsesor.destroy();
+    CHARTS.chartActAsesor = new Chart(c,{type:'bar',
       data:{labels:asesores, datasets:tipos.map((t,i)=>({label:t,data:series[i],stack:'stack1'}))},
       options:{responsive:true, maintainAspectRatio:false, scales:{x:{stacked:true}, y:{stacked:true}}}
     });
@@ -749,120 +478,120 @@ function renderCharts(){
     const c = document.getElementById('chartRemoto'); if(!c) return;
     const rem = FILTERED.filter(r=> (r.modalidad||'').toLowerCase()==='remoto').length;
     const pre = FILTERED.filter(r=> (r.modalidad||'').toLowerCase()==='presencial').length;
-    new Chart(c,{type:'doughnut',data:{labels:['Remoto','Presencial'],datasets:[{data:[rem,pre]}]},options:{responsive:true,maintainAspectRatio:false}});
+    if (CHARTS.chartRemoto) CHARTS.chartRemoto.destroy();
+    CHARTS.chartRemoto = new Chart(c,{type:'doughnut',data:{labels:['Remoto','Presencial'],datasets:[{data:[rem,pre]}]},options:{responsive:true,maintainAspectRatio:false}});
   })();
 
   // Distribución por actividad
   (function(){
     const c = document.getElementById('chartActividad'); if(!c) return;
     const byAct = {}; FILTERED.forEach(r=>{ const k=r.actividad||'Sin dato'; byAct[k]=(byAct[k]||0)+1; });
-    new Chart(c,{type:'doughnut',data:{labels:Object.keys(byAct),datasets:[{data:Object.values(byAct)}]},options:{responsive:true,maintainAspectRatio:false}});
+    if (CHARTS.chartActividad) CHARTS.chartActividad.destroy();
+    CHARTS.chartActividad = new Chart(c,{type:'doughnut',data:{labels:Object.keys(byAct),datasets:[{data:Object.values(byAct)}]},options:{responsive:true,maintainAspectRatio:false}});
   })();
 
-  // Garantía vs No garantía
+  // Garantía vs No
   (function(){
     const c = document.getElementById('chartGarantia'); if(!c) return;
     const si = FILTERED.filter(isGarantia).length; const no = FILTERED.length - si;
-    new Chart(c,{type:'doughnut',data:{labels:['Garantía','No garantía'],datasets:[{data:[si,no]}]},options:{responsive:true,maintainAspectRatio:false}});
+    if (CHARTS.chartGarantia) CHARTS.chartGarantia.destroy();
+    CHARTS.chartGarantia = new Chart(c,{type:'doughnut',data:{labels:['Garantía','No garantía'],datasets:[{data:[si,no]}]},options:{responsive:true,maintainAspectRatio:false}});
   })();
 
   // Ingresos por asesor
   (function(){
     const c = document.getElementById('chartIngresos'); if(!c) return;
     const byA={}; FILTERED.forEach(r=>{ const k=r.asesor||'Sin dato'; byA[k]=(byA[k]||0)+(Number(r.total_cobrado)||0); });
-    new Chart(c,{type:'bar',data:{labels:Object.keys(byA),datasets:[{label:'MXN',data:Object.values(byA)}]},options:{responsive:true,maintainAspectRatio:false}});
-  })();
-
-  // TeamViewer
-  (async function(){
-    const c = document.getElementById('chartTV'); if(!c) return;
-    const rows = await readTVRows();
-    if (!rows.length) return;
-    $('#kpiC_tvhrs').textContent = rows.reduce((a,r)=>a+(Number(r.horas)||0),0).toFixed(2);
-    new Chart(c,{
-      type:'bar',
-      data:{
-        labels: rows.map(r=>r.fecha),
-        datasets:[
-          {type:'bar',  label:'Conexiones', data: rows.map(r=>r.conexiones)},
-          {type:'line', label:'Horas',       data: rows.map(r=>r.horas)}
-        ]
-      },
-      options:{ responsive:true, maintainAspectRatio:false }
-    });
+    if (CHARTS.chartIngresos) CHARTS.chartIngresos.destroy();
+    CHARTS.chartIngresos = new Chart(c,{type:'bar',data:{labels:Object.keys(byA),datasets:[{label:'MXN',data:Object.values(byA)}]},options:{responsive:true,maintainAspectRatio:false}});
   })();
 }
 
-/* ====== TV TABLE ====== */
+/* ===== TeamViewer (totales del mes) ===== */
+async function readTVRows(){
+  try{
+    const txt = await fetch('/connectionreport.csv', { cache:'no-store' }).then(r=>r.ok?r.text():'');
+    if (!txt) return { rows:[], totalConn:0, totalHours:0 };
+    const lines = txt.trim().split(/\r?\n/);
+    if (lines.length < 2) return { rows:[], totalConn:0, totalHours:0 };
+
+    const sep = (lines[0].includes(';') && !lines[0].includes(',')) ? ';' : ',';
+    const headers = lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));
+
+    const idxFecha = headers.findIndex(h=>/(date|fecha)/i.test(h));
+    const idxConn  = headers.findIndex(h=>/(connections|conexiones)/i.test(h));
+    let idxMin = headers.findIndex(h=>/(minutes|minutos|duration|duración|time)/i.test(h));
+    if (idxMin === -1) idxMin = 7; // fallback columna 8
+
+    const { start, end } = getMonthRange();
+    let totalConn = 0;
+    let totalMinutes = 0;
+
+    const rows = lines.slice(1).map(l=>{
+      const cols = l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim());
+      const fechaRaw = cols[idxFecha] ?? cols[0] ?? '';
+      const fISO = toISODate(fechaRaw) || dayjs(fechaRaw).format('YYYY-MM-DD');
+      const t = dayjs(fISO, 'YYYY-MM-DD', true);
+      const conn = Number(cols[idxConn] || 0);
+      let minutes = 0;
+      const v = cols[idxMin] || '0';
+      if (/^\d+:\d{2}(:\d{2})?$/.test(v)){
+        const p = v.split(':').map(Number);
+        minutes = (p[0]*60) + (p[1]||0) + (p[2]||0)/60;
+      } else {
+        minutes = Number(v.replace(',','.')) || 0;
+      }
+      return { date:t, conexiones: conn, minutos: minutes };
+    }).filter(r => r.date?.isValid());
+
+    rows.forEach(r=>{
+      if (r.date.isBetween(start, end, 'day', '[]')){
+        totalConn += r.conexiones;
+        totalMinutes += r.minutos;
+      }
+    });
+
+    return { rows, totalConn, totalHours: (totalMinutes/60) };
+  }catch{
+    return { rows:[], totalConn:0, totalHours:0 };
+  }
+}
+
 async function renderTeamViewerTable(){
   const el = document.querySelector('#tvTable tbody');
   if (!el) return;
-  const rows = await readTVRows();
-  if (!rows.length){
-    el.innerHTML = '<tr><td class="py-2 px-3" colspan="3">No hay datos en connectionreport.csv</td></tr>';
-    return;
-  }
-  el.innerHTML = rows.map(r=>`
+  const { totalConn, totalHours } = await readTVRows();
+  // KPIs del mes
+  $('#kpiC_tvconn').textContent = totalConn.toString();
+  $('#kpiC_tvhrs').textContent  = totalHours.toFixed(2);
+
+  el.innerHTML = `
     <tr class="border-t border-white/10">
-      <td class="py-2 px-3">${r.fecha}</td>
-      <td class="py-2 px-3">${r.conexiones}</td>
-      <td class="py-2 px-3">${r.horas.toFixed(2)}</td>
+      <td class="py-2 px-3">${dayjs(getMonthRange().start).format('MMMM YYYY')}</td>
+      <td class="py-2 px-3">${totalConn}</td>
+      <td class="py-2 px-3">${totalHours.toFixed(2)}</td>
     </tr>
-  `).join('');
+  `;
 }
 
-/* ====== CRUD ====== */
-async function deleteRecord(id){
-  if (!id) return alert('Sin ID');
-  if (!confirm('¿Eliminar este registro?')) return;
-  await apiPost({ op:'delete', token: EDIT_TOKEN, id });
-  closeEventModal();
-  await boot();
-}
-function fillForm(row){
-  const f = $('#frm');
-  Object.keys(row||{}).forEach(k=>{ const el=f.querySelector(`[name=${k}]`); if(el) el.value=row[k]; });
-  recalcIVA();
-  document.getElementById('captureCard').scrollIntoView({behavior:'smooth'});
-}
-function startEditRecord(id){
-  const row = ROWS.find(r=>Number(r.id)===Number(id));
-  if (!row) return alert('ID no encontrado');
-  fillForm(row);
-}
-document.getElementById('btnCrear').addEventListener('click', async ()=>{
-  const f = $('#frm'); recalcIVA();
-  const data = Object.fromEntries(new FormData(f).entries());
-  // normaliza números
-  ['mo_monto','refacciones_monto','viaticos_monto','iva_monto','total_cobrado',
-   'equipos_valor_subtotal','equipos_iva','equipos_valor_total','lat','lng'].forEach(k=> data[k]=Number(data[k]||0));
-  if (data.id){ // update
-    await apiPost({ op:'update', token: EDIT_TOKEN, id:Number(data.id), data });
-  }else{
-    await apiPost({ op:'create', token: EDIT_TOKEN, data });
-  }
-  f.reset(); recalcIVA();
-  await boot();
-});
-document.getElementById('btnLimpiar').addEventListener('click', ()=>{ $('#frm').reset(); recalcIVA(); });
-
-/* ====== RENDER ALL ====== */
+/* ===== Render all ===== */
 function renderAll(){
   renderKpis();
   renderTable();
   renderCalendar();
+  destroyCharts();
   renderCharts();
   renderTeamViewerTable();
   renderMapMarkers();
 }
 
-/* ====== BOOT ====== */
+/* ===== Boot ===== */
 async function boot(){
-  // selector de mes
+  // llena selector de mes
   const sel = $('#fMes'); 
   if (sel && !sel._filled){
     const now = dayjs(); const items=[];
-    for(let i=0;i<12;i++){ const d=now.subtract(i,'month'); items.push(`<option value="${d.format('YYYY-MM')}">${d.format('MMMM YYYY')}</option>`); }
+    for(let i=0;i<18;i++){ const d=now.subtract(i,'month'); items.push(`<option value="${d.format('YYYY-MM')}">${d.format('MMMM YYYY')}</option>`); }
     sel.innerHTML = items.join(''); sel._filled=true;
   }
   try{ ROWS = await apiGet(); }catch(e){ console.error(e); alert('Error obteniendo datos'); return; }
@@ -870,7 +599,16 @@ async function boot(){
   applyFilters();
   renderAll();
 }
+
+/* ===== Eventos UI ===== */
 document.getElementById('btnReload').addEventListener('click', boot);
+document.getElementById('btnAplicarFiltros').addEventListener('click', ()=>{ applyFilters(); renderAll(); });
+document.getElementById('btnLimpiarFiltros').addEventListener('click', ()=>{ 
+  $('#fAsesor').value=''; $('#fActividad').value=''; $('#fModalidad').value=''; $('#fCiudad').value=''; $('#fRango').value=''; 
+  applyFilters(); renderAll(); 
+});
+document.getElementById('fMes').addEventListener('change', ()=>{ applyFilters(); renderAll(); });
+
 document.getElementById('btnExportPdf').addEventListener('click', async ()=>{
   const { jsPDF } = window.jspdf; const doc = new jsPDF('p','pt','a4');
   const el = document.body; const canvas = await html2canvas(el,{scale:2});
@@ -880,19 +618,20 @@ document.getElementById('btnExportPdf').addEventListener('click', async ()=>{
   const iw = canvas.width*ratio, ih = canvas.height*ratio;
   doc.addImage(imgData,'PNG',(pw-iw)/2,10,iw,ih); doc.save('reporte_mdc.pdf');
 });
-document.getElementById('fMes').addEventListener('change', ()=>{ applyFilters(); renderAll(); });
 
 boot();
 </script>
 
-<!-- Google Maps -->
+<!-- Google Maps + Places -->
 <script>
+  // Mapa
   window.initMap = function(){
     const center = { lat: 23.6345, lng: -102.5528 };
     window.MAP = new google.maps.Map(document.getElementById('map'), { center, zoom: 5 });
     if (typeof window.renderMapMarkers === 'function') window.renderMapMarkers();
-    initAutocomplete();
+    initAutocomplete(); // inicia el autocomplete al cargar el mapa
   };
+  // Marcadores (AdvancedMarker si existe)
   window.addMapMarker = function(map, lat, lng, title){
     try {
       const mod = google.maps.marker;
@@ -902,8 +641,63 @@ boot();
     } catch(e){}
     return new google.maps.Marker({ map, position:{lat,lng}, title:title||'' });
   };
+
+  // Autocomplete moderno con fallback
+  function initAutocomplete(){
+    // Si no tienes un formulario de captura visible aquí, este bloque sólo demuestra cómo
+    // llenar lat/lng/ciudad cuando sí exista (#frm con inputs name=lat,lng,ciudad).
+    const boxId = document.getElementById('placeBox');
+    if (!boxId) return; // si no hay contenedor, no hacemos nada
+
+    try{
+      const el = document.createElement('gmpx-place-autocomplete');
+      el.className = 'formc px-3 py-2 rounded w-full';
+      el.placeholder = 'Escribe y selecciona la dirección';
+      el.fields = ['formatted_address','address_components','geometry'];
+      boxId.appendChild(el);
+
+      el.addEventListener('gmpx-placechange', () => {
+        const place = el.value;
+        if (!place || !place.geometry) return;
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        const cityComp = (place.address_components||[]).find(c=>c.types.includes('locality') || c.types.includes('administrative_area_level_2'));
+        const f = document.getElementById('frm');
+        if (f){
+          f.querySelector('[name=lat]')?.setAttribute('value', lat);
+          f.querySelector('[name=lng]')?.setAttribute('value', lng);
+          if (cityComp) f.querySelector('[name=ciudad]')?.setAttribute('value', cityComp.long_name);
+        }
+      });
+    }catch(e){
+      console.warn('PlaceAutocompleteElement no disponible, intento fallback', e);
+      try{
+        const legacy = document.createElement('input');
+        legacy.id = 'dirInput';
+        legacy.className = 'formc px-3 py-2 rounded w-full';
+        legacy.placeholder = 'Escribe y selecciona la dirección';
+        boxId.appendChild(legacy);
+        const ac = new google.maps.places.Autocomplete(legacy, { fields:['geometry','address_components','formatted_address'] });
+        ac.addListener('place_changed', ()=>{
+          const p = ac.getPlace();
+          if (!p || !p.geometry) return;
+          const lat = p.geometry.location.lat();
+          const lng = p.geometry.location.lng();
+          const city = (p.address_components||[]).find(c=>c.types.includes('locality')||c.types.includes('administrative_area_level_2'));
+          const f = document.getElementById('frm');
+          if (f){
+            f.querySelector('[name=lat]')?.setAttribute('value', lat);
+            f.querySelector('[name=lng]')?.setAttribute('value', lng);
+            if (city) f.querySelector('[name=ciudad]')?.setAttribute('value', city.long_name);
+          }
+        });
+      }catch(e2){ console.warn('Tampoco funcionó el fallback', e2); }
+    }
+  }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
 
+<!-- Contenedor para el nuevo autocomplete (si lo usas en tu formulario de captura) -->
+<div id="placeBox" class="hidden"></div>
 </body>
 </html>
