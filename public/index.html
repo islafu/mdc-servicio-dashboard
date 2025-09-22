@@ -506,8 +506,8 @@ function renderTable(){
     tr.className = 'border-t border-white/10';
     tr.innerHTML = `
       <td class="py-2 px-3">${r.id||''}</td>
-      <td class="py-2 px-3">${fmtFechaHora(r.fecha_inicio,r.hora_inicio)}</td>
-      <td class="py-2 px-3">${fmtFechaHora(r.fecha_fin,r.hora_fin)}</td>
+      <td class="py-2 px-3">${fmtFechaHora(r.fecha_inicio, r.hora_inicio)}</td>
+      <td class="py-2 px-3">${fmtFechaHora(r.fecha_fin,   r.hora_fin)}</td>
       <td class="py-2 px-3">${r.asesor||''}</td>
       <td class="py-2 px-3">
         ${r.actividad||''}
@@ -568,6 +568,67 @@ window.renderMapMarkers = function(){
   });
 };
 
+
+// --- Normalizadores de fecha/hora robustos ---
+function normalizeDate(d) {
+  const s = (d ?? '').toString().trim();
+  // si ya es YYYY-MM-DD, respeta
+  const m1 = dayjs(s, ['YYYY-MM-DD','DD/MM/YYYY','MM/DD/YYYY','YYYY/MM/DD','DD-MM-YYYY'], true);
+  if (m1.isValid()) return m1.format('YYYY-MM-DD');
+
+  // ISO con fecha al inicio
+  const iso = s.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (iso) return iso;
+
+  // serial Excel (>= 1 suele ser fecha)
+  const n = Number(s);
+  if (Number.isFinite(n) && n > 59) { // (saltamos 1900-02-29 bug)
+    // Excel base 1899-12-30
+    const base = dayjs('1899-12-30');
+    return base.add(n, 'day').format('YYYY-MM-DD');
+  }
+  return ''; // sin fecha fiable
+}
+
+function normalizeTime(t) {
+  const s = (t ?? '').toString().trim();
+  if (!s) return '';
+
+  // 1) HH:mm o HH:mm:ss -> HH:mm
+  let m = s.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\b/);
+  if (m) {
+    const hh = String(m[1]).padStart(2,'0');
+    const mm = String(m[2]).padStart(2,'0');
+    return `${hh}:${mm}`;
+  }
+
+  // 2) ISO con "T"
+  m = s.match(/T(\d{2}):(\d{2})/);
+  if (m) return `${m[1]}:${m[2]}`;
+
+  // 3) Cadena tipo "1899-12-30T21:06:36.000Z" -> ya lo cubre (2),
+  //    pero si llegara como serial/decimal Excel (solo hora):
+  const n = Number(s);
+  if (Number.isFinite(n) && n >= 0 && n < 1) {
+    // fracción de día -> hora
+    const totalMin = Math.round(n * 24 * 60);
+    const hh = String(Math.floor(totalMin / 60)).padStart(2,'0');
+    const mm = String(totalMin % 60).padStart(2,'0');
+    return `${hh}:${mm}`;
+  }
+  return '';
+}
+
+function fmtFechaHora(fecha, hora) {
+  const f = normalizeDate(fecha);
+  const h = normalizeTime(hora);
+  if (f && h) return `${f} ${h}`;
+  if (f) return f;
+  if (h) return h;
+  return '—';
+}
+
+
 /* ===== Calendario + modal ===== */
 function openModal(evt, row){
   $('#mTitulo').textContent = evt.title || 'Detalle';
@@ -611,12 +672,12 @@ function renderCalendar(){
 
   const events = [];
   (FILTERED||[]).forEach(r=>{
-    const dStart = toISODate(r.fecha_inicio) || toISODate(r.fecha_fin);
-    const dEnd   = toISODate(r.fecha_fin)    || toISODate(r.fecha_inicio);
+   const dStart = normalizeDate(r.fecha_inicio) || normalizeDate(r.fecha_fin);
+   const dEnd   = normalizeDate(r.fecha_fin)    || normalizeDate(r.fecha_inicio);
     if (!dStart) return;
 
-    const tStart = extractHHmm(r.hora_inicio);
-    const tEnd   = extractHHmm(r.hora_fin);
+    const tStart = normalizeTime(r.hora_inicio);
+    const tEnd   = normalizeTime(r.hora_fin);
     const act = r.actividad || 'Otro';
     const hasTimes = !!(tStart || tEnd);
 
