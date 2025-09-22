@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MDC Digital — Reporte de Actividades Asesores CAD-CAM</title>
 
-  <!-- Tailwind (build) + fallback CDN para no ver UI cruda si /styles.css no existe -->
+  <!-- CSS de producción (Tailwind compilado). Si no existe, CDN fallback -->
   <link rel="stylesheet" href="/styles.css">
   <script>
     (async () => {
@@ -13,7 +13,7 @@
         const r = await fetch('/styles.css', { cache: 'no-store' });
         if (!r.ok) throw 0;
         const len = +(r.headers.get('content-length') || 0);
-        if (len < 10240) throw 0;
+        if (len < 10240) throw 0; // <10KB => probablemente vacío
       } catch {
         const s = document.createElement('script');
         s.src = 'https://cdn.tailwindcss.com';
@@ -23,17 +23,13 @@
     })();
   </script>
 
-  <!-- Libs -->
+  <!-- Librerías -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css">
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/isoWeek.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/customParseFormat.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/isBetween.min.js"></script>
-  <script>
-    dayjs.extend(window.dayjs_plugin_isoWeek);
-    dayjs.extend(window.dayjs_plugin_customParseFormat);
-    dayjs.extend(window.dayjs_plugin_isBetween);
-  </script>
+  <script>dayjs.extend(window.dayjs_plugin_isoWeek);dayjs.extend(window.dayjs_plugin_customParseFormat);dayjs.extend(window.dayjs_plugin_isBetween);</script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/core/locales-all.global.min.js"></script>
@@ -54,8 +50,6 @@
     .chip{display:inline-block;padding:.1rem .5rem;border-radius:.375rem;border:1px solid rgba(255,255,255,.15);font-size:.75rem}
     .chip-warn{background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.35)}
     .chip-ok{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35)}
-
-    /* Tabla */
     .table-viewport { max-height: 65vh; overflow: auto; }
     #tbl { table-layout: auto; border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
     #tbl thead th { position: sticky; top: 0; background: #0f172a; z-index: 1; }
@@ -65,19 +59,14 @@
     .col-horas { text-align: right; min-width: 6rem; }
     .col-notas { white-space: normal; min-width: 20rem; max-width: 40rem; }
     .col-acciones { white-space: nowrap; min-width: 10rem; }
-
-    /* Gráficas y paneles */
     canvas { max-width: 100%; }
     .chart-h { height: 320px; }
     .chart-h-lg { height: 360px; }
     #map{min-height:460px;height:460px}
     #calendar{min-height:960px;height:auto}
-
-    /* Modal calendario */
-    #eventModal.hidden{display:none}
-    #eventModal{position:fixed;inset:0;z-index:70}
-    #eventModal .back{position:absolute;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(2px)}
-    #eventModal .panel{position:relative;margin:4rem auto 0;max-width:640px;width:95%;background:#0b1220;border:1px solid rgba(255,255,255,.08);border-radius:1rem;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+    /* Modal calendario visible y contrastado */
+    .modal-bg{position:fixed;inset:0;background:rgba(2,6,23,.72);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:60}
+    .modal{background:#0b1220;border:1px solid rgba(255,255,255,.08);border-radius:1rem;max-width:42rem;width:92%;padding:1rem}
   </style>
 </head>
 <body class="h-full">
@@ -106,6 +95,9 @@
     <div class="card p-4"><div class="text-slate-400 text-xs">Eventos/Proy./Cursos</div><div id="kpiC_eventos" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Conexiones TV (mes)</div><div id="kpiC_tvconn" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Horas TV (mes)</div><div id="kpiC_tvhrs" class="text-3xl font-semibold mt-1">0</div></div>
+    <!-- Valor equipos -->
+    <div class="card p-4"><div class="text-slate-400 text-xs">Equipos instalados — Subtotal</div><div id="kpiEqSub" class="text-2xl font-semibold mt-1">$0</div></div>
+    <div class="card p-4"><div class="text-slate-400 text-xs">Equipos instalados — Total c/IVA</div><div id="kpiEqTot" class="text-2xl font-semibold mt-1">$0</div></div>
   </section>
 
   <!-- KPIs financieros -->
@@ -129,18 +121,6 @@
     </div>
   </section>
 
-  <!-- KPIs equipos -->
-  <section class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-    <div class="card p-4">
-      <div class="text-slate-400 text-xs">Valor equipos instalados (Subtotal)</div>
-      <div id="kpiEqSub" class="text-2xl font-semibold mt-1">$0</div>
-    </div>
-    <div class="card p-4">
-      <div class="text-slate-400 text-xs">Valor equipos instalados (Total c/IVA)</div>
-      <div id="kpiEqTot" class="text-2xl font-semibold mt-1">$0</div>
-    </div>
-  </section>
-
   <!-- Gráficas + TeamViewer -->
   <section class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
     <div class="card p-4"><h3 class="text-lg font-medium mb-3">Actividades por asesor (apilado por tipo)</h3><div class="chart-h"><canvas id="chartActAsesor"></canvas></div></div>
@@ -149,12 +129,12 @@
     <div class="card p-4"><h3 class="text-lg font-medium mb-3">Garantía vs No garantía</h3><div class="chart-h"><canvas id="chartGarantia"></canvas></div></div>
 
     <div class="card p-4 xl:col-span-2">
-      <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-medium">TeamViewer — Totales del mes</h3>
         <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
       </div>
       <div class="chart-h"><canvas id="chartTV"></canvas></div>
-      <div class="table-viewport mt-4">
+      <div class="mt-4 table-viewport">
         <table class="w-full" id="tvTable">
           <thead>
             <tr class="text-left text-slate-400">
@@ -171,12 +151,12 @@
     <div class="card p-4 xl:col-span-2"><h3 class="text-lg font-medium mb-3">Ingresos por asesor (MXN)</h3><div class="chart-h-lg"><canvas id="chartIngresos"></canvas></div></div>
   </section>
 
-  <!-- Mapa y Calendario (pantalla completa, uno bajo otro) -->
+  <!-- Mapa y Calendario a pantalla completa (uno debajo del otro) -->
   <section class="grid grid-cols-1 gap-6 mb-6">
     <div class="card p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-medium">Mapa</h3>
-        <div class="text-xs text-slate-400">Geolocalización por registro</div>
+        <div class="text-xs text-slate-400">Geolocalización por registro (lat/lng)</div>
       </div>
       <div id="map" class="rounded-lg overflow-hidden"></div>
     </div>
@@ -189,19 +169,14 @@
     </div>
   </section>
 
-  <!-- CAPTURA (debajo del calendario, arriba de registros) -->
+  <!-- CAPTURA (debajo de calendario y arriba de registros) -->
   <section class="card p-4 mb-6">
     <h2 class="text-lg font-medium mb-3">Captura de registro</h2>
-    <form id="frm" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-      <!-- Fechas/horas simples -->
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Inicio</span>
-        <input class="formc px-3 py-2 rounded" name="dt_inicio" type="datetime-local">
-      </label>
-      <label class="flex flex-col gap-1">
-        <span class="text-slate-400">Fin</span>
-        <input class="formc px-3 py-2 rounded" name="dt_fin" type="datetime-local">
-      </label>
+    <form id="frm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <input class="formc px-3 py-2 rounded" name="fecha_inicio" placeholder="Fecha inicio (YYYY-MM-DD)" />
+      <input class="formc px-3 py-2 rounded" name="hora_inicio" placeholder="Hora inicio (HH:MM)" />
+      <input class="formc px-3 py-2 rounded" name="fecha_fin" placeholder="Fecha fin (YYYY-MM-DD)" />
+      <input class="formc px-3 py-2 rounded" name="hora_fin" placeholder="Hora fin (HH:MM)" />
 
       <input class="formc px-3 py-2 rounded" name="asesor" placeholder="Asesor" />
       <select class="formc px-3 py-2 rounded" name="actividad">
@@ -227,19 +202,19 @@
 
       <input class="formc px-3 py-2 rounded" name="cliente" placeholder="Cliente" />
       <input class="formc px-3 py-2 rounded" name="telefono" placeholder="Teléfono" />
-
-      <!-- Dirección con Autocomplete (nuevo componente) -->
-      <label class="flex flex-col gap-1 md:col-span-2">
-        <span class="text-slate-400">Dirección (Maps)</span>
-        <gmpx-place-autocomplete id="capDireccion" class="formc px-3 py-2 rounded" placeholder="Escribe y selecciona la dirección"></gmpx-place-autocomplete>
-      </label>
-
       <input class="formc px-3 py-2 rounded" name="ciudad" placeholder="Ciudad" />
-      <input class="formc px-3 py-2 rounded" name="lat" placeholder="Latitud" readonly />
-      <input class="formc px-3 py-2 rounded" name="lng" placeholder="Longitud" readonly />
+
+      <!-- Dirección con Autocomplete nuevo -->
+      <div class="md:col-span-2">
+        <div class="text-xs text-slate-400 mb-1">Dirección (Maps)</div>
+        <div id="placeBox" class="w-full"></div>
+      </div>
+
+      <input class="formc px-3 py-2 rounded" name="lat" placeholder="Latitud" />
+      <input class="formc px-3 py-2 rounded" name="lng" placeholder="Longitud" />
       <textarea class="formc px-3 py-2 rounded md:col-span-2" name="notas" placeholder="Notas"></textarea>
 
-      <!-- Costeo y desglose -->
+      <!-- Costeo e IVA auto 16% -->
       <input class="formc px-3 py-2 rounded" name="mo_monto" placeholder="Mano de obra (sin IVA)" />
       <input class="formc px-3 py-2 rounded" name="refacciones_monto" placeholder="Refacciones (sin IVA)" />
       <input class="formc px-3 py-2 rounded" name="viaticos_monto" placeholder="Viáticos (sin IVA)" />
@@ -250,29 +225,8 @@
       <input class="formc px-3 py-2 rounded" name="equipos_iva" placeholder="Equipos IVA (auto 16%)" readonly />
       <input class="formc px-3 py-2 rounded" name="equipos_valor_total" placeholder="Equipos total" readonly />
 
-      <!-- Editor de bloques -->
-      <div class="md:col-span-2 card p-3">
-        <div class="flex items-center justify-between mb-2">
-          <div class="text-slate-300">Bloques de tiempo</div>
-          <button type="button" id="btnAddBloque" class="btn btn-primary">➕ Agregar bloque</button>
-        </div>
-        <div class="overflow-auto">
-          <table class="w-full text-sm" id="tblBloques">
-            <thead>
-              <tr class="text-left text-slate-400">
-                <th class="py-1 px-2">Fecha</th>
-                <th class="py-1 px-2">Inicio</th>
-                <th class="py-1 px-2">Fin</th>
-                <th class="py-1 px-2">Descanso (min)</th>
-                <th class="py-1 px-2"></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <input type="hidden" name="bloques_horas" id="bloquesJson">
-      </div>
-
+      <!-- Bloques de horas -->
+      <textarea class="formc px-3 py-2 rounded md:col-span-2" name="bloques_horas" placeholder='Bloques (JSON) p.e. [{"fecha":"2025-09-10","inicio":"08:00","fin":"13:00","breakMin":0}]'></textarea>
       <input class="formc px-3 py-2 rounded" name="horas_totales" placeholder="Horas totales" readonly />
 
       <div class="md:col-span-2 flex gap-2">
@@ -282,7 +236,7 @@
     </form>
   </section>
 
-  <!-- Filtros rápidos -->
+  <!-- Filtros -->
   <section class="card p-4 mb-6">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
       <select id="fAsesor" class="px-3 py-2 rounded-lg formc">
@@ -314,7 +268,7 @@
     </div>
   </section>
 
-  <!-- Tabla de registros -->
+  <!-- Tabla -->
   <section class="card p-4">
     <h2 class="text-lg font-medium mb-3">Registros</h2>
     <div class="table-viewport">
@@ -348,31 +302,22 @@
   </section>
 </div>
 
-<!-- Modal de evento (calendario) -->
-<div id="eventModal" class="hidden">
-  <div class="back"></div>
-  <div class="panel">
-    <div class="flex items-center justify-between px-5 py-3 border-b border-white/10">
-      <h3 id="emTitle" class="text-lg font-semibold">Detalle de evento</h3>
-      <button id="emClose" class="px-2 py-1 rounded hover:bg-white/10">✕</button>
+<!-- Modal de evento del calendario -->
+<div id="modalBg" class="modal-bg">
+  <div class="modal">
+    <div class="flex items-start justify-between">
+      <h3 id="mTitulo" class="text-lg font-semibold">Detalle del evento</h3>
+      <button id="mClose" class="btn">✖</button>
     </div>
-    <div class="px-5 py-4 space-y-2 text-sm">
-      <div><span class="text-slate-400">Inicio:</span> <span id="emInicio"></span></div>
-      <div><span class="text-slate-400">Fin:</span> <span id="emFin"></span></div>
-      <div><span class="text-slate-400">Asesor:</span> <span id="emAsesor"></span></div>
-      <div><span class="text-slate-400">Actividad:</span> <span id="emActividad"></span></div>
-      <div><span class="text-slate-400">Modalidad:</span> <span id="emModalidad"></span></div>
-      <div><span class="text-slate-400">Ciudad/Dirección:</span> <span id="emCiudad"></span></div>
-      <div><span class="text-slate-400">Notas:</span> <pre id="emNotas" class="whitespace-pre-wrap"></pre></div>
-    </div>
-    <div class="px-5 pb-5 flex gap-2 justify-end">
-      <button id="emBtnEdit" class="btn btn-primary">✏️ Editar</button>
-      <button id="emBtnDelete" class="btn">🗑️ Eliminar</button>
+    <div id="mBody" class="mt-2 text-slate-300 text-sm whitespace-pre-wrap"></div>
+    <div class="mt-4 flex gap-2 justify-end">
+      <button id="mEdit" class="btn btn-primary">✏️ Editar</button>
+      <button id="mDel" class="btn">🗑️ Eliminar</button>
     </div>
   </div>
 </div>
 
-<!-- ===================== JS ===================== -->
+<!-- ================= JS ================= -->
 <script>
 /* ===== Config ===== */
 const API_URL = '/.netlify/functions/gas-proxy';
@@ -386,26 +331,17 @@ let ROWS = [];
 let FILTERED = [];
 let CAL = null;
 const CHARTS = {};
+let CAL_EVENT_CLICKED = null;
 
 /* ===== Utils ===== */
 function $(q){ return document.querySelector(q); }
 function fmtMoney(n){ n = Number(n)||0; return n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}); }
-function minutosEntre(h1,h2){ if(!h1||!h2) return 0; const [a,b]=h1.split(':').map(Number),[c,d]=h2.split(':').map(Number); return (c*60+d)-(a*60+b); }
-function parseBloques(str){ try{return JSON.parse(str||'[]')}catch{return []} }
-function horasTotalesFromBloques(bloques){ const mins=bloques.reduce((acc,b)=>acc+Math.max(0,minutosEntre(b.inicio,b.fin)-(Number(b.breakMin)||0)),0); return Math.round((mins/60)*100)/100; }
-function totalCobrado(r){ return ['mo_monto','refacciones_monto','viaticos_monto','iva_monto'].reduce((a,k)=>a+(Number(r[k])||0),0); }
-function isGarantia(r){ return String(r.garantia||'').trim().toLowerCase().startsWith('s'); }
-function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().includes('instal'); }
-
 function toISODate(d){
   if (d == null) return null;
   const s = String(d).trim();
   let m = dayjs(s, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD','DD-MM-YYYY','MM-DD-YYYY'], true);
   if (m.isValid()) return m.format('YYYY-MM-DD');
-  const justDate =
-    (s.match(/^\d{4}-\d{2}-\d{2}/)?.[0]) ||
-    (s.match(/^\d{2}\/\d{2}\/\d{4}/)?.[0]) ||
-    (s.match(/^\d{2}-\d{2}-\d{4}/)?.[0]);
+  const justDate = (s.match(/^\d{4}-\d{2}-\d{2}/)?.[0]) || (s.match(/^\d{2}\/\d{2}\/\d{4}/)?.[0]) || (s.match(/^\d{2}-\d{2}-\d{4}/)?.[0]);
   if (justDate) {
     m = dayjs(justDate, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD','DD-MM-YYYY','MM-DD-YYYY'], true);
     if (m.isValid()) return m.format('YYYY-MM-DD');
@@ -414,22 +350,45 @@ function toISODate(d){
   if (m.isValid()) return m.format('YYYY-MM-DD');
   return null;
 }
-function cleanTime(v){
-  if (!v) return '';
+function extractHHmm(v){
+  if (!v) return null;
   const s = String(v);
-  const mIso = s.match(/T(\d{2}):(\d{2})/);
-  if (mIso) return `${mIso[1]}:${mIso[2]}`;
-  const mHms = s.match(/\b(\d{1,2}):(\d{2})/);
-  if (mHms) return `${String(mHms[1]).padStart(2,'0')}:${mHms[2]}`;
-  return '';
+  const m1 = s.match(/\b(\d{1,2}):(\d{2})\b/);
+  if (m1) return `${String(m1[1]).padStart(2,'0')}:${String(m1[2]).padStart(2,'0')}`;
+  const m2 = s.match(/T(\d{2}):(\d{2})/);
+  if (m2) return `${m2[1]}:${m2[2]}`;
+  return null;
 }
-function fmtDateTime(fecha, hora){
-  const d = toISODate(fecha) || '';
-  const t = cleanTime(hora);
-  if (!d && !t) return '—';
-  if (!d) return t;
-  return t ? `${d} ${t}` : d;
+function minutosEntre(h1,h2){ if(!h1||!h2) return 0; const [a,b]=h1.split(':').map(Number),[c,d]=h2.split(':').map(Number); return (c*60+d)-(a*60+b); }
+function parseBloques(str){ try{return JSON.parse(str||'[]')}catch{return []} }
+function horasFromBloques(bloques){
+  const mins=bloques.reduce((acc,b)=>acc+Math.max(0,minutosEntre(b.inicio,b.fin)-(Number(b.breakMin)||0)),0);
+  return Math.round((mins/60)*100)/100;
 }
+function horasLegacyAware(r){
+  // 1) Si ya existe horas_totales (>0), respétalo (compatibilidad con registros antiguos)
+  const legacy = Number(r.horas_totales);
+  if (legacy) return legacy;
+
+  // 2) Si hay bloques_horas válidos, úsalo
+  const bloques = parseBloques(r.bloques_horas);
+  if (Array.isArray(bloques) && bloques.length) return horasFromBloques(bloques);
+
+  // 3) Si hay fecha/hora inicio/fin, calcula diferencia
+  const dI = toISODate(r.fecha_inicio) || toISODate(r.fecha_fin);
+  const dF = toISODate(r.fecha_fin)    || toISODate(r.fecha_inicio);
+  const hI = extractHHmm(r.hora_inicio) || '00:00';
+  const hF = extractHHmm(r.hora_fin)    || hI;
+  if (dI){
+    const t1 = dayjs(`${dI}T${hI}`), t2 = dayjs(`${dF||dI}T${hF}`);
+    const mins = Math.max(0, t2.diff(t1, 'minute'));
+    return Math.round((mins/60)*100)/100;
+  }
+  return 0;
+}
+function totalCobrado(r){ return ['mo_monto','refacciones_monto','viaticos_monto','iva_monto'].reduce((a,k)=>a+(Number(r[k])||0),0); }
+function isGarantia(r){ return String(r.garantia||'').trim().toLowerCase().startsWith('s'); }
+function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().includes('instal'); }
 function getMonthRange(){
   const sel = ($('#fMes')?.value || dayjs().format('YYYY-MM'));
   const start = dayjs(sel + '-01').startOf('month');
@@ -440,10 +399,8 @@ function getMonthRange(){
 /* ===== API ===== */
 async function apiGet(){
   const r = await fetch(API_URL, { method:'GET' });
-  const ct = r.headers.get('content-type') || '';
   const txt = await r.text();
-  if (!r.ok) { console.error('API error', r.status, txt.slice(0,400)); throw new Error(`GET ${r.status}`); }
-  if (!ct.includes('application/json')) { console.error('API NO JSON', ct, txt.slice(0,400)); throw new Error('API no devolvió JSON'); }
+  if (!r.ok) throw new Error(`GET ${r.status} ${txt.slice(0,200)}`);
   return JSON.parse(txt);
 }
 async function apiPost(op, payload){
@@ -460,8 +417,7 @@ async function apiPost(op, payload){
 /* ===== Derivados y filtros ===== */
 function deriveComputedFields(rows){
   rows.forEach(r=>{
-    const h = horasTotalesFromBloques(parseBloques(r.bloques_horas));
-    r.horas_totales = Number(h || r.horas_totales || 0);
+    r.horas_totales = horasLegacyAware(r);
     r.potencial_garantia = isGarantia(r) ? Math.round(r.horas_totales * TARIFA_GARANTIA) : 0;
     r.total_cobrado = totalCobrado(r);
   });
@@ -526,18 +482,22 @@ function renderKpis(){
   $('#kpiIva').textContent = fmtMoney(sumIva);
   $('#kpiCobradoTotal').textContent = fmtMoney(sumCob);
 
-  const esInst = r => (r.actividad||'').toLowerCase().includes('instal');
-  const eqSub = FILTERED.filter(esInst).reduce((a,r)=> a + (Number(r.equipos_valor_subtotal)||0), 0);
-  const eqTot = FILTERED.filter(esInst).reduce((a,r)=> a + (Number(r.equipos_valor_total)||0), 0);
-  const sumCostoInst = FILTERED.filter(esInst).reduce((a,r)=> (Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0), 0);
-  const kSub = document.getElementById('kpiEqSub');
-  const kTot = document.getElementById('kpiEqTot');
-  if (kSub) kSub.textContent = fmtMoney(eqSub);
-  if (kTot) kTot.textContent = fmtMoney(eqTot);
+  const rowsInst = FILTERED.filter(isInstalacion);
+  const eqSub = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_subtotal)||0), 0);
+  const eqTot = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_total)||0), 0);
+  const sumCostoInst = rowsInst.reduce((a,r)=> (Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0), 0);
   $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
+  (document.getElementById('kpiEqSub')||{}).textContent = fmtMoney(eqSub);
+  (document.getElementById('kpiEqTot')||{}).textContent = fmtMoney(eqTot);
 }
 
 /* ===== Tabla ===== */
+function fmtFechaHora(d,h){
+  const D = toISODate(d);
+  const H = extractHHmm(h);
+  if (!D) return '';
+  return `${D}${H?(' '+H):''}`;
+}
 function renderTable(){
   const tbody = $('#tbody'); tbody.innerHTML = '';
   FILTERED.forEach(r=>{
@@ -546,8 +506,8 @@ function renderTable(){
     tr.className = 'border-t border-white/10';
     tr.innerHTML = `
       <td class="py-2 px-3">${r.id||''}</td>
-      <td class="py-2 px-3">${fmtDateTime(r.fecha_inicio, r.hora_inicio)}</td>
-      <td class="py-2 px-3">${fmtDateTime(r.fecha_fin, r.hora_fin)}</td>
+      <td class="py-2 px-3">${fmtFechaHora(r.fecha_inicio,r.hora_inicio)}</td>
+      <td class="py-2 px-3">${fmtFechaHora(r.fecha_fin,r.hora_fin)}</td>
       <td class="py-2 px-3">${r.asesor||''}</td>
       <td class="py-2 px-3">
         ${r.actividad||''}
@@ -575,38 +535,22 @@ function renderTable(){
     tbody.appendChild(tr);
   });
 
+  // Delegación para editar/eliminar
   tbody.onclick = async (ev)=>{
-    const b = ev.target.closest('button'); if (!b) return;
-    const id = b.dataset.edit || b.dataset.del; if (!id) return;
+    const b = ev.target.closest('button');
+    if (!b) return;
+    const id = b.dataset.edit || b.dataset.del;
+    if (!id) return;
+
     if (b.dataset.del){
       if (!confirm(`¿Eliminar registro #${id}?`)) return;
-      try{ await apiPost('delete', { id:Number(id) }); await boot(); }
-      catch(e){ alert('Error al eliminar: '+e.message); }
+      try{ await apiPost('delete', { id: Number(id) }); await boot(); }
+      catch(e){ alert('Error al eliminar: ' + e.message); }
       return;
     }
+
     if (b.dataset.edit){
-      // Llena captura con el registro (edición rápida)
-      const r = ROWS.find(x=> String(x.id)===String(id)); if (!r) return;
-      const f = document.getElementById('frm');
-      if (f){
-        f.reset();
-        const di = `${toISODate(r.fecha_inicio)||''}T${cleanTime(r.hora_inicio)}`;
-        const df = `${toISODate(r.fecha_fin)||''}T${cleanTime(r.hora_fin)}`;
-        f.dt_inicio.value = di !== 'T' ? di : '';
-        f.dt_fin.value    = df !== 'T' ? df : '';
-        ['asesor','actividad','modalidad','garantia','cliente','telefono','ciudad','lat','lng','notas',
-         'mo_monto','refacciones_monto','viaticos_monto','iva_monto','total_cobrado',
-         'equipos_valor_subtotal','equipos_iva','equipos_valor_total','horas_totales']
-          .forEach(k=>{ if (k in r) f[k].value = r[k] ?? ''; });
-        // bloques
-        try{
-          const arr = parseBloques(r.bloques_horas);
-          document.querySelector('#tblBloques tbody').innerHTML = '';
-          arr.forEach(addBloqueRow);
-          updateBloquesJson();
-        }catch{}
-        window.scrollTo({ top: f.getBoundingClientRect().top + window.scrollY - 80, behavior:'smooth' });
-      }
+      startEdit(Number(id));
     }
   };
 }
@@ -624,48 +568,32 @@ window.renderMapMarkers = function(){
   });
 };
 
-/* ===== Modal calendario ===== */
-function toggleEventModal(show){
-  const m = document.getElementById('eventModal');
-  if (!m) return;
-  m.classList.toggle('hidden', !show);
+/* ===== Calendario + modal ===== */
+function openModal(evt, row){
+  $('#mTitulo').textContent = evt.title || 'Detalle';
+  $('#mBody').textContent = [
+    `Inicio: ${evt.start?.toISOString?.()||evt.startStr||''}`,
+    `Fin: ${evt.end?.toISOString?.()||evt.endStr||''}`,
+    `Asesor: ${row?.asesor||''}`,
+    `Actividad: ${row?.actividad||''}`,
+    `Ciudad: ${row?.ciudad||''}`,
+    `Notas: ${row?.notas||''}`
+  ].join('\n');
+  CAL_EVENT_CLICKED = row;
+  $('#modalBg').style.display = 'flex';
 }
-function showEventModal({id, title, inicio, fin, asesor, actividad, modalidad, ciudad, notas}){
-  const f = v => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '—';
-  $('#emTitle').textContent     = title || 'Detalle de evento';
-  $('#emInicio').textContent    = f(inicio);
-  $('#emFin').textContent       = f(fin);
-  $('#emAsesor').textContent    = asesor || '—';
-  $('#emActividad').textContent = actividad || '—';
-  $('#emModalidad').textContent = modalidad || '—';
-  $('#emCiudad').textContent    = ciudad || '—';
-  $('#emNotas').textContent     = notas || '—';
-  $('#emBtnEdit').onclick = ()=> {
-    const f = ROWS.find(r=> String(r.id)===String(id));
-    if (!f){ alert('No se encontró el registro'); return; }
-    document.querySelector(`[data-edit="${id}"]`)?.click(); // reutiliza edición rápida
-    toggleEventModal(false);
-  };
-  $('#emBtnDelete').onclick = async ()=>{
-    if (!confirm('¿Eliminar este registro?')) return;
-    try{ await apiPost('delete', { id:Number(id) }); await boot(); toggleEventModal(false); }
-    catch(e){ alert('Error eliminando: '+e.message); }
-  };
-  toggleEventModal(true);
-}
-document.getElementById('emClose').onclick = ()=> toggleEventModal(false);
-document.getElementById('eventModal').addEventListener('click', (e)=>{ if (e.target.id==='eventModal' || e.target.classList.contains('back')) toggleEventModal(false); });
+function closeModal(){ $('#modalBg').style.display = 'none'; CAL_EVENT_CLICKED=null; }
 
-/* ===== Calendario ===== */
-function extractHHmm(v){
-  if (!v) return null;
-  const s = String(v);
-  const m1 = s.match(/\b(\d{1,2}):(\d{2})\b/);
-  if (m1) return `${String(m1[1]).padStart(2,'0')}:${m1[2]}`;
-  const m2 = s.match(/T(\d{2}):(\d{2})/);
-  if (m2) return `${m2[1]}:${m2[2]}`;
-  return null;
-}
+$('#mClose').onclick = closeModal;
+$('#modalBg').onclick = (e)=> { if (e.target.id==='modalBg') closeModal(); };
+$('#mEdit').onclick = ()=>{ if (CAL_EVENT_CLICKED) { startEdit(Number(CAL_EVENT_CLICKED.id)); closeModal(); } };
+$('#mDel').onclick = async ()=>{
+  if (!CAL_EVENT_CLICKED) return;
+  if (!confirm(`¿Eliminar registro #${CAL_EVENT_CLICKED.id}?`)) return;
+  try{ await apiPost('delete', { id: Number(CAL_EVENT_CLICKED.id) }); closeModal(); await boot(); }
+  catch(e){ alert('Error al eliminar: ' + e.message); }
+};
+
 function renderCalendar(){
   const el = document.getElementById('calendar');
   if (!el) return;
@@ -689,7 +617,6 @@ function renderCalendar(){
 
     const tStart = extractHHmm(r.hora_inicio);
     const tEnd   = extractHHmm(r.hora_fin);
-
     const act = r.actividad || 'Otro';
     const hasTimes = !!(tStart || tEnd);
 
@@ -699,7 +626,7 @@ function renderCalendar(){
       if (dEnd) end = `${dEnd}T${tEnd || tStart || '00:00'}`;
     } else {
       const endDate = dEnd || dStart;
-      end = dayjs(endDate, 'YYYY-MM-DD', true).add(1,'day').format('YYYY-MM-DD');
+      end = dayjs(endDate, 'YYYY-MM-DD', true).add(1,'day').format('YYYY-MM-DD'); // allDay
     }
 
     events.push({
@@ -722,17 +649,7 @@ function renderCalendar(){
     events,
     eventClick(info){
       const r = info.event.extendedProps?.rjson || {};
-      showEventModal({
-        id: r.id,
-        title: info.event.title,
-        inicio: info.event.start,
-        fin: info.event.end,
-        asesor: r.asesor,
-        actividad: r.actividad,
-        modalidad: r.modalidad,
-        ciudad: r.ciudad,
-        notas: r.notas
-      });
+      openModal(info.event, r);
     }
   });
   CAL.render();
@@ -740,6 +657,10 @@ function renderCalendar(){
 }
 
 /* ===== Gráficas ===== */
+function destroyCharts(){
+  Object.values(CHARTS).forEach(ch => { try{ ch.destroy(); }catch{} });
+  for (const k of Object.keys(CHARTS)) delete CHARTS[k];
+}
 function renderCharts(){
   // Actividades por asesor
   (function(){
@@ -793,64 +714,46 @@ async function readTVRows(){
   try{
     const txt = await fetch('/connectionreport.csv', { cache:'no-store' }).then(r=>r.ok?r.text():'');
     if (!txt) return { rows:[], totalConn:0, totalHours:0 };
-
     const lines = txt.trim().split(/\r?\n/).filter(Boolean);
     if (lines.length < 2) return { rows:[], totalConn:0, totalHours:0 };
 
     const sep = (lines[0].includes(';') && !lines[0].includes(',')) ? ';' : ',';
     const headers = lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));
-
-    let idxFecha = headers.findIndex(h=>/(date|fecha|start|inicio)/i.test(h));
-    if (idxFecha === -1) idxFecha = 0;
-
-    let idxConn  = headers.findIndex(h=>/(connections|conexiones)/i.test(h));
-    let idxMin   = headers.findIndex(h=>/(minutes|minutos|duration|duración|time)/i.test(h));
-    if (idxMin === -1) idxMin = 7; // fallback columna 8
+    let idxFecha = headers.findIndex(h=>/(date|fecha|start|inicio)/i.test(h)); if (idxFecha===-1) idxFecha=0;
+    let idxMin   = headers.findIndex(h=>/(minutes|minutos|duration|duración|time)/i.test(h)); if (idxMin===-1) idxMin=7;
 
     const { start, end } = getMonthRange();
     const from = start.startOf('day').valueOf();
     const to   = end.endOf('day').valueOf();
 
-    let totalConn = 0;
-    let totalMinutes = 0;
-
+    let totalConn = 0, totalMinutes = 0;
     for (const l of lines.slice(1)){
       const cols = l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim());
       const fechaRaw = cols[idxFecha] || cols[0] || '';
-      const fISO = toISODate(fechaRaw) || dayjs(fechaRaw, ['YYYY-MM-DD','DD/MM/YYYY','MM/DD/YYYY','YYYY/MM/DD']).format('YYYY-MM-DD');
+      const fISO = toISODate(fechaRaw) || dayjs(fechaRaw,['YYYY-MM-DD','DD/MM/YYYY','MM/DD/YYYY','YYYY/MM/DD']).format('YYYY-MM-DD');
       const t = dayjs(fISO, 'YYYY-MM-DD', true);
       if (!t.isValid()) continue;
-
       const tv = t.valueOf();
       if (tv < from || tv > to) continue;
 
-      // Conexiones: si hay columna, úsala; si no, cuenta 1 por fila
-      const connVal = idxConn>-1 ? Number(String(cols[idxConn]).replace(',','.'))||0 : 1;
-      totalConn += connVal;
-
-      // Minutos: acepta "HH:mm[:ss]" o número
       const v = cols[idxMin] || '0';
       let minutes = 0;
       if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(v)) {
         const p = v.split(':').map(Number);
-        minutes = (p[0]*60) + (p[1]||0) + Math.floor((p[2]||0)/60);
+        minutes = (p[0]*60) + (p[1]||0) + (p[2]||0)/60;
       } else {
-        const nm = Number(String(v).replace(',','.'));
-        minutes = Number.isFinite(nm) ? nm : 0;
+        const nm = Number(String(v).replace(',','.')); minutes = Number.isFinite(nm) ? nm : 0;
       }
+      totalConn += 1;
       totalMinutes += minutes;
     }
-
-    return { rows:[], totalConn, totalHours: (totalMinutes/60) };
-  }catch(e){
-    console.warn('[TV] error leyendo CSV', e);
-    return { rows:[], totalConn:0, totalHours:0 };
-  }
+    return { rows:[], totalConn, totalHours:(totalMinutes/60) };
+  }catch{ return { rows:[], totalConn:0, totalHours:0 }; }
 }
 async function renderTeamViewerChart(){
   const c = document.getElementById('chartTV'); if (!c) return;
   const { totalConn, totalHours } = await readTVRows();
-  if (c._chart) { c._chart.destroy(); c._chart = null; }
+  if (c._chart) c._chart.destroy();
   c._chart = new Chart(c, {
     type: 'bar',
     data: {
@@ -867,18 +770,17 @@ async function renderTeamViewerTable(){
   const el = document.querySelector('#tvTable tbody'); if (!el) return;
   const { totalConn, totalHours } = await readTVRows();
   const { start } = getMonthRange();
-  $('#kpiC_tvconn').textContent = String(totalConn);
-  $('#kpiC_tvhrs').textContent  = totalHours.toFixed(2);
+  (document.getElementById('kpiC_tvconn')||{}).textContent = String(totalConn);
+  (document.getElementById('kpiC_tvhrs')||{}).textContent  = totalHours.toFixed(2);
   el.innerHTML = `
     <tr class="border-t border-white/10">
       <td class="py-2 px-3">${dayjs(start).format('MMMM YYYY')}</td>
       <td class="py-2 px-3">${totalConn}</td>
       <td class="py-2 px-3">${totalHours.toFixed(2)}</td>
-    </tr>
-  `;
+    </tr>`;
 }
 
-/* ===== IVA/horas en captura ===== */
+/* ===== IVA y horas en captura ===== */
 function recalcIVA(){
   const f = document.getElementById('frm');
   const mo = Number(f.mo_monto.value||0);
@@ -897,95 +799,83 @@ function recalcIVA(){
 ['mo_monto','refacciones_monto','viaticos_monto','equipos_valor_subtotal'].forEach(n=>{
   document.addEventListener('input', (e)=>{ if (e.target?.name===n) recalcIVA(); }, { passive:true });
 });
-function recalcHorasFrom(bloques = null, hiOverride = '', hfOverride = ''){
+function recalcHoras(){
+  const f = document.getElementById('frm');
   let h = 0;
-  const arr = bloques ?? collectBloquesFromUI();
-  if (arr.length){
-    h = horasTotalesFromBloques(arr);
-  } else {
-    const f = document.getElementById('frm');
-    const di = f.dt_inicio?.value || '';
-    const df = f.dt_fin?.value    || '';
-    const hi = hiOverride || (di.split('T')[1]||'');
-    const hf = hfOverride || (df.split('T')[1]||'');
-    if (hi && hf) h = Math.max(0, minutosEntre(hi.slice(0,5), hf.slice(0,5)))/60;
+  try{
+    const bloques = JSON.parse(f.bloques_horas.value||'[]');
+    h = horasFromBloques(bloques);
+  }catch{}
+  if (!h && f.hora_inicio.value && f.hora_fin.value){
+    h = Math.max(0, minutosEntre(f.hora_inicio.value, f.hora_fin.value))/60;
   }
-  const out = document.querySelector('[name=horas_totales]');
-  if (out) out.value = (Math.round(h*100)/100) || 0;
+  f.horas_totales.value = (Math.round(h*100)/100) || 0;
 }
+['bloques_horas','hora_inicio','hora_fin'].forEach(n=>{
+  document.addEventListener('input', (e)=>{ if (e.target?.name===n) recalcHoras(); }, { passive:true });
+});
 
-/* ===== Bloques UI ===== */
-function addBloqueRow(b={fecha: dayjs().format('YYYY-MM-DD'), inicio:'08:00', fin:'13:00', breakMin:0}){
-  const tb = document.querySelector('#tblBloques tbody'); if(!tb) return;
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td class="py-1 px-2"><input type="date"  class="formc px-2 py-1 rounded w-full" value="${b.fecha||''}"></td>
-    <td class="py-1 px-2"><input type="time"  class="formc px-2 py-1 rounded w-full" value="${b.inicio||''}"></td>
-    <td class="py-1 px-2"><input type="time"  class="formc px-2 py-1 rounded w-full" value="${b.fin||''}"></td>
-    <td class="py-1 px-2"><input type="number" step="1" min="0" class="formc px-2 py-1 rounded w-full" value="${b.breakMin||0}"></td>
-    <td class="py-1 px-2 text-right"><button type="button" class="btn" onclick="this.closest('tr').remove(); updateBloquesJson();">✖</button></td>
-  `;
-  tb.appendChild(tr);
-  updateBloquesJson();
-}
-function collectBloquesFromUI(){
-  const rows = [...document.querySelectorAll('#tblBloques tbody tr')];
-  return rows.map(tr=>{
-    const [f,i,e,br] = [...tr.querySelectorAll('input')].map(x=>x.value);
-    return { fecha:f, inicio:i, fin:e, breakMin:Number(br||0) };
-  }).filter(x=>x.fecha && x.inicio && x.fin);
-}
-function updateBloquesJson(){
-  const arr = collectBloquesFromUI();
-  const el = document.getElementById('bloquesJson');
-  if (el) el.value = JSON.stringify(arr);
-  recalcHorasFrom(arr);
-}
-document.getElementById('btnAddBloque')?.addEventListener('click', ()=> addBloqueRow());
-
-/* ===== Guardar (captura) ===== */
+/* ===== Guardar (CREATE) ===== */
 document.getElementById('btnGuardar').onclick = async ()=>{
   const f = document.getElementById('frm');
-
-  // Split de datetime-local -> columnas separadas
-  const di = f.dt_inicio?.value || '';
-  const df = f.dt_fin?.value    || '';
-  const [fi, hi] = di ? di.split('T') : ['', ''];
-  const [ff, hf] = df ? df.split('T') : ['', ''];
-
-  // Bloques desde UI
-  const bloques = collectBloquesFromUI();
-  document.getElementById('bloquesJson').value = JSON.stringify(bloques);
-
-  recalcIVA(); 
-  recalcHorasFrom(bloques, hi, hf);
-
+  recalcIVA(); recalcHoras();
   const data = Object.fromEntries(new FormData(f).entries());
-  data.fecha_inicio = fi || data.fecha_inicio || '';
-  data.hora_inicio  = hi ? hi.slice(0,5) : (data.hora_inicio||'');
-  data.fecha_fin    = ff || data.fecha_fin || '';
-  data.hora_fin     = hf ? hf.slice(0,5) : (data.hora_fin||'');
-
-  // Números
-  ['mo_monto','refacciones_monto','viaticos_monto','iva_monto','total_cobrado',
-   'equipos_valor_subtotal','equipos_iva','equipos_valor_total','horas_totales',
-   'lat','lng'].forEach(k=> data[k]=Number(data[k]||0));
-
+  ['mo_monto','refacciones_monto','viaticos_monto','iva_monto','total_cobrado','equipos_valor_subtotal','equipos_iva','equipos_valor_total','horas_totales','lat','lng']
+    .forEach(k=> data[k] = Number(data[k]||0));
   try{
     await apiPost('create', { data });
     alert('Guardado');
     f.reset();
-    document.querySelector('#tblBloques tbody').innerHTML = '';
     await boot();
   }catch(e){ alert('Error al guardar: '+e.message); }
 };
-document.getElementById('btnLimpiarForm').onclick = ()=> {
-  document.getElementById('frm').reset();
-  document.querySelector('#tblBloques tbody').innerHTML = '';
-  updateBloquesJson();
-};
+document.getElementById('btnLimpiarForm').onclick = ()=> document.getElementById('frm').reset();
 
-/* ===== Render All ===== */
+/* ===== Modal de edición (simple, inline) ===== */
+function startEdit(id){
+  const r = ROWS.find(x=> Number(x.id)===Number(id));
+  if (!r) return alert('Registro no encontrado');
+  // Llenamos el formulario superior para editar inline
+  const f = document.getElementById('frm');
+  for (const [k,v] of Object.entries(r)){
+    const el = f.querySelector(`[name="${k}"]`);
+    if (!el) continue;
+    if (k==='fecha_inicio' || k==='fecha_fin'){
+      el.value = toISODate(v)||'';
+    }else if (k==='hora_inicio' || k==='hora_fin'){
+      el.value = extractHHmm(v)||'';
+    }else{
+      el.value = v==null?'':v;
+    }
+  }
+  // guardamos con UPDATE usando token y mismo id
+  f.dataset.editingId = String(id);
+  window.scrollTo({ top: f.getBoundingClientRect().top + window.scrollY - 80, behavior:'smooth' });
+
+  // Cambiamos el botón guardar por modo actualizar temporalmente
+  const btn = document.getElementById('btnGuardar');
+  const old = btn.textContent;
+  btn.textContent = '💾 Actualizar';
+  const handler = async ()=>{
+    recalcIVA(); recalcHoras();
+    const data = Object.fromEntries(new FormData(f).entries());
+    ['mo_monto','refacciones_monto','viaticos_monto','iva_monto','total_cobrado','equipos_valor_subtotal','equipos_iva','equipos_valor_total','horas_totales','lat','lng']
+      .forEach(k=> data[k] = Number(data[k]||0));
+    try{
+      await apiPost('update', { id:Number(f.dataset.editingId), data });
+      alert('Actualizado');
+      f.reset(); delete f.dataset.editingId;
+      btn.textContent = old; btn.removeEventListener('click', handler); // restaurar
+      document.getElementById('btnGuardar').onclick = createHandler;   // volver a create
+      await boot();
+    }catch(e){ alert('Error al actualizar: '+e.message); }
+  };
+  const createHandler = document.getElementById('btnGuardar').onclick;
+  btn.removeEventListener('click', createHandler);
+  btn.addEventListener('click', handler);
+}
+
+/* ===== Render all ===== */
 function renderAll(){
   renderKpis();
   renderTable();
@@ -998,6 +888,7 @@ function renderAll(){
 
 /* ===== Boot ===== */
 async function boot(){
+  // Selector de mes
   const sel = $('#fMes'); 
   if (sel && !sel._filled){
     const now = dayjs(); const items=[];
@@ -1033,34 +924,16 @@ document.getElementById('btnExportPdf').addEventListener('click', async ()=>{
 boot();
 </script>
 
-<!-- Google Maps: componentes extendidos + API JS -->
 <script type="module" src="https://unpkg.com/@googlemaps/extended-component-library@0.6"></script>
+
+<!-- Google Maps + Places -->
 <script>
   // Mapa
   window.initMap = function(){
     const center = { lat: 23.6345, lng: -102.5528 };
     window.MAP = new google.maps.Map(document.getElementById('map'), { center, zoom: 5 });
     if (typeof window.renderMapMarkers === 'function') window.renderMapMarkers();
-
-    // Wire Autocomplete de captura
-    try {
-      const el = document.getElementById('capDireccion');
-      el.addEventListener('gmpx-placechange', () => {
-        const p = el.value; // string o PlaceResult según versión
-        // Si es PlaceResult con geometry:
-        if (p && p.geometry && p.geometry.location){
-          const lat = p.geometry.location.lat();
-          const lng = p.geometry.location.lng();
-          const comps = p.address_components || [];
-          const cityComp = comps.find(c=>c.types?.includes('locality') || c.types?.includes('administrative_area_level_2'));
-          const f = document.getElementById('frm');
-          if (f){
-            f.lat.value = lat; f.lng.value = lng;
-            if (!f.ciudad.value && cityComp) f.ciudad.value = cityComp.long_name;
-          }
-        }
-      });
-    } catch(e) { console.warn('Autocomplete extendido no disponible', e); }
+    initAutocomplete();
   };
   // Marcadores (AdvancedMarker si existe)
   window.addMapMarker = function(map, lat, lng, title){
@@ -1072,7 +945,52 @@ boot();
     } catch(e){}
     return new google.maps.Marker({ map, position:{lat,lng}, title:title||'' });
   };
+
+  // Autocomplete moderno con fallback
+  function initAutocomplete(){
+    const boxId = document.getElementById('placeBox');
+    if (!boxId) return;
+
+    try{
+      const el = document.createElement('gmpx-place-autocomplete');
+      el.className = 'formc px-3 py-2 rounded w-full';
+      el.placeholder = 'Escribe y selecciona la dirección';
+      el.fields = ['formatted_address','address_components','geometry'];
+      boxId.appendChild(el);
+
+      el.addEventListener('gmpx-placechange', () => {
+        const p = el.value;
+        // Cuando se usa el componente web, value es string (no objeto Place),
+        // así que tomamos lat/lng solo si se integra Geocoder aparte.
+        // Para mantener compatibilidad, dejamos la ciudad manual
+      });
+    }catch(e){
+      console.warn('PlaceAutocompleteElement no disponible, intento fallback', e);
+      try{
+        const legacy = document.createElement('input');
+        legacy.id = 'dirInput';
+        legacy.className = 'formc px-3 py-2 rounded w-full';
+        legacy.placeholder = 'Escribe y selecciona la dirección';
+        boxId.appendChild(legacy);
+        const ac = new google.maps.places.Autocomplete(legacy, { fields:['geometry','address_components','formatted_address'] });
+        ac.addListener('place_changed', ()=>{
+          const p = ac.getPlace();
+          if (!p || !p.geometry) return;
+          const lat = p.geometry.location.lat();
+          const lng = p.geometry.location.lng();
+          const city = (p.address_components||[]).find(c=>c.types.includes('locality')||c.types.includes('administrative_area_level_2'));
+          const f = document.getElementById('frm');
+          if (f){
+            f.querySelector('[name=lat]')?.setAttribute('value', lat);
+            f.querySelector('[name=lng]')?.setAttribute('value', lng);
+            if (city) f.querySelector('[name=ciudad]')?.setAttribute('value', city.long_name);
+          }
+        });
+      }catch(e2){ console.warn('Tampoco funcionó el fallback', e2); }
+    }
+  }
 </script>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY&libraries=places&loading=async&callback=initMap" async defer></script>
 </body>
 </html>
+
