@@ -147,6 +147,7 @@
     <div class="card p-4 xl:col-span-2">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-medium">TeamViewer — Totales del mes</h3>
+        <canvas id="chartTV"></canvas>
         <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
       </div>
       <div class="table-viewport">
@@ -648,6 +649,53 @@ function extractHHmm(v){
   if (m2) return `${m2[1]}:${m2[2]}`;
   return null;
 }
+
+// ===== Modal Calendario (exponer en window) =====
+window.toggleEventModal = function(show){
+  const m = document.getElementById('eventModal');
+  if (!m) return;
+  m.classList.toggle('hidden', !show);
+};
+
+window.showEventModal = function({id, title, inicio, fin, asesor, actividad, modalidad, ciudad, notas}){
+  const fmtDT = v => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '—';
+  (document.getElementById('emTitle')||{}).textContent     = title || 'Detalle de evento';
+  (document.getElementById('emInicio')||{}).textContent    = fmtDT(inicio);
+  (document.getElementById('emFin')||{}).textContent       = fmtDT(fin);
+  (document.getElementById('emAsesor')||{}).textContent    = asesor || '—';
+  (document.getElementById('emActividad')||{}).textContent = actividad || '—';
+  (document.getElementById('emModalidad')||{}).textContent = modalidad || '—';
+  (document.getElementById('emCiudad')||{}).textContent    = ciudad || '—';
+  (document.getElementById('emNotas')||{}).textContent     = notas || '—';
+
+  const close = document.getElementById('emClose');
+  if (close) close.onclick = () => window.toggleEventModal(false);
+
+  const btnE = document.getElementById('emBtnEdit');
+  if (btnE) btnE.onclick = () => {
+    if (typeof window.startEdit === 'function') window.startEdit(id);
+    else alert('Implementa startEdit(id) para abrir el formulario de edición.\nID: '+id);
+    window.toggleEventModal(false);
+  };
+
+  const btnD = document.getElementById('emBtnDelete');
+  if (btnD) btnD.onclick = async () => {
+    if (!confirm('¿Eliminar este registro?')) return;
+    try{
+      const r = await fetch(API_URL, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ op:'delete', token: EDIT_TOKEN, id })
+      });
+      if (!r.ok) throw new Error('Delete failed');
+      await boot();
+      window.toggleEventModal(false);
+    }catch(e){ alert('Error eliminando: '+e.message); }
+  };
+
+  window.toggleEventModal(true);
+};
+
 function renderCalendar(){
   const el = document.getElementById('calendar');
   if (!el) return;
@@ -867,6 +915,27 @@ async function readTVRows(){
   }
 }
 
+async function renderTeamViewerChart(){
+  const c = document.getElementById('chartTV');
+  if (!c) return;
+  const { totalConn, totalHours } = await readTVRows();
+
+  if (c._chart) { c._chart.destroy(); c._chart = null; }
+
+  const chart = new Chart(c, {
+    type: 'bar',
+    data: {
+      labels: [dayjs(getMonthRange().start).format('MMMM YYYY')],
+      datasets: [
+        { type:'bar',  label:'Conexiones', data:[totalConn] },
+        { type:'line', label:'Horas',       data:[Number(totalHours.toFixed(2))] }
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false }
+  });
+  c._chart = chart;
+}
+
 async function renderTeamViewerTable(){
   const el = document.querySelector('#tvTable tbody');
   if (!el) return;
@@ -946,9 +1015,9 @@ function renderAll(){
   renderKpis();
   renderTable();
   renderCalendar();
-  destroyCharts();
   renderCharts();
-  renderTeamViewerTable();
+  renderTeamViewerTable();  // ya tenías esta
+  renderTeamViewerChart();  // <-- agrega esta
   renderMapMarkers();
 }
 
