@@ -13,7 +13,7 @@
         const r = await fetch('/styles.css', { cache: 'no-store' });
         if (!r.ok) throw 0;
         const len = +(r.headers.get('content-length') || 0);
-        if (len < 10240) throw 0; // <10KB => probablemente vacío
+        if (len < 10240) throw 0;
       } catch {
         const s = document.createElement('script');
         s.src = 'https://cdn.tailwindcss.com';
@@ -64,7 +64,6 @@
     .chart-h-lg { height: 360px; }
     #map{min-height:460px;height:460px}
     #calendar{min-height:960px;height:auto}
-    /* Modal calendario visible y contrastado */
     .modal-bg{position:fixed;inset:0;background:rgba(2,6,23,.72);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:60}
     .modal{background:#0b1220;border:1px solid rgba(255,255,255,.08);border-radius:1rem;max-width:42rem;width:92%;padding:1rem}
   </style>
@@ -95,7 +94,6 @@
     <div class="card p-4"><div class="text-slate-400 text-xs">Eventos/Proy./Cursos</div><div id="kpiC_eventos" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Conexiones TV (mes)</div><div id="kpiC_tvconn" class="text-3xl font-semibold mt-1">0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Horas TV (mes)</div><div id="kpiC_tvhrs" class="text-3xl font-semibold mt-1">0</div></div>
-    <!-- Valor equipos -->
     <div class="card p-4"><div class="text-slate-400 text-xs">Equipos instalados — Subtotal</div><div id="kpiEqSub" class="text-2xl font-semibold mt-1">$0</div></div>
     <div class="card p-4"><div class="text-slate-400 text-xs">Equipos instalados — Total c/IVA</div><div id="kpiEqTot" class="text-2xl font-semibold mt-1">$0</div></div>
   </section>
@@ -151,7 +149,7 @@
     <div class="card p-4 xl:col-span-2"><h3 class="text-lg font-medium mb-3">Ingresos por asesor (MXN)</h3><div class="chart-h-lg"><canvas id="chartIngresos"></canvas></div></div>
   </section>
 
-  <!-- Mapa y Calendario a pantalla completa (uno debajo del otro) -->
+  <!-- Mapa y Calendario -->
   <section class="grid grid-cols-1 gap-6 mb-6">
     <div class="card p-4">
       <div class="flex items-center justify-between mb-3">
@@ -169,14 +167,27 @@
     </div>
   </section>
 
-  <!-- CAPTURA (debajo de calendario y arriba de registros) -->
+  <!-- CAPTURA -->
   <section class="card p-4 mb-6">
     <h2 class="text-lg font-medium mb-3">Captura de registro</h2>
     <form id="frm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <input class="formc px-3 py-2 rounded" name="fecha_inicio" placeholder="Fecha inicio (YYYY-MM-DD)" />
-      <input class="formc px-3 py-2 rounded" name="hora_inicio" placeholder="Hora inicio (HH:MM)" />
-      <input class="formc px-3 py-2 rounded" name="fecha_fin" placeholder="Fecha fin (YYYY-MM-DD)" />
-      <input class="formc px-3 py-2 rounded" name="hora_fin" placeholder="Hora fin (HH:MM)" />
+      <!-- Fechas/Horas con modal -->
+      <div>
+        <div class="text-xs text-slate-400 mb-1">Inicio</div>
+        <div class="flex gap-2">
+          <input class="formc px-3 py-2 rounded grow" name="fecha_inicio" placeholder="Fecha inicio (YYYY-MM-DD)" readonly />
+          <input class="formc px-3 py-2 rounded w-28" name="hora_inicio" placeholder="HH:MM" readonly />
+          <button type="button" id="btnFHini" class="btn">🗓️</button>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs text-slate-400 mb-1">Fin</div>
+        <div class="flex gap-2">
+          <input class="formc px-3 py-2 rounded grow" name="fecha_fin" placeholder="Fecha fin (YYYY-MM-DD)" readonly />
+          <input class="formc px-3 py-2 rounded w-28" name="hora_fin" placeholder="HH:MM" readonly />
+          <button type="button" id="btnFHfin" class="btn">🗓️</button>
+        </div>
+      </div>
 
       <input class="formc px-3 py-2 rounded" name="asesor" placeholder="Asesor" />
       <select class="formc px-3 py-2 rounded" name="actividad">
@@ -204,7 +215,7 @@
       <input class="formc px-3 py-2 rounded" name="telefono" placeholder="Teléfono" />
       <input class="formc px-3 py-2 rounded" name="ciudad" placeholder="Ciudad" />
 
-      <!-- Dirección con Autocomplete nuevo -->
+      <!-- Dirección con Autocomplete -->
       <div class="md:col-span-2">
         <div class="text-xs text-slate-400 mb-1">Dirección (Maps)</div>
         <div id="placeBox" class="w-full"></div>
@@ -225,8 +236,14 @@
       <input class="formc px-3 py-2 rounded" name="equipos_iva" placeholder="Equipos IVA (auto 16%)" readonly />
       <input class="formc px-3 py-2 rounded" name="equipos_valor_total" placeholder="Equipos total" readonly />
 
-      <!-- Bloques de horas -->
-      <textarea class="formc px-3 py-2 rounded md:col-span-2" name="bloques_horas" placeholder='Bloques (JSON) p.e. [{"fecha":"2025-09-10","inicio":"08:00","fin":"13:00","breakMin":0}]'></textarea>
+      <!-- Bloques con modal -->
+      <div class="md:col-span-2">
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-slate-400">Bloques de horas</div>
+          <button type="button" id="btnBloques" class="btn">🧩 Editar bloques</button>
+        </div>
+        <textarea class="formc px-3 py-2 rounded w-full mt-2" name="bloques_horas" placeholder="[]" readonly></textarea>
+      </div>
       <input class="formc px-3 py-2 rounded" name="horas_totales" placeholder="Horas totales" readonly />
 
       <div class="md:col-span-2 flex gap-2">
@@ -302,7 +319,7 @@
   </section>
 </div>
 
-<!-- Modal de evento del calendario -->
+<!-- Modal calendario (detalle) -->
 <div id="modalBg" class="modal-bg">
   <div class="modal">
     <div class="flex items-start justify-between">
@@ -313,6 +330,61 @@
     <div class="mt-4 flex gap-2 justify-end">
       <button id="mEdit" class="btn btn-primary">✏️ Editar</button>
       <button id="mDel" class="btn">🗑️ Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Fecha/Hora -->
+<div id="dlgFHbg" class="modal-bg">
+  <div class="modal max-w-md">
+    <h3 class="text-lg font-semibold mb-2">Seleccionar fecha y hora</h3>
+    <div class="space-y-2">
+      <input id="fhPicker" type="datetime-local" class="formc px-3 py-2 rounded w-full" />
+      <div class="text-xs text-slate-400">Se guardará como YYYY-MM-DD y HH:MM</div>
+    </div>
+    <div class="mt-4 flex gap-2 justify-end">
+      <button type="button" id="fhCancel" class="btn">Cancelar</button>
+      <button type="button" id="fhOk" class="btn btn-primary">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Bloques -->
+<div id="dlgBLbg" class="modal-bg">
+  <div class="modal max-w-3xl">
+    <h3 class="text-lg font-semibold mb-2">Bloques de horas</h3>
+
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
+      <input id="blFecha" type="date" class="formc px-3 py-2 rounded" />
+      <input id="blIni"   type="time" class="formc px-3 py-2 rounded" />
+      <input id="blFin"   type="time" class="formc px-3 py-2 rounded" />
+      <input id="blBreak" type="number" min="0" step="1" class="formc px-3 py-2 rounded" placeholder="Break (min)" />
+      <button type="button" id="blAdd" class="btn btn-primary">➕ Agregar</button>
+    </div>
+
+    <div class="mt-3 table-viewport">
+      <table class="w-full">
+        <thead>
+          <tr class="text-left text-slate-400">
+            <th class="py-2 px-3">Fecha</th>
+            <th class="py-2 px-3">Inicio</th>
+            <th class="py-2 px-3">Fin</th>
+            <th class="py-2 px-3">Break (min)</th>
+            <th class="py-2 px-3">Min netos</th>
+            <th class="py-2 px-3">—</th>
+          </tr>
+        </thead>
+        <tbody id="blTbody"></tbody>
+      </table>
+    </div>
+
+    <div class="mt-3 text-right text-slate-300">
+      Total horas: <span id="blTotal" class="font-semibold">0.00</span>
+    </div>
+
+    <div class="mt-4 flex gap-2 justify-end">
+      <button type="button" id="blCancel" class="btn">Cancelar</button>
+      <button type="button" id="blOk" class="btn btn-primary">Guardar</button>
     </div>
   </div>
 </div>
@@ -336,29 +408,39 @@ let CAL_EVENT_CLICKED = null;
 /* ===== Utils ===== */
 function $(q){ return document.querySelector(q); }
 function fmtMoney(n){ n = Number(n)||0; return n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}); }
-function toISODate(d){
-  if (d == null) return null;
-  const s = String(d).trim();
-  let m = dayjs(s, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD','DD-MM-YYYY','MM-DD-YYYY'], true);
-  if (m.isValid()) return m.format('YYYY-MM-DD');
-  const justDate = (s.match(/^\d{4}-\d{2}-\d{2}/)?.[0]) || (s.match(/^\d{2}\/\d{2}\/\d{4}/)?.[0]) || (s.match(/^\d{2}-\d{2}-\d{4}/)?.[0]);
-  if (justDate) {
-    m = dayjs(justDate, ['YYYY-MM-DD','DD/MM/YYYY','YYYY/MM/DD','DD-MM-YYYY','MM-DD-YYYY'], true);
-    if (m.isValid()) return m.format('YYYY-MM-DD');
+
+/* ---- Normalizadores robustos ---- */
+function normalizeDate(d) {
+  const s = (d ?? '').toString().trim();
+  const m1 = dayjs(s, ['YYYY-MM-DD','DD/MM/YYYY','MM/DD/YYYY','YYYY/MM/DD','DD-MM-YYYY'], true);
+  if (m1.isValid()) return m1.format('YYYY-MM-DD');
+  const iso = s.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (iso) return iso;
+  const n = Number(s);
+  if (Number.isFinite(n) && n > 59) { // serial Excel
+    const base = dayjs('1899-12-30');
+    return base.add(n, 'day').format('YYYY-MM-DD');
   }
-  m = dayjs(s);
-  if (m.isValid()) return m.format('YYYY-MM-DD');
-  return null;
+  return '';
 }
-function extractHHmm(v){
-  if (!v) return null;
-  const s = String(v);
-  const m1 = s.match(/\b(\d{1,2}):(\d{2})\b/);
-  if (m1) return `${String(m1[1]).padStart(2,'0')}:${String(m1[2]).padStart(2,'0')}`;
-  const m2 = s.match(/T(\d{2}):(\d{2})/);
-  if (m2) return `${m2[1]}:${m2[2]}`;
-  return null;
+function normalizeTime(t) {
+  const s = (t ?? '').toString().trim();
+  if (!s) return '';
+  let m = s.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\b/);
+  if (m) return `${String(m[1]).padStart(2,'0')}:${String(m[2]).padStart(2,'0')}`;
+  m = s.match(/T(\d{2}):(\d{2})/);
+  if (m) return `${m[1]}:${m[2]}`;
+  const n = Number(s);
+  if (Number.isFinite(n) && n >= 0 && n < 1) { // fracción de día
+    const totalMin = Math.round(n * 24 * 60);
+    const hh = String(Math.floor(totalMin / 60)).padStart(2,'0');
+    const mm = String(totalMin % 60).padStart(2,'0');
+    return `${hh}:${mm}`;
+  }
+  return '';
 }
+function toISODate(d){ return normalizeDate(d) || null; }
+function extractHHmm(v){ return normalizeTime(v) || null; }
 function minutosEntre(h1,h2){ if(!h1||!h2) return 0; const [a,b]=h1.split(':').map(Number),[c,d]=h2.split(':').map(Number); return (c*60+d)-(a*60+b); }
 function parseBloques(str){ try{return JSON.parse(str||'[]')}catch{return []} }
 function horasFromBloques(bloques){
@@ -366,15 +448,10 @@ function horasFromBloques(bloques){
   return Math.round((mins/60)*100)/100;
 }
 function horasLegacyAware(r){
-  // 1) Si ya existe horas_totales (>0), respétalo (compatibilidad con registros antiguos)
   const legacy = Number(r.horas_totales);
   if (legacy) return legacy;
-
-  // 2) Si hay bloques_horas válidos, úsalo
   const bloques = parseBloques(r.bloques_horas);
   if (Array.isArray(bloques) && bloques.length) return horasFromBloques(bloques);
-
-  // 3) Si hay fecha/hora inicio/fin, calcula diferencia
   const dI = toISODate(r.fecha_inicio) || toISODate(r.fecha_fin);
   const dF = toISODate(r.fecha_fin)    || toISODate(r.fecha_inicio);
   const hI = extractHHmm(r.hora_inicio) || '00:00';
@@ -492,11 +569,13 @@ function renderKpis(){
 }
 
 /* ===== Tabla ===== */
-function fmtFechaHora(d,h){
-  const D = toISODate(d);
-  const H = extractHHmm(h);
-  if (!D) return '';
-  return `${D}${H?(' '+H):''}`;
+function fmtFechaHora(fecha, hora) {
+  const f = normalizeDate(fecha);
+  const h = normalizeTime(hora);
+  if (f && h) return `${f} ${h}`;
+  if (f) return f;
+  if (h) return h;
+  return '—';
 }
 function renderTable(){
   const tbody = $('#tbody'); tbody.innerHTML = '';
@@ -535,7 +614,6 @@ function renderTable(){
     tbody.appendChild(tr);
   });
 
-  // Delegación para editar/eliminar
   tbody.onclick = async (ev)=>{
     const b = ev.target.closest('button');
     if (!b) return;
@@ -568,67 +646,6 @@ window.renderMapMarkers = function(){
   });
 };
 
-
-// --- Normalizadores de fecha/hora robustos ---
-function normalizeDate(d) {
-  const s = (d ?? '').toString().trim();
-  // si ya es YYYY-MM-DD, respeta
-  const m1 = dayjs(s, ['YYYY-MM-DD','DD/MM/YYYY','MM/DD/YYYY','YYYY/MM/DD','DD-MM-YYYY'], true);
-  if (m1.isValid()) return m1.format('YYYY-MM-DD');
-
-  // ISO con fecha al inicio
-  const iso = s.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
-  if (iso) return iso;
-
-  // serial Excel (>= 1 suele ser fecha)
-  const n = Number(s);
-  if (Number.isFinite(n) && n > 59) { // (saltamos 1900-02-29 bug)
-    // Excel base 1899-12-30
-    const base = dayjs('1899-12-30');
-    return base.add(n, 'day').format('YYYY-MM-DD');
-  }
-  return ''; // sin fecha fiable
-}
-
-function normalizeTime(t) {
-  const s = (t ?? '').toString().trim();
-  if (!s) return '';
-
-  // 1) HH:mm o HH:mm:ss -> HH:mm
-  let m = s.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\b/);
-  if (m) {
-    const hh = String(m[1]).padStart(2,'0');
-    const mm = String(m[2]).padStart(2,'0');
-    return `${hh}:${mm}`;
-  }
-
-  // 2) ISO con "T"
-  m = s.match(/T(\d{2}):(\d{2})/);
-  if (m) return `${m[1]}:${m[2]}`;
-
-  // 3) Cadena tipo "1899-12-30T21:06:36.000Z" -> ya lo cubre (2),
-  //    pero si llegara como serial/decimal Excel (solo hora):
-  const n = Number(s);
-  if (Number.isFinite(n) && n >= 0 && n < 1) {
-    // fracción de día -> hora
-    const totalMin = Math.round(n * 24 * 60);
-    const hh = String(Math.floor(totalMin / 60)).padStart(2,'0');
-    const mm = String(totalMin % 60).padStart(2,'0');
-    return `${hh}:${mm}`;
-  }
-  return '';
-}
-
-function fmtFechaHora(fecha, hora) {
-  const f = normalizeDate(fecha);
-  const h = normalizeTime(hora);
-  if (f && h) return `${f} ${h}`;
-  if (f) return f;
-  if (h) return h;
-  return '—';
-}
-
-
 /* ===== Calendario + modal ===== */
 function openModal(evt, row){
   $('#mTitulo').textContent = evt.title || 'Detalle';
@@ -644,7 +661,6 @@ function openModal(evt, row){
   $('#modalBg').style.display = 'flex';
 }
 function closeModal(){ $('#modalBg').style.display = 'none'; CAL_EVENT_CLICKED=null; }
-
 $('#mClose').onclick = closeModal;
 $('#modalBg').onclick = (e)=> { if (e.target.id==='modalBg') closeModal(); };
 $('#mEdit').onclick = ()=>{ if (CAL_EVENT_CLICKED) { startEdit(Number(CAL_EVENT_CLICKED.id)); closeModal(); } };
@@ -672,8 +688,8 @@ function renderCalendar(){
 
   const events = [];
   (FILTERED||[]).forEach(r=>{
-   const dStart = normalizeDate(r.fecha_inicio) || normalizeDate(r.fecha_fin);
-   const dEnd   = normalizeDate(r.fecha_fin)    || normalizeDate(r.fecha_inicio);
+    const dStart = normalizeDate(r.fecha_inicio) || normalizeDate(r.fecha_fin);
+    const dEnd   = normalizeDate(r.fecha_fin)    || normalizeDate(r.fecha_inicio);
     if (!dStart) return;
 
     const tStart = normalizeTime(r.hora_inicio);
@@ -714,14 +730,9 @@ function renderCalendar(){
     }
   });
   CAL.render();
-  console.log('Calendar events:', events.length);
 }
 
 /* ===== Gráficas ===== */
-function destroyCharts(){
-  Object.values(CHARTS).forEach(ch => { try{ ch.destroy(); }catch{} });
-  for (const k of Object.keys(CHARTS)) delete CHARTS[k];
-}
 function renderCharts(){
   // Actividades por asesor
   (function(){
@@ -860,27 +871,21 @@ function recalcIVA(){
 ['mo_monto','refacciones_monto','viaticos_monto','equipos_valor_subtotal'].forEach(n=>{
   document.addEventListener('input', (e)=>{ if (e.target?.name===n) recalcIVA(); }, { passive:true });
 });
-function recalcHoras(){
-  const f = document.getElementById('frm');
-  let h = 0;
-  try{
-    const bloques = JSON.parse(f.bloques_horas.value||'[]');
-    h = horasFromBloques(bloques);
-  }catch{}
-  if (!h && f.hora_inicio.value && f.hora_fin.value){
-    h = Math.max(0, minutosEntre(f.hora_inicio.value, f.hora_fin.value))/60;
-  }
-  f.horas_totales.value = (Math.round(h*100)/100) || 0;
-}
-['bloques_horas','hora_inicio','hora_fin'].forEach(n=>{
-  document.addEventListener('input', (e)=>{ if (e.target?.name===n) recalcHoras(); }, { passive:true });
-});
 
 /* ===== Guardar (CREATE) ===== */
 document.getElementById('btnGuardar').onclick = async ()=>{
   const f = document.getElementById('frm');
-  recalcIVA(); recalcHoras();
   const data = Object.fromEntries(new FormData(f).entries());
+  // calcular horas totales si no hay bloques
+  try{
+    const bloques = JSON.parse(data.bloques_horas||'[]');
+    if (Array.isArray(bloques) && bloques.length){
+      data.horas_totales = horasFromBloques(bloques);
+    }else if (data.hora_inicio && data.hora_fin){
+      const mins = Math.max(0, minutosEntre(data.hora_inicio, data.hora_fin));
+      data.horas_totales = Math.round((mins/60)*100)/100;
+    }
+  }catch{}
   ['mo_monto','refacciones_monto','viaticos_monto','iva_monto','total_cobrado','equipos_valor_subtotal','equipos_iva','equipos_valor_total','horas_totales','lat','lng']
     .forEach(k=> data[k] = Number(data[k]||0));
   try{
@@ -892,11 +897,10 @@ document.getElementById('btnGuardar').onclick = async ()=>{
 };
 document.getElementById('btnLimpiarForm').onclick = ()=> document.getElementById('frm').reset();
 
-/* ===== Modal de edición (simple, inline) ===== */
+/* ===== Modal de edición (inline usando el mismo form) ===== */
 function startEdit(id){
   const r = ROWS.find(x=> Number(x.id)===Number(id));
   if (!r) return alert('Registro no encontrado');
-  // Llenamos el formulario superior para editar inline
   const f = document.getElementById('frm');
   for (const [k,v] of Object.entries(r)){
     const el = f.querySelector(`[name="${k}"]`);
@@ -909,32 +913,162 @@ function startEdit(id){
       el.value = v==null?'':v;
     }
   }
-  // guardamos con UPDATE usando token y mismo id
   f.dataset.editingId = String(id);
   window.scrollTo({ top: f.getBoundingClientRect().top + window.scrollY - 80, behavior:'smooth' });
 
-  // Cambiamos el botón guardar por modo actualizar temporalmente
   const btn = document.getElementById('btnGuardar');
-  const old = btn.textContent;
+  const oldHandler = btn.onclick;
   btn.textContent = '💾 Actualizar';
-  const handler = async ()=>{
-    recalcIVA(); recalcHoras();
+  btn.onclick = async ()=>{
     const data = Object.fromEntries(new FormData(f).entries());
+    try{
+      const bloques = JSON.parse(data.bloques_horas||'[]');
+      if (Array.isArray(bloques) && bloques.length){
+        data.horas_totales = horasFromBloques(bloques);
+      }else if (data.hora_inicio && data.hora_fin){
+        const mins = Math.max(0, minutosEntre(data.hora_inicio, data.hora_fin));
+        data.horas_totales = Math.round((mins/60)*100)/100;
+      }
+    }catch{}
     ['mo_monto','refacciones_monto','viaticos_monto','iva_monto','total_cobrado','equipos_valor_subtotal','equipos_iva','equipos_valor_total','horas_totales','lat','lng']
       .forEach(k=> data[k] = Number(data[k]||0));
     try{
       await apiPost('update', { id:Number(f.dataset.editingId), data });
       alert('Actualizado');
       f.reset(); delete f.dataset.editingId;
-      btn.textContent = old; btn.removeEventListener('click', handler); // restaurar
-      document.getElementById('btnGuardar').onclick = createHandler;   // volver a create
+      btn.textContent = '💾 Guardar'; btn.onclick = oldHandler;
       await boot();
     }catch(e){ alert('Error al actualizar: '+e.message); }
   };
-  const createHandler = document.getElementById('btnGuardar').onclick;
-  btn.removeEventListener('click', createHandler);
-  btn.addEventListener('click', handler);
 }
+
+/* ===== MODAL FECHA/HORA (UI) ===== */
+(() => {
+  const bg = document.getElementById('dlgFHbg');
+  const picker = document.getElementById('fhPicker');
+  const btnIni = document.getElementById('btnFHini');
+  const btnFin = document.getElementById('btnFHfin');
+  const btnOk = document.getElementById('fhOk');
+  const btnCancel = document.getElementById('fhCancel');
+  const f = document.getElementById('frm');
+
+  let ctx = 'inicio'; // 'inicio' | 'fin'
+
+  function open(kind){
+    ctx = kind;
+    const d = f[kind==='inicio'?'fecha_inicio':'fecha_fin'].value || '';
+    const h = f[kind==='inicio'?'hora_inicio':'hora_fin'].value || '';
+    picker.value = (d && h) ? `${d}T${h}` : '';
+    bg.style.display = 'flex';
+  }
+  function close(){ bg.style.display = 'none'; }
+
+  btnIni.addEventListener('click', ()=>open('inicio'));
+  btnFin.addEventListener('click', ()=>open('fin'));
+  btnCancel.addEventListener('click', close);
+  bg.addEventListener('click', (e)=>{ if (e.target === bg) close(); });
+
+  btnOk.addEventListener('click', ()=>{
+    if (!picker.value) { close(); return; }
+    const [d, t] = picker.value.split('T');
+    const hhmm = (t||'').slice(0,5);
+    if (ctx==='inicio'){
+      f.fecha_inicio.value = d;
+      f.hora_inicio.value  = hhmm;
+    }else{
+      f.fecha_fin.value = d;
+      f.hora_fin.value  = hhmm;
+    }
+    // si no hay bloques, recalcula rápido
+    try{
+      const bloques = JSON.parse(f.bloques_horas.value||'[]');
+      if (!Array.isArray(bloques) || !bloques.length){
+        const mins = Math.max(0, minutosEntre(f.hora_inicio.value, f.hora_fin.value));
+        f.horas_totales.value = (Math.round((mins/60)*100)/100) || 0;
+      }
+    }catch{}
+    close();
+  });
+})();
+
+/* ===== MODAL BLOQUES (UI) ===== */
+(() => {
+  const bg = document.getElementById('dlgBLbg');
+  const btnOpen = document.getElementById('btnBloques');
+  const btnOk = document.getElementById('blOk');
+  const btnCancel = document.getElementById('blCancel');
+  const tbody = document.getElementById('blTbody');
+  const lblTotal = document.getElementById('blTotal');
+
+  const inFecha = document.getElementById('blFecha');
+  const inIni = document.getElementById('blIni');
+  const inFin = document.getElementById('blFin');
+  const inBreak = document.getElementById('blBreak');
+  const btnAdd = document.getElementById('blAdd');
+
+  const f = document.getElementById('frm');
+
+  let rows = [];
+
+  function open(){
+    try{ rows = JSON.parse(f.bloques_horas.value||'[]'); }
+    catch{ rows = []; }
+    if (!Array.isArray(rows)) rows = [];
+    render();
+    bg.style.display = 'flex';
+  }
+  function close(){ bg.style.display = 'none'; }
+
+  function render(){
+    tbody.innerHTML = '';
+    let totalMin = 0;
+    rows.forEach((r, idx)=>{
+      const net = Math.max(0, minutosEntre(r.inicio, r.fin) - (Number(r.breakMin)||0));
+      totalMin += net;
+      const tr = document.createElement('tr');
+      tr.className = 'border-t border-white/10';
+      tr.innerHTML = `
+        <td class="py-2 px-3">${r.fecha||''}</td>
+        <td class="py-2 px-3">${r.inicio||''}</td>
+        <td class="py-2 px-3">${r.fin||''}</td>
+        <td class="py-2 px-3">${r.breakMin||0}</td>
+        <td class="py-2 px-3">${net}</td>
+        <td class="py-2 px-3"><button class="btn" data-i="${idx}">🗑️</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    tbody.onclick = (e)=>{
+      const b = e.target.closest('button'); if (!b) return;
+      const i = Number(b.dataset.i);
+      rows.splice(i,1); render();
+    };
+    lblTotal.textContent = (Math.round((totalMin/60)*100)/100).toFixed(2);
+  }
+
+  btnOpen.addEventListener('click', open);
+  btnCancel.addEventListener('click', close);
+  bg.addEventListener('click', (e)=>{ if (e.target === bg) close(); });
+
+  btnAdd.addEventListener('click', ()=>{
+    const r = {
+      fecha: inFecha.value || '',
+      inicio: inIni.value || '',
+      fin: inFin.value || '',
+      breakMin: Number(inBreak.value||0)
+    };
+    if (!r.fecha || !r.inicio || !r.fin) return;
+    rows.push(r);
+    inIni.value = inFin.value = ''; inBreak.value = '';
+    render();
+  });
+
+  btnOk.addEventListener('click', ()=>{
+    f.bloques_horas.value = JSON.stringify(rows);
+    const horas = horasFromBloques(rows);
+    f.horas_totales.value = (Math.round(horas*100)/100) || 0;
+    close();
+  });
+})();
 
 /* ===== Render all ===== */
 function renderAll(){
@@ -949,7 +1083,6 @@ function renderAll(){
 
 /* ===== Boot ===== */
 async function boot(){
-  // Selector de mes
   const sel = $('#fMes'); 
   if (sel && !sel._filled){
     const now = dayjs(); const items=[];
@@ -1018,15 +1151,7 @@ boot();
       el.placeholder = 'Escribe y selecciona la dirección';
       el.fields = ['formatted_address','address_components','geometry'];
       boxId.appendChild(el);
-
-      el.addEventListener('gmpx-placechange', () => {
-        const p = el.value;
-        // Cuando se usa el componente web, value es string (no objeto Place),
-        // así que tomamos lat/lng solo si se integra Geocoder aparte.
-        // Para mantener compatibilidad, dejamos la ciudad manual
-      });
     }catch(e){
-      console.warn('PlaceAutocompleteElement no disponible, intento fallback', e);
       try{
         const legacy = document.createElement('input');
         legacy.id = 'dirInput';
@@ -1047,11 +1172,10 @@ boot();
             if (city) f.querySelector('[name=ciudad]')?.setAttribute('value', city.long_name);
           }
         });
-      }catch(e2){ console.warn('Tampoco funcionó el fallback', e2); }
+      }catch(e2){}
     }
   }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
 </body>
 </html>
-
