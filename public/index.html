@@ -170,87 +170,178 @@
   <!-- CAPTURA -->
   <section class="card p-4 mb-6">
     <h2 class="text-lg font-medium mb-3">Captura de registro</h2>
-    <form id="frm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <!-- Fechas/Horas con modal -->
+      <form id="frm" class="grid grid-cols-1 gap-6">
+
+    <!-- ===== Datos del servicio ===== -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="md:col-span-2 text-slate-300 font-semibold">Datos del servicio</div>
+
       <div>
-        <div class="text-xs text-slate-400 mb-1">Inicio</div>
-        <div class="flex gap-2">
-          <input class="formc px-3 py-2 rounded grow" name="fecha_inicio" placeholder="Fecha inicio (YYYY-MM-DD)" readonly />
-          <input class="formc px-3 py-2 rounded w-28" name="hora_inicio" placeholder="HH:MM" readonly />
+        <label class="text-xs text-slate-400">Inicio — Fecha</label>
+        <div class="flex gap-2 mt-1">
+          <input class="formc px-3 py-2 rounded grow" name="fecha_inicio" placeholder="YYYY-MM-DD" readonly />
+          <input class="formc px-3 py-2 rounded w-28"  name="hora_inicio"  placeholder="HH:MM" readonly />
           <button type="button" id="btnFHini" class="btn">🗓️</button>
         </div>
       </div>
+
       <div>
-        <div class="text-xs text-slate-400 mb-1">Fin</div>
-        <div class="flex gap-2">
-          <input class="formc px-3 py-2 rounded grow" name="fecha_fin" placeholder="Fecha fin (YYYY-MM-DD)" readonly />
-          <input class="formc px-3 py-2 rounded w-28" name="hora_fin" placeholder="HH:MM" readonly />
+        <label class="text-xs text-slate-400">Fin — Fecha</label>
+        <div class="flex gap-2 mt-1">
+          <input class="formc px-3 py-2 rounded grow" name="fecha_fin" placeholder="YYYY-MM-DD" readonly />
+          <input class="formc px-3 py-2 rounded w-28"  name="hora_fin"  placeholder="HH:MM" readonly />
           <button type="button" id="btnFHfin" class="btn">🗓️</button>
         </div>
       </div>
 
-      <input class="formc px-3 py-2 rounded" name="asesor" placeholder="Asesor" />
-      <select class="formc px-3 py-2 rounded" name="actividad">
-        <option value="">Actividad</option>
-        <option>Soporte de garantía</option>
-        <option>Soporte fuera de garantía</option>
-        <option>Instalación</option>
-        <option>Evento</option>
-        <option>Proyecto</option>
-        <option>Curso</option>
-        <option>Vacaciones</option>
-      </select>
-      <select class="formc px-3 py-2 rounded" name="modalidad">
-        <option value="">Modalidad</option>
-        <option>Remoto</option>
-        <option>Presencial</option>
-      </select>
-      <select class="formc px-3 py-2 rounded" name="garantia">
-        <option value="">¿Garantía?</option>
-        <option>Sí</option>
-        <option>No</option>
-      </select>
-
-      <input class="formc px-3 py-2 rounded" name="cliente" placeholder="Cliente" />
-      <input class="formc px-3 py-2 rounded" name="telefono" placeholder="Teléfono" />
-      <input class="formc px-3 py-2 rounded" name="ciudad" placeholder="Ciudad" />
-
-      <!-- Dirección con Autocomplete -->
-      <div class="md:col-span-2">
-        <div class="text-xs text-slate-400 mb-1">Dirección (Maps)</div>
-        <div id="placeBox" class="w-full"></div>
+      <div>
+        <label class="text-xs text-slate-400">Asesor</label>
+        <input class="formc px-3 py-2 rounded w-full" name="asesor" placeholder="Asesor" />
       </div>
 
-      <input class="formc px-3 py-2 rounded" name="lat" placeholder="Latitud" />
-      <input class="formc px-3 py-2 rounded" name="lng" placeholder="Longitud" />
-      <textarea class="formc px-3 py-2 rounded md:col-span-2" name="notas" placeholder="Notas"></textarea>
+      <div>
+        <label class="text-xs text-slate-400">Actividad</label>
+        <select class="formc px-3 py-2 rounded w-full" name="actividad">
+          <option value="">Selecciona…</option>
+          <option>Soporte de garantía</option>
+          <option>Soporte fuera de garantía</option>
+          <option>Instalación</option>
+          <option>Evento</option>
+          <option>Proyecto</option>
+          <option>Curso</option>
+          <option>Vacaciones</option>
+        </select>
+      </div>
 
-      <!-- Costeo e IVA auto 16% -->
-      <input class="formc px-3 py-2 rounded" name="mo_monto" placeholder="Mano de obra (sin IVA)" />
-      <input class="formc px-3 py-2 rounded" name="refacciones_monto" placeholder="Refacciones (sin IVA)" />
-      <input class="formc px-3 py-2 rounded" name="viaticos_monto" placeholder="Viáticos (sin IVA)" />
-      <input class="formc px-3 py-2 rounded" name="iva_monto" placeholder="IVA (auto 16%)" readonly />
-      <input class="formc px-3 py-2 rounded" name="total_cobrado" placeholder="Total cobrado" readonly />
+      <div>
+        <label class="text-xs text-slate-400">Modalidad</label>
+        <select class="formc px-3 py-2 rounded w-full" name="modalidad">
+          <option value="">Selecciona…</option>
+          <option>Remoto</option>
+          <option>Presencial</option>
+        </select>
+      </div>
 
-      <input class="formc px-3 py-2 rounded" name="equipos_valor_subtotal" placeholder="Equipos subtotal" />
-      <input class="formc px-3 py-2 rounded" name="equipos_iva" placeholder="Equipos IVA (auto 16%)" readonly />
-      <input class="formc px-3 py-2 rounded" name="equipos_valor_total" placeholder="Equipos total" readonly />
+      <div>
+        <label class="text-xs text-slate-400">¿Garantía?</label>
+        <select class="formc px-3 py-2 rounded w-full" name="garantia">
+          <option value="">Selecciona…</option>
+          <option>Sí</option>
+          <option>No</option>
+        </select>
+      </div>
 
-      <!-- Bloques con modal -->
+      <div>
+        <label class="text-xs text-slate-400">Cliente</label>
+        <input class="formc px-3 py-2 rounded w-full" name="cliente" placeholder="Cliente" />
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-400">Teléfono</label>
+        <input class="formc px-3 py-2 rounded w-full" name="telefono" placeholder="Teléfono" />
+      </div>
+    </div>
+
+    <!-- ===== Ubicación ===== -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="md:col-span-2 text-slate-300 font-semibold">Ubicación</div>
+
+      <div class="md:col-span-2">
+        <label class="text-xs text-slate-400">Dirección (Maps)</label>
+        <input id="dirInput" name="direccion" class="formc px-3 py-2 rounded w-full mt-1" placeholder="Escribe y selecciona la dirección" />
+        <div class="text-xs text-slate-500 mt-1">Al seleccionar, se llenan Lat/Lng y Ciudad automáticamente.</div>
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-400">Latitud</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1" name="lat" placeholder="Latitud" />
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-400">Longitud</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1" name="lng" placeholder="Longitud" />
+      </div>
+
+      <div class="md:col-span-2">
+        <label class="text-xs text-slate-400">Ciudad (auto)</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1 opacity-60 cursor-not-allowed" name="ciudad" placeholder="Ciudad" disabled />
+      </div>
+    </div>
+
+    <!-- ===== Notas ===== -->
+    <div>
+      <label class="text-xs text-slate-400">Notas</label>
+      <textarea class="formc px-3 py-2 rounded w-full mt-1" name="notas" placeholder="Notas"></textarea>
+    </div>
+
+    <!-- ===== Costos / Facturación ===== -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="md:col-span-3 text-slate-300 font-semibold">Costos / Facturación</div>
+
+      <div>
+        <label class="text-xs text-slate-400">Mano de obra (sin IVA)</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1" name="mo_monto" placeholder="0" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Refacciones (sin IVA)</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1" name="refacciones_monto" placeholder="0" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Viáticos (sin IVA)</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1" name="viaticos_monto" placeholder="0" />
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-400">IVA (auto 16%)</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1" name="iva_monto" placeholder="0" readonly />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Total cobrado</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1" name="total_cobrado" placeholder="0" readonly />
+      </div>
+    </div>
+
+    <!-- ===== Equipos vendidos ===== -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="md:col-span-3 text-slate-300 font-semibold">Equipos vendidos</div>
+
+      <div>
+        <label class="text-xs text-slate-400">Equipos — Subtotal</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1" name="equipos_valor_subtotal" placeholder="0" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Equipos — IVA (auto 16%)</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1" name="equipos_iva" placeholder="0" readonly />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Equipos — Total</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1" name="equipos_valor_total" placeholder="0" readonly />
+      </div>
+    </div>
+
+    <!-- ===== Tiempos ===== -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="md:col-span-2 text-slate-300 font-semibold">Tiempos</div>
+
       <div class="md:col-span-2">
         <div class="flex items-center justify-between">
-          <div class="text-xs text-slate-400">Bloques de horas</div>
+          <label class="text-xs text-slate-400">Bloques de horas</label>
           <button type="button" id="btnBloques" class="btn">🧩 Editar bloques</button>
         </div>
         <textarea class="formc px-3 py-2 rounded w-full mt-2" name="bloques_horas" placeholder="[]" readonly></textarea>
       </div>
-      <input class="formc px-3 py-2 rounded" name="horas_totales" placeholder="Horas totales" readonly />
 
-      <div class="md:col-span-2 flex gap-2">
-        <button type="button" id="btnGuardar" class="btn btn-primary">💾 Guardar</button>
-        <button type="button" id="btnLimpiarForm" class="btn">Limpiar</button>
+      <div>
+        <label class="text-xs text-slate-400">Horas totales</label>
+        <input class="formc px-3 py-2 rounded w-full mt-1" name="horas_totales" placeholder="0" readonly />
       </div>
-    </form>
+    </div>
+
+    <div class="flex gap-2">
+      <button type="button" id="btnGuardar" class="btn btn-primary">💾 Guardar</button>
+      <button type="button" id="btnLimpiarForm" class="btn">Limpiar</button>
+    </div>
+  </form>
   </section>
 
   <!-- Filtros -->
@@ -1194,40 +1285,34 @@ boot();
     return new google.maps.Marker({ map, position:{lat,lng}, title:title||'' });
   };
 
-  // Autocomplete moderno con fallback
+  // Autocomplete (versión estable con Places clásico)
   function initAutocomplete(){
-    const boxId = document.getElementById('placeBox');
-    if (!boxId) return;
+    const f = document.getElementById('frm');
+    const input = document.getElementById('dirInput');
+    if (!input) return;
 
-    try{
-      const el = document.createElement('gmpx-place-autocomplete');
-      el.className = 'formc px-3 py-2 rounded w-full';
-      el.placeholder = 'Escribe y selecciona la dirección';
-      el.fields = ['formatted_address','address_components','geometry'];
-      boxId.appendChild(el);
-    }catch(e){
-      try{
-        const legacy = document.createElement('input');
-        legacy.id = 'dirInput';
-        legacy.className = 'formc px-3 py-2 rounded w-full';
-        legacy.placeholder = 'Escribe y selecciona la dirección';
-        boxId.appendChild(legacy);
-        const ac = new google.maps.places.Autocomplete(legacy, { fields:['geometry','address_components','formatted_address'] });
-        ac.addListener('place_changed', ()=>{
-          const p = ac.getPlace();
-          if (!p || !p.geometry) return;
-          const lat = p.geometry.location.lat();
-          const lng = p.geometry.location.lng();
-          const city = (p.address_components||[]).find(c=>c.types.includes('locality')||c.types.includes('administrative_area_level_2'));
-          const f = document.getElementById('frm');
-          if (f){
-            f.querySelector('[name=lat]')?.setAttribute('value', lat);
-            f.querySelector('[name=lng]')?.setAttribute('value', lng);
-            if (city) f.querySelector('[name=ciudad]')?.setAttribute('value', city.long_name);
-          }
-        });
-      }catch(e2){}
-    }
+    const ac = new google.maps.places.Autocomplete(input, {
+      fields: ['geometry','address_components','formatted_address'],
+      types: ['geocode']
+    });
+
+    ac.addListener('place_changed', ()=>{
+      const place = ac.getPlace();
+      if (!place || !place.geometry) return;
+
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      const comps = place.address_components || [];
+
+      // Ciudad (locality o nivel administrativo 2)
+      const cityComp = comps.find(c => c.types.includes('locality')) ||
+                       comps.find(c => c.types.includes('administrative_area_level_2'));
+
+      // Llenamos form
+      f.querySelector('[name=lat]').value = lat;
+      f.querySelector('[name=lng]').value = lng;
+      if (cityComp) f.querySelector('[name=ciudad]').value = cityComp.long_name || '';
+    });
   }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
