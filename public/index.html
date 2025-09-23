@@ -117,6 +117,11 @@
       <div id="kpiInstCosto" class="text-3xl font-semibold mt-1">$0</div>
       <div class="text-slate-400 text-xs mt-1">85/h + viáticos</div>
     </div>
+    <div class="card p-4">
+      <div class="text-slate-400 text-xs">Relación: Valor equipos / Costo instalación</div>
+      <div id="kpiEqRel" class="text-3xl font-semibold mt-1">0×</div>
+      <div class="text-slate-400 text-xs mt-1">Muestra cuántas veces el valor supera el costo</div>
+    </div>
   </section>
 
   <!-- Gráficas + TeamViewer -->
@@ -127,24 +132,13 @@
     <div class="card p-4"><h3 class="text-lg font-medium mb-3">Garantía vs No garantía</h3><div class="chart-h"><canvas id="chartGarantia"></canvas></div></div>
 
     <div class="card p-4 xl:col-span-2">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-medium">TeamViewer — Totales del mes</h3>
-        <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
-      </div>
-      <div class="chart-h"><canvas id="chartTV"></canvas></div>
-      <div class="mt-4 table-viewport">
-        <table class="w-full" id="tvTable">
-          <thead>
-            <tr class="text-left text-slate-400">
-              <th class="py-2 px-3">Periodo</th>
-              <th class="py-2 px-3">Conexiones</th>
-              <th class="py-2 px-3">Horas</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-lg font-medium">TeamViewer — Uso diario</h3>
+    <div class="text-xs text-slate-400">Fuente: /connectionreport.csv</div>
+  </div>
+  <div class="chart-h"><canvas id="chartTV"></canvas></div>
+</div>
+
 
     <div class="card p-4 xl:col-span-2"><h3 class="text-lg font-medium mb-3">Ingresos por asesor (MXN)</h3><div class="chart-h-lg"><canvas id="chartIngresos"></canvas></div></div>
   </section>
@@ -711,6 +705,8 @@ function renderKpis(){
   $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
   (document.getElementById('kpiEqSub')||{}).textContent = fmtMoney(eqSub);
   (document.getElementById('kpiEqTot')||{}).textContent = fmtMoney(eqTot);
+  const eqRel = sumCostoInst > 0 ? (eqSub / sumCostoInst) : 0;
+  document.getElementById('kpiEqRel').textContent = eqRel.toFixed(2) + '×';
 }
 
 /* ===== Tabla ===== */
