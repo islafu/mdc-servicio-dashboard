@@ -270,17 +270,25 @@
       <div class="md:col-span-2">
         <label class="text-xs text-slate-400">Dirección (Maps)</label>
 
-        <!-- Web Component recomendado por Google -->
-        <gmpx-place-autocomplete
-          id="dirInput"
+        <!-- Input visible y editable -->
+        <input
+          id="dirTxt"
           class="formc px-3 py-2 rounded w-full mt-1"
-          placeholder="Escribe y selecciona la dirección">
+          placeholder="Escribe y selecciona la dirección"
+          autocomplete="off" />
+
+        <!-- Web Component enlazado al input por 'for' -->
+        <gmpx-place-autocomplete
+          id="dirAC"
+          for="dirTxt">
         </gmpx-place-autocomplete>
 
-        <!-- Para que “direccion” viaje en el submit -->
+        <!-- Campo que viajará en el submit -->
         <input type="hidden" name="direccion" id="direccionHidden" />
 
-        <div class="text-xs text-slate-500 mt-1">Al seleccionar, se llenan Lat/Lng y Ciudad automáticamente.</div>
+        <div class="text-xs text-slate-500 mt-1">
+          Al seleccionar, se llenan Lat/Lng y Ciudad automáticamente.
+        </div>
       </div>
 
       <div>
@@ -1391,10 +1399,11 @@ boot();
   // Autocomplete (versión estable con Places clásico)
   function initAutocomplete(){
   const f = document.getElementById('frm');
-  const el = document.getElementById('dirInput');
-  if (!el || !f) return;
+  const txt = document.getElementById('dirTxt');
+  const el  = document.getElementById('dirAC');
+  if (!f || !txt || !el) return;
 
-  // Si existe el web component gmpx (nuevo recomendado)
+  // Caso 1: componente nuevo gmpx (recomendado)
   if (customElements.get('gmpx-place-autocomplete') && typeof el.getPlace === 'function') {
     el.addEventListener('gmpx-placechange', () => {
       const place = el.getPlace();
@@ -1408,25 +1417,26 @@ boot();
         comps.find(c => c.types.includes('locality')) ||
         comps.find(c => c.types.includes('administrative_area_level_2'));
 
+      // Llenado de campos
       f.querySelector('[name=lat]').value = lat;
       f.querySelector('[name=lng]').value = lng;
 
-      const cityInput = f.querySelector('[name=ciudad]');
-      const cityHidden = f.querySelector('[name=ciudad_hidden]');
       const city = cityComp?.long_name || '';
+      const cityInput  = f.querySelector('[name=ciudad]');
+      const cityHidden = f.querySelector('[name=ciudad_hidden]');
       if (cityInput)  cityInput.value  = city;
       if (cityHidden) cityHidden.value = city;
 
-      // Guarda también la dirección formateada si tienes ese campo
-      const dirVisible = f.querySelector('[name=direccion]');
-      if (dirVisible) dirVisible.value = place.formatted_address || '';
+      // Guarda la dirección formateada para el submit
+      document.getElementById('direccionHidden').value =
+        place.formatted_address || txt.value || '';
     });
     return;
   }
 
-  // Fallback al Autocomplete clásico (para cuentas antiguas)
+  // Caso 2: fallback Autocomplete clásico (cuentas antiguas)
   try {
-    const ac = new google.maps.places.Autocomplete(el, {
+    const ac = new google.maps.places.Autocomplete(txt, {
       fields: ['geometry','address_components','formatted_address'],
       types: ['geocode']
     });
@@ -1444,14 +1454,14 @@ boot();
       f.querySelector('[name=lat]').value = lat;
       f.querySelector('[name=lng]').value = lng;
 
-      const cityInput = f.querySelector('[name=ciudad]');
-      const cityHidden = f.querySelector('[name=ciudad_hidden]');
       const city = cityComp?.long_name || '';
+      const cityInput  = f.querySelector('[name=ciudad]');
+      const cityHidden = f.querySelector('[name=ciudad_hidden]');
       if (cityInput)  cityInput.value  = city;
       if (cityHidden) cityHidden.value = city;
 
-      const dirVisible = f.querySelector('[name=direccion]');
-      if (dirVisible) dirVisible.value = place.formatted_address || '';
+      document.getElementById('direccionHidden').value =
+        place.formatted_address || txt.value || '';
     });
   } catch (e) {
     console.warn('Autocomplete clásico no disponible:', e);
