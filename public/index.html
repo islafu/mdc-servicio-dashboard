@@ -410,6 +410,14 @@ function $(q){ return document.querySelector(q); }
 function fmtMoney(n){ n = Number(n)||0; return n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}); }
 
 /* ---- Normalizadores robustos ---- */
+// --- helpers nuevos/actualizados ---
+function toHHMM(totalMinutes){
+  const mins = Math.round(totalMinutes);
+  const hh = String(Math.floor((mins/60) % 24)).padStart(2,'0');
+  const mm = String(mins % 60).padStart(2,'0');
+  return `${hh}:${mm}`;
+}
+
 function normalizeDate(d) {
   const s = (d ?? '').toString().trim();
   const m1 = dayjs(s, ['YYYY-MM-DD','DD/MM/YYYY','MM/DD/YYYY','YYYY/MM/DD','DD-MM-YYYY'], true);
@@ -417,28 +425,58 @@ function normalizeDate(d) {
   const iso = s.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
   if (iso) return iso;
   const n = Number(s);
-  if (Number.isFinite(n) && n > 59) { // serial Excel
-    const base = dayjs('1899-12-30');
+  // Excel serial (fecha o fecha+hora)
+  if (Number.isFinite(n) && n > 59) {
+    const base = dayjs('1899-12-30'); // base Excel
     return base.add(n, 'day').format('YYYY-MM-DD');
   }
   return '';
 }
+
 function normalizeTime(t) {
-  const s = (t ?? '').toString().trim();
-  if (!s) return '';
-  let m = s.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\b/);
-  if (m) return `${String(m[1]).padStart(2,'0')}:${String(m[2]).padStart(2,'0')}`;
-  m = s.match(/T(\d{2}):(\d{2})/);
-  if (m) return `${m[1]}:${m[2]}`;
-  const n = Number(s);
-  if (Number.isFinite(n) && n >= 0 && n < 1) { // fracción de día
-    const totalMin = Math.round(n * 24 * 60);
-    const hh = String(Math.floor(totalMin / 60)).padStart(2,'0');
-    const mm = String(totalMin % 60).padStart(2,'0');
-    return `${hh}:${mm}`;
+  if (t === null || t === undefined) return '';
+
+  // 0) Objeto Date
+  if (Object.prototype.toString.call(t) === '[object Date]') {
+    if (!isNaN(t)) return `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
   }
+
+  const s = String(t).trim();
+  if (!s) return '';
+
+  // 1) HH:mm o HH:mm:ss
+  {
+    const m = s.match(/\b([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\b/);
+    if (m) return `${String(m[1]).padStart(2,'0')}:${String(m[2]).padStart(2,'0')}`;
+  }
+
+  // 2) ISO/fecha completa con hora
+  {
+    const d = dayjs(s);
+    if (d.isValid()) return d.format('HH:mm');
+  }
+
+  // 3) Números (Excel):
+  //    - 0 <= n < 1  => fracción de día (solo hora)
+  //    - n >= 1      => serial fecha+hora (usar fracción)
+  {
+    const n = Number(s);
+    if (Number.isFinite(n)) {
+      if (n >= 0 && n < 1) {
+        return toHHMM(n * 24 * 60);
+      }
+      if (n >= 1) {
+        const frac = n - Math.floor(n);
+        if (frac > 0) return toHHMM(frac * 24 * 60);
+      }
+    }
+  }
+
+  // 4) Nada fiable
   return '';
 }
+
+// Mantén estos alias si los usa el resto del código:
 function toISODate(d){ return normalizeDate(d) || null; }
 function extractHHmm(v){ return normalizeTime(v) || null; }
 function minutosEntre(h1,h2){ if(!h1||!h2) return 0; const [a,b]=h1.split(':').map(Number),[c,d]=h2.split(':').map(Number); return (c*60+d)-(a*60+b); }
