@@ -744,35 +744,32 @@ function applyFilters(){
 
 /* ===== KPIs ===== */
 function renderKpis(){
-  const isSoporte = r => (r.actividad||'').toLowerCase().includes('soporte');
-  const isInst    = r => (r.actividad||'').toLowerCase().includes('instal');
-  const isEvento  = r => /(evento|proy|curso)/i.test(r.actividad||'');
-
-  $('#kpiC_total').textContent    = FILTERED.length;
-  $('#kpiC_soporte').textContent  = FILTERED.filter(isSoporte).length;
-  $('#kpiC_inst').textContent     = FILTERED.filter(isInst).length;
-  $('#kpiC_eventos').textContent  = FILTERED.filter(isEvento).length;
-
-  const sumPotGar = FILTERED.reduce((a,r)=> a + (Number(r.potencial_garantia)||0), 0);
-  $('#kpiPotGarantia').textContent = fmtMoney(sumPotGar);
-  const sumMo  = FILTERED.reduce((a,r)=> a + (Number(r.mo_monto)||0), 0);
-  const sumRef = FILTERED.reduce((a,r)=> a + (Number(r.refacciones_monto)||0), 0);
-  const sumVia = FILTERED.reduce((a,r)=> a + (Number(r.viaticos_monto)||0), 0);
-  const sumIva = FILTERED.reduce((a,r)=> a + (Number(r.iva_monto)||0), 0);
-  const sumCob = sumMo+sumRef+sumVia+sumIva;
-  $('#kpiMo').textContent  = fmtMoney(sumMo);
-  $('#kpiRef').textContent = fmtMoney(sumRef);
-  $('#kpiVia').textContent = fmtMoney(sumVia);
-  $('#kpiIva').textContent = fmtMoney(sumIva);
-  $('#kpiCobradoTotal').textContent = fmtMoney(sumCob);
-
+  // Filtrar solo instalaciones
   const rowsInst = FILTERED.filter(isInstalacion);
+
+  // Subtotales de equipos
   const eqSub = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_subtotal)||0), 0);
   const eqTot = rowsInst.reduce((a,r)=> a + (Number(r.equipos_valor_total)||0), 0);
-  const sumCostoInst = rowsInst.reduce((a,r)=> (Number(r.horas_totales)||0)*TARIFA_INTERNA_INST + (Number(r.viaticos_monto)||0), 0);
-  $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
-  (document.getElementById('kpiEqSub')||{}).textContent = fmtMoney(eqSub);
-  (document.getElementById('kpiEqTot')||{}).textContent = fmtMoney(eqTot);
+
+  // Sumar correctamente el costo de instalaciones:
+  // (horas * tarifa interna) + viáticos de cada registro
+  const sumCostoInst = rowsInst.reduce((a, r) => {
+    const hrs = Number(r.horas_totales)  || 0;
+    const via = Number(r.viaticos_monto) || 0;
+    return a + (hrs * TARIFA_INTERNA_INST + via);
+  }, 0);
+
+  // Actualizar KPI de costo empresa
+  document.querySelector('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
+
+  // Actualizar KPIs de equipos
+  const elSub = document.getElementById('kpiEqSub');
+  if (elSub) elSub.textContent = fmtMoney(eqSub);
+
+  const elTot = document.getElementById('kpiEqTot');
+  if (elTot) elTot.textContent = fmtMoney(eqTot);
+
+  // Porcentaje instalación respecto al subtotal de equipos
   const eqPct = eqSub > 0 ? (sumCostoInst / eqSub) * 100 : 0;
   const elPct = document.getElementById('kpiEqPct');
   if (elPct) elPct.textContent = `${eqPct.toFixed(1)}%`;
