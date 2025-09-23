@@ -66,6 +66,33 @@
     #calendar{min-height:960px;height:auto}
     .modal-bg{position:fixed;inset:0;background:rgba(2,6,23,.72);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:60}
     .modal{background:#0b1220;border:1px solid rgba(255,255,255,.08);border-radius:1rem;max-width:42rem;width:92%;padding:1rem}
+  /* Que se comporte como un input de ancho completo */
+  gmpx-place-autocomplete{ display:block; width:100%; }
+
+  /* Colores en modo oscuro (variables soportadas por la librería) */
+  gmpx-place-autocomplete{
+    --gmpx-color-surface: #1e293b;         /* fondo */
+    --gmpx-color-on-surface: #f1f5f9;      /* texto */
+    --gmpx-color-outline: #334155;         /* borde */
+    --gmpx-color-primary: #60a5fa;         /* foco/realce */
+    --gmpx-color-background: #0b0d10;      /* popup */
+  }
+
+  /* Borde y radio similares a .formc */
+  gmpx-place-autocomplete::part(input){
+    border: 1px solid #334155;
+    border-radius: .5rem;
+    padding: .5rem .75rem;
+    background: transparent;
+    color: inherit;
+  }
+
+  /* Lista de sugerencias */
+  gmpx-place-autocomplete::part(panel){
+    border-radius: .5rem;
+    border: 1px solid #334155;
+  }
+
   </style>
 </head>
 <body class="h-full">
@@ -995,6 +1022,13 @@ async function renderTeamViewerChart(){
 
   // datos por día
   const rows = await readTVDailyRows();
+
+  // <<< NUEVO: actualizar KPIs del mes aquí >>>
+  const totalConn = rows.reduce((a,r)=>a+r.conexiones,0);
+  const totalHours = rows.reduce((a,r)=>a+r.horas,0);
+  (document.getElementById('kpiC_tvconn')||{}).textContent = String(totalConn);
+  (document.getElementById('kpiC_tvhrs')||{}).textContent  = totalHours.toFixed(2);
+
   const { start, end } = getMonthRange();
 
   // generamos todos los días del mes para mostrar 0 cuando no hay actividad
@@ -1358,50 +1392,72 @@ boot();
   function initAutocomplete(){
   const f = document.getElementById('frm');
   const el = document.getElementById('dirInput');
-  const hidden = document.getElementById('direccionHidden');
   if (!el || !f) return;
 
-  const geocoder = new google.maps.Geocoder();
+  // Si existe el web component gmpx (nuevo recomendado)
+  if (customElements.get('gmpx-place-autocomplete') && typeof el.getPlace === 'function') {
+    el.addEventListener('gmpx-placechange', () => {
+      const place = el.getPlace();
+      if (!place || !place.geometry) return;
 
-  el.addEventListener('gmpx-placechange', async () => {
-    // El web component guarda el texto seleccionado en el .value
-    const address = (el.value || '').trim();
-    if (!address) return;
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      const comps = place.address_components || [];
 
-    // Guarda la dirección en el hidden para que FormData la incluya
-    if (hidden) hidden.value = address;
-
-    try {
-      const { results } = await geocoder.geocode({ address });
-      if (!results || !results.length) return;
-
-      const r = results[0];
-      const loc = r.geometry?.location;
-      const comps = r.address_components || [];
-
-      // Lat/Lng
-      if (loc) {
-        const lat = loc.lat();
-        const lng = loc.lng();
-        f.querySelector('[name=lat]')?.setAttribute('value', lat);
-        f.querySelector('[name=lng]')?.setAttribute('value', lng);
-      }
-
-      // Ciudad (locality o admin_level_2)
       const cityComp =
         comps.find(c => c.types.includes('locality')) ||
         comps.find(c => c.types.includes('administrative_area_level_2'));
-      const city = cityComp ? cityComp.long_name : '';
+
+      f.querySelector('[name=lat]').value = lat;
+      f.querySelector('[name=lng]').value = lng;
 
       const cityInput = f.querySelector('[name=ciudad]');
-      const cityHidden = f.querySelector('[name=ciudad_hidden]'); // por si seguiste el tip del hidden
-      if (cityInput) cityInput.value = city;
+      const cityHidden = f.querySelector('[name=ciudad_hidden]');
+      const city = cityComp?.long_name || '';
+      if (cityInput)  cityInput.value  = city;
       if (cityHidden) cityHidden.value = city;
-    } catch (e) {
-      console.warn('Geocoder error:', e);
-    }
-  });
+
+      // Guarda también la dirección formateada si tienes ese campo
+      const dirVisible = f.querySelector('[name=direccion]');
+      if (dirVisible) dirVisible.value = place.formatted_address || '';
+    });
+    return;
+  }
+
+  // Fallback al Autocomplete clásico (para cuentas antiguas)
+  try {
+    const ac = new google.maps.places.Autocomplete(el, {
+      fields: ['geometry','address_components','formatted_address'],
+      types: ['geocode']
+    });
+    ac.addListener('place_changed', () => {
+      const place = ac.getPlace();
+      if (!place || !place.geometry) return;
+
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      const comps = place.address_components || [];
+      const cityComp =
+        comps.find(c => c.types.includes('locality')) ||
+        comps.find(c => c.types.includes('administrative_area_level_2'));
+
+      f.querySelector('[name=lat]').value = lat;
+      f.querySelector('[name=lng]').value = lng;
+
+      const cityInput = f.querySelector('[name=ciudad]');
+      const cityHidden = f.querySelector('[name=ciudad_hidden]');
+      const city = cityComp?.long_name || '';
+      if (cityInput)  cityInput.value  = city;
+      if (cityHidden) cityHidden.value = city;
+
+      const dirVisible = f.querySelector('[name=direccion]');
+      if (dirVisible) dirVisible.value = place.formatted_address || '';
+    });
+  } catch (e) {
+    console.warn('Autocomplete clásico no disponible:', e);
+  }
 }
+
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
 </body>
