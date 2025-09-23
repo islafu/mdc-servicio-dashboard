@@ -709,6 +709,8 @@ function renderKpis(){
   document.getElementById('kpiEqRel').textContent = eqRel.toFixed(2) + '×';
   const eqPct = eqSub > 0 ? (sumCostoInst / eqSub) * 100 : 0;
   (document.getElementById('kpiEqPct')||{}).textContent = `${eqPct.toFixed(1)}%`;
+  const elPct = document.getElementById('kpiEqPct');
+  if (elPct) elPct.textContent = `${eqPct.toFixed(1)}%`;
 }
 
 /* ===== Tabla ===== */
