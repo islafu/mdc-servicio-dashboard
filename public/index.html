@@ -927,45 +927,59 @@ function renderCharts(){
 }
 
 /* ===== TeamViewer (totales del mes) ===== */
-async function readTVRows(){
+// Devuelve un array [{ day:'2025-09-01', conexiones: 3, horas: 1.75 }, ...] solo de los días con actividad
+async function readTVDailyRows(){
   try{
     const txt = await fetch('/connectionreport.csv', { cache:'no-store' }).then(r=>r.ok?r.text():'');
-    if (!txt) return { rows:[], totalConn:0, totalHours:0 };
+    if (!txt) return [];
+
     const lines = txt.trim().split(/\r?\n/).filter(Boolean);
-    if (lines.length < 2) return { rows:[], totalConn:0, totalHours:0 };
+    if (lines.length < 2) return [];
 
     const sep = (lines[0].includes(';') && !lines[0].includes(',')) ? ';' : ',';
     const headers = lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));
     let idxFecha = headers.findIndex(h=>/(date|fecha|start|inicio)/i.test(h)); if (idxFecha===-1) idxFecha=0;
-    let idxMin   = headers.findIndex(h=>/(minutes|minutos|duration|duración|time)/i.test(h)); if (idxMin===-1) idxMin=7;
+    let idxDur   = headers.findIndex(h=>/(minutes|minutos|duration|duración|time)/i.test(h)); if (idxDur===-1) idxDur=7;
 
     const { start, end } = getMonthRange();
     const from = start.startOf('day').valueOf();
     const to   = end.endOf('day').valueOf();
 
-    let totalConn = 0, totalMinutes = 0;
+    const byDay = {}; // key YYYY-MM-DD -> { conexiones, minutos }
     for (const l of lines.slice(1)){
       const cols = l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim());
+
+      // fecha
       const fechaRaw = cols[idxFecha] || cols[0] || '';
       const fISO = toISODate(fechaRaw) || dayjs(fechaRaw,['YYYY-MM-DD','DD/MM/YYYY','MM/DD/YYYY','YYYY/MM/DD']).format('YYYY-MM-DD');
-      const t = dayjs(fISO, 'YYYY-MM-DD', true);
-      if (!t.isValid()) continue;
-      const tv = t.valueOf();
+      const d = dayjs(fISO, 'YYYY-MM-DD', true);
+      if (!d.isValid()) continue;
+      const tv = d.valueOf();
       if (tv < from || tv > to) continue;
 
-      const v = cols[idxMin] || '0';
+      // minutos (acepta "hh:mm(:ss)" o número)
+      const v = cols[idxDur] || '0';
       let minutes = 0;
       if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(v)) {
         const p = v.split(':').map(Number);
-        minutes = (p[0]*60) + (p[1]||0) + (p[2]||0)/60;
+        minutes = (p[0]*60) + (p[1]||0) + Math.round((p[2]||0)/60);
       } else {
         const nm = Number(String(v).replace(',','.')); minutes = Number.isFinite(nm) ? nm : 0;
       }
-      totalConn += 1;
-      totalMinutes += minutes;
+
+      const key = d.format('YYYY-MM-DD');
+      if (!byDay[key]) byDay[key] = { conexiones:0, minutos:0 };
+      byDay[key].conexiones += 1;
+      byDay[key].minutos += minutes;
     }
-    return { rows:[], totalConn, totalHours:(totalMinutes/60) };
-  }catch{ return { rows:[], totalConn:0, totalHours:0 }; }
+
+    // a arreglo ordenado por día asc
+    return Object.keys(byDay)
+      .sort()
+      .map(k => ({ day:k, conexiones: byDay[k].conexiones, horas: +(byDay[k].minutos/60).toFixed(2) }));
+  }catch{
+    return [];
+  }
 }
 async function renderTeamViewerChart(){
   const c = document.getElementById('chartTV'); if (!c) return;
@@ -985,16 +999,26 @@ async function renderTeamViewerChart(){
 }
 async function renderTeamViewerTable(){
   const el = document.querySelector('#tvTable tbody'); if (!el) return;
-  const { totalConn, totalHours } = await readTVRows();
-  const { start } = getMonthRange();
+  const rows = await readTVDailyRows();
+
+  // KPIs del mes (conexiones y horas)
+  const totalConn = rows.reduce((a,r)=>a+r.conexiones,0);
+  const totalHours = rows.reduce((a,r)=>a+r.horas,0);
   (document.getElementById('kpiC_tvconn')||{}).textContent = String(totalConn);
   (document.getElementById('kpiC_tvhrs')||{}).textContent  = totalHours.toFixed(2);
-  el.innerHTML = `
+
+  // Render de la tabla: un renglón por día con actividad
+  el.innerHTML = rows.map(r => `
     <tr class="border-t border-white/10">
-      <td class="py-2 px-3">${dayjs(start).format('MMMM YYYY')}</td>
-      <td class="py-2 px-3">${totalConn}</td>
-      <td class="py-2 px-3">${totalHours.toFixed(2)}</td>
-    </tr>`;
+      <td class="py-2 px-3">${dayjs(r.day).format('YYYY-MM-DD')}</td>
+      <td class="py-2 px-3">${r.conexiones}</td>
+      <td class="py-2 px-3">${r.horas.toFixed(2)}</td>
+    </tr>
+  `).join('') || `
+    <tr class="border-t border-white/10">
+      <td class="py-2 px-3" colspan="3">Sin conexiones este mes.</td>
+    </tr>
+  `;
 }
 
 /* ===== IVA y horas en captura ===== */
