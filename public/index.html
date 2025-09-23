@@ -242,7 +242,17 @@
 
       <div class="md:col-span-2">
         <label class="text-xs text-slate-400">Dirección (Maps)</label>
-        <input id="dirInput" name="direccion" class="formc px-3 py-2 rounded w-full mt-1" placeholder="Escribe y selecciona la dirección" />
+
+        <!-- Web Component recomendado por Google -->
+        <gmpx-place-autocomplete
+          id="dirInput"
+          class="formc px-3 py-2 rounded w-full mt-1"
+          placeholder="Escribe y selecciona la dirección">
+        </gmpx-place-autocomplete>
+
+        <!-- Para que “direccion” viaje en el submit -->
+        <input type="hidden" name="direccion" id="direccionHidden" />
+
         <div class="text-xs text-slate-500 mt-1">Al seleccionar, se llenan Lat/Lng y Ciudad automáticamente.</div>
       </div>
 
@@ -258,7 +268,8 @@
 
       <div class="md:col-span-2">
         <label class="text-xs text-slate-400">Ciudad (auto)</label>
-        <input class="formc px-3 py-2 rounded w-full mt-1 opacity-60 cursor-not-allowed" name="ciudad" placeholder="Ciudad" disabled />
+        <input class="formc px-3 py-2 rounded w-full mt-1 opacity-60" name="ciudad" placeholder="Ciudad" readonly />
+        <input type="hidden" name="ciudad_hidden" />
       </div>
     </div>
 
@@ -705,10 +716,7 @@ function renderKpis(){
   $('#kpiInstCosto').textContent  = fmtMoney(sumCostoInst);
   (document.getElementById('kpiEqSub')||{}).textContent = fmtMoney(eqSub);
   (document.getElementById('kpiEqTot')||{}).textContent = fmtMoney(eqTot);
-  const eqRel = sumCostoInst > 0 ? (eqSub / sumCostoInst) : 0;
-  document.getElementById('kpiEqRel').textContent = eqRel.toFixed(2) + '×';
   const eqPct = eqSub > 0 ? (sumCostoInst / eqSub) * 100 : 0;
-  (document.getElementById('kpiEqPct')||{}).textContent = `${eqPct.toFixed(1)}%`;
   const elPct = document.getElementById('kpiEqPct');
   if (elPct) elPct.textContent = `${eqPct.toFixed(1)}%`;
 }
@@ -1077,6 +1085,8 @@ function recalcIVA(){
 document.getElementById('btnGuardar').onclick = async ()=>{
   const f = document.getElementById('frm');
   const data = Object.fromEntries(new FormData(f).entries());
+  data.ciudad = data.ciudad || data.ciudad_hidden || '';
+  delete data.ciudad_hidden;
   // calcular horas totales si no hay bloques
   try{
     const bloques = JSON.parse(data.bloques_horas||'[]');
@@ -1122,6 +1132,9 @@ function startEdit(id){
   btn.textContent = '💾 Actualizar';
   btn.onclick = async ()=>{
     const data = Object.fromEntries(new FormData(f).entries());
+    data.ciudad = data.ciudad || data.ciudad_hidden || '';
+    delete data.ciudad_hidden;
+
     try{
       const bloques = JSON.parse(data.bloques_horas||'[]');
       if (Array.isArray(bloques) && bloques.length){
@@ -1343,33 +1356,52 @@ boot();
 
   // Autocomplete (versión estable con Places clásico)
   function initAutocomplete(){
-    const f = document.getElementById('frm');
-    const input = document.getElementById('dirInput');
-    if (!input) return;
+  const f = document.getElementById('frm');
+  const el = document.getElementById('dirInput');
+  const hidden = document.getElementById('direccionHidden');
+  if (!el || !f) return;
 
-    const ac = new google.maps.places.Autocomplete(input, {
-      fields: ['geometry','address_components','formatted_address'],
-      types: ['geocode']
-    });
+  const geocoder = new google.maps.Geocoder();
 
-    ac.addListener('place_changed', ()=>{
-      const place = ac.getPlace();
-      if (!place || !place.geometry) return;
+  el.addEventListener('gmpx-placechange', async () => {
+    // El web component guarda el texto seleccionado en el .value
+    const address = (el.value || '').trim();
+    if (!address) return;
 
-      const lat = place.geometry.location.lat();
-      const lng = place.geometry.location.lng();
-      const comps = place.address_components || [];
+    // Guarda la dirección en el hidden para que FormData la incluya
+    if (hidden) hidden.value = address;
 
-      // Ciudad (locality o nivel administrativo 2)
-      const cityComp = comps.find(c => c.types.includes('locality')) ||
-                       comps.find(c => c.types.includes('administrative_area_level_2'));
+    try {
+      const { results } = await geocoder.geocode({ address });
+      if (!results || !results.length) return;
 
-      // Llenamos form
-      f.querySelector('[name=lat]').value = lat;
-      f.querySelector('[name=lng]').value = lng;
-      if (cityComp) f.querySelector('[name=ciudad]').value = cityComp.long_name || '';
-    });
-  }
+      const r = results[0];
+      const loc = r.geometry?.location;
+      const comps = r.address_components || [];
+
+      // Lat/Lng
+      if (loc) {
+        const lat = loc.lat();
+        const lng = loc.lng();
+        f.querySelector('[name=lat]')?.setAttribute('value', lat);
+        f.querySelector('[name=lng]')?.setAttribute('value', lng);
+      }
+
+      // Ciudad (locality o admin_level_2)
+      const cityComp =
+        comps.find(c => c.types.includes('locality')) ||
+        comps.find(c => c.types.includes('administrative_area_level_2'));
+      const city = cityComp ? cityComp.long_name : '';
+
+      const cityInput = f.querySelector('[name=ciudad]');
+      const cityHidden = f.querySelector('[name=ciudad_hidden]'); // por si seguiste el tip del hidden
+      if (cityInput) cityInput.value = city;
+      if (cityHidden) cityHidden.value = city;
+    } catch (e) {
+      console.warn('Geocoder error:', e);
+    }
+  });
+}
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1uE6o9Yw9AXq7vxmQiJKPSX08RZvh9N4&libraries=places&loading=async&callback=initMap" async defer></script>
 </body>
