@@ -118,9 +118,9 @@
       <div class="text-slate-400 text-xs mt-1">85/h + viáticos</div>
     </div>
     <div class="card p-4">
-      <div class="text-slate-400 text-xs">Relación: Valor equipos / Costo instalación</div>
-      <div id="kpiEqRel" class="text-3xl font-semibold mt-1">0×</div>
-      <div class="text-slate-400 text-xs mt-1">Muestra cuántas veces el valor supera el costo</div>
+      <div class="text-slate-400 text-xs">Costo de instalación vs valor de equipos</div>
+      <div id="kpiEqPct" class="text-3xl font-semibold mt-1">0%</div>
+      <div class="text-slate-400 text-xs mt-1">(% del costo sobre el subtotal de equipos)</div>
     </div>
   </section>
 
@@ -707,6 +707,8 @@ function renderKpis(){
   (document.getElementById('kpiEqTot')||{}).textContent = fmtMoney(eqTot);
   const eqRel = sumCostoInst > 0 ? (eqSub / sumCostoInst) : 0;
   document.getElementById('kpiEqRel').textContent = eqRel.toFixed(2) + '×';
+  const eqPct = eqSub > 0 ? (sumCostoInst / eqSub) * 100 : 0;
+  (document.getElementById('kpiEqPct')||{}).textContent = `${eqPct.toFixed(1)}%`;
 }
 
 /* ===== Tabla ===== */
