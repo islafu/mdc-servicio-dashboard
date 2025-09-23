@@ -217,7 +217,9 @@
 
       <div>
         <label class="text-xs text-slate-400">Asesor</label>
-        <input class="formc px-3 py-2 rounded w-full" name="asesor" placeholder="Asesor" />
+        <select id="asesorSel" class="formc px-3 py-2 rounded w-full" name="asesor">
+          <!-- se llena por JS -->
+        </select>
       </div>
 
       <div>
@@ -388,8 +390,6 @@
   <section class="card p-4 mb-6">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
       <select id="fAsesor" class="px-3 py-2 rounded-lg formc">
-        <option value="">Todos los asesores</option>
-        <option>Israel</option><option>Selene</option><option>Diego</option><option>Yared</option><option>Gabriel</option>
       </select>
       <select id="fActividad" class="px-3 py-2 rounded-lg formc">
         <option value="">Todas las actividades</option>
@@ -528,6 +528,28 @@ const EDIT_TOKEN = '42673';
 const TARIFA_GARANTIA = 1000;  // $/h
 const TARIFA_INTERNA_INST = 85; // $/h
 const IVA = 0.16;
+
+/* Lista única de asesores para form + filtros */
+const ASESORES = ['Israel', 'Selene', 'Diego', 'Yared', 'Gabriel'];
+
+function fillAsesores() {
+  // Filtro
+  const fSel = document.getElementById('fAsesor');
+  if (fSel && !fSel._filled) {
+    fSel.innerHTML = ['<option value="">Todos los asesores</option>']
+      .concat(ASESORES.map(a => `<option value="${a}">${a}</option>`))
+      .join('');
+    fSel._filled = true;
+  }
+  // Formulario (captura/edición)
+  const formSel = document.getElementById('asesorSel');
+  if (formSel && !formSel._filled) {
+    formSel.innerHTML = ['<option value="">Selecciona…</option>']
+      .concat(ASESORES.map(a => `<option value="${a}">${a}</option>`))
+      .join('');
+    formSel._filled = true;
+  }
+}
 
 /* ===== Estado ===== */
 let ROWS = [];
@@ -1346,6 +1368,9 @@ async function boot(){
     sel.innerHTML = items.join(''); sel._filled=true;
     if (!sel.value) sel.value = dayjs().format('YYYY-MM');
   }
+
+  fillAsesores();  // <<< NUEVO
+
   try{ ROWS = await apiGet(); }catch(e){ console.error(e); alert('Error obteniendo datos'); return; }
   deriveComputedFields(ROWS);
   applyFilters();
