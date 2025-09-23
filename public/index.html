@@ -927,7 +927,8 @@ function renderCharts(){
 }
 
 /* ===== TeamViewer (totales del mes) ===== */
-// Devuelve un array [{ day:'2025-09-01', conexiones: 3, horas: 1.75 }, ...] solo de los días con actividad
+// Lee connectionreport.csv y devuelve por día del mes actual:
+// [{ day:'YYYY-MM-DD', conexiones: N, horas: 1.75 }, ...]
 async function readTVDailyRows(){
   try{
     const txt = await fetch('/connectionreport.csv', { cache:'no-store' }).then(r=>r.ok?r.text():'');
@@ -945,7 +946,7 @@ async function readTVDailyRows(){
     const from = start.startOf('day').valueOf();
     const to   = end.endOf('day').valueOf();
 
-    const byDay = {}; // key YYYY-MM-DD -> { conexiones, minutos }
+    const byDay = {}; // YYYY-MM-DD -> { conexiones, minutos }
     for (const l of lines.slice(1)){
       const cols = l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim());
 
@@ -954,8 +955,8 @@ async function readTVDailyRows(){
       const fISO = toISODate(fechaRaw) || dayjs(fechaRaw,['YYYY-MM-DD','DD/MM/YYYY','MM/DD/YYYY','YYYY/MM/DD']).format('YYYY-MM-DD');
       const d = dayjs(fISO, 'YYYY-MM-DD', true);
       if (!d.isValid()) continue;
-      const tv = d.valueOf();
-      if (tv < from || tv > to) continue;
+      const ts = d.valueOf();
+      if (ts < from || ts > to) continue;
 
       // minutos (acepta "hh:mm(:ss)" o número)
       const v = cols[idxDur] || '0';
@@ -964,7 +965,8 @@ async function readTVDailyRows(){
         const p = v.split(':').map(Number);
         minutes = (p[0]*60) + (p[1]||0) + Math.round((p[2]||0)/60);
       } else {
-        const nm = Number(String(v).replace(',','.')); minutes = Number.isFinite(nm) ? nm : 0;
+        const nm = Number(String(v).replace(',','.'));
+        minutes = Number.isFinite(nm) ? nm : 0;
       }
 
       const key = d.format('YYYY-MM-DD');
@@ -973,7 +975,6 @@ async function readTVDailyRows(){
       byDay[key].minutos += minutes;
     }
 
-    // a arreglo ordenado por día asc
     return Object.keys(byDay)
       .sort()
       .map(k => ({ day:k, conexiones: byDay[k].conexiones, horas: +(byDay[k].minutos/60).toFixed(2) }));
@@ -983,18 +984,49 @@ async function readTVDailyRows(){
 }
 async function renderTeamViewerChart(){
   const c = document.getElementById('chartTV'); if (!c) return;
-  const { totalConn, totalHours } = await readTVRows();
+
+  // datos por día
+  const rows = await readTVDailyRows();
+  const { start, end } = getMonthRange();
+
+  // generamos todos los días del mes para mostrar 0 cuando no hay actividad
+  const days = [];
+  let cur = start.startOf('day');
+  const last = end.startOf('day');
+  while (cur.isBefore(last) || cur.isSame(last)) {
+    days.push(cur.format('YYYY-MM-DD'));
+    cur = cur.add(1,'day');
+  }
+
+  const byKey = Object.fromEntries(rows.map(r=>[r.day, r]));
+  const labels = days.map(d => dayjs(d).format('DD')); // 01..31
+  const conexiones = days.map(d => (byKey[d]?.conexiones)||0);
+  const horas = days.map(d => +(byKey[d]?.horas||0));
+
   if (c._chart) c._chart.destroy();
   c._chart = new Chart(c, {
-    type: 'bar',
     data: {
-      labels: [dayjs(getMonthRange().start).format('MMMM YYYY')],
+      labels,
       datasets: [
-        { type:'bar',  label:'Conexiones', data:[totalConn] },
-        { type:'line', label:'Horas',       data:[Number(totalHours.toFixed(2))] }
+        { type:'bar',  label:'Conexiones', data: conexiones },
+        { type:'line', label:'Horas',       data: horas, yAxisID:'y1' }
       ]
     },
-    options:{ responsive:true, maintainAspectRatio:false }
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      scales:{
+        y:  { beginAtZero:true, title:{display:true, text:'Conexiones'} },
+        y1: { beginAtZero:true, position:'right', title:{display:true, text:'Horas'} }
+      },
+      plugins:{
+        tooltip:{ callbacks:{
+          title:(ctx)=>`Día ${ctx[0].label}`,
+          label:(ctx)=> `${ctx.dataset.label}: ${ctx.raw}`
+        }},
+        legend:{ display:true }
+      }
+    }
   });
 }
 async function renderTeamViewerTable(){
