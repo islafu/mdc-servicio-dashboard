@@ -447,22 +447,38 @@ function horasFromBloques(bloques){
   const mins=bloques.reduce((acc,b)=>acc+Math.max(0,minutosEntre(b.inicio,b.fin)-(Number(b.breakMin)||0)),0);
   return Math.round((mins/60)*100)/100;
 }
+
 function horasLegacyAware(r){
-  const legacy = Number(r.horas_totales);
-  if (legacy) return legacy;
+  // 1) Si hay bloques válidos -> PRIORIDAD MÁXIMA
   const bloques = parseBloques(r.bloques_horas);
-  if (Array.isArray(bloques) && bloques.length) return horasFromBloques(bloques);
+  if (Array.isArray(bloques) && bloques.length) {
+    return horasFromBloques(bloques);
+  }
+
+  // 2) Si hay fecha/hora inicio/fin -> PRIORIDAD ALTA
   const dI = toISODate(r.fecha_inicio) || toISODate(r.fecha_fin);
   const dF = toISODate(r.fecha_fin)    || toISODate(r.fecha_inicio);
-  const hI = extractHHmm(r.hora_inicio) || '00:00';
-  const hF = extractHHmm(r.hora_fin)    || hI;
-  if (dI){
-    const t1 = dayjs(`${dI}T${hI}`), t2 = dayjs(`${dF||dI}T${hF}`);
+  const hI = extractHHmm(r.hora_inicio);
+  const hF = extractHHmm(r.hora_fin);
+
+  if (dI && (hI || hF)) {
+    const startHH = hI || '00:00';
+    const endHH   = hF || startHH;
+    const t1 = dayjs(`${dI}T${startHH}`);
+    const t2 = dayjs(`${dF || dI}T${endHH}`);
     const mins = Math.max(0, t2.diff(t1, 'minute'));
     return Math.round((mins/60)*100)/100;
   }
+
+  // 3) ÚLTIMO RECURSO: usar horas_totales del Sheet si viniera precargado
+  const legacy = Number(r.horas_totales);
+  if (Number.isFinite(legacy) && legacy > 0) return legacy;
+
+  // 4) Nada usable
   return 0;
 }
+
+
 function totalCobrado(r){ return ['mo_monto','refacciones_monto','viaticos_monto','iva_monto'].reduce((a,k)=>a+(Number(r[k])||0),0); }
 function isGarantia(r){ return String(r.garantia||'').trim().toLowerCase().startsWith('s'); }
 function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().includes('instal'); }
