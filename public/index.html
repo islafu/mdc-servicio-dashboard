@@ -673,6 +673,30 @@ function horasLegacyAware(r){
 function totalCobrado(r){ return ['mo_monto','refacciones_monto','viaticos_monto','iva_monto'].reduce((a,k)=>a+(Number(r[k])||0),0); }
 function isGarantia(r){ return String(r.garantia||'').trim().toLowerCase().startsWith('s'); }
 function isInstalacion(r){ return (r.actividad||'').toString().toLowerCase().includes('instal'); }
+// --- Clasificadores finos de soporte ---
+function isSoporteGarantiaAct(r){
+  return (r.actividad || '').toString().trim().toLowerCase() === 'soporte de garantía';
+}
+function isSoporteFueraAct(r){
+  return (r.actividad || '').toString().trim().toLowerCase() === 'soporte fuera de garantía';
+}
+
+// Viáticos facturables solo en Soporte FUERA de garantía
+function viaEsCobrado(r){
+  return isSoporteFueraAct(r);
+}
+
+// Desglose de "ingresos" por fila, respetando la regla de viáticos
+function cobradoRow(r){
+  const mo  = Number(r.mo_monto) || 0;
+  const ref = Number(r.refacciones_monto) || 0;
+  const via = viaEsCobrado(r) ? (Number(r.viaticos_monto) || 0) : 0;
+  const base = mo + ref + via;
+  const ivaCalc = Math.round(base * IVA); // IVA del ingreso facturable
+  return { mo, ref, via, iva: ivaCalc, total: mo + ref + via + ivaCalc };
+}
+
+
 function getMonthRange(){
   const sel = ($('#fMes')?.value || dayjs().format('YYYY-MM'));
   const start = dayjs(sel + '-01').startOf('month');
@@ -703,7 +727,13 @@ function deriveComputedFields(rows){
   rows.forEach(r=>{
     r.horas_totales = horasLegacyAware(r);
     r.potencial_garantia = isGarantia(r) ? Math.round(r.horas_totales * TARIFA_GARANTIA) : 0;
-    r.total_cobrado = totalCobrado(r);
+
+    // total_cobrado ahora respeta la regla de viáticos facturables
+    const inc = cobradoRow(r);
+    r.total_cobrado = inc.total;
+
+    // (opcional) guarda el desglose por si luego lo quieres en tabla/gráficas
+    r._ingresos_det = inc; // {mo,ref,via,iva,total}
   });
   return rows;
 }
@@ -755,25 +785,28 @@ function renderKpis(){
   document.getElementById('kpiC_inst').textContent    = FILTERED.filter(isInst).length;
   document.getElementById('kpiC_eventos').textContent = FILTERED.filter(isEvento).length;
 
-  // Potencial no cobrado (solo registros marcados como garantía)
+  // Potencial de garantía (sin cambios)
   const sumPotGar = FILTERED.reduce((acc, r) => {
     const hrs = Number(r.horas_totales) || 0;
     return acc + (isGarantia(r) ? Math.round(hrs * TARIFA_GARANTIA) : 0);
   }, 0);
   document.getElementById('kpiPotGarantia').textContent = fmtMoney(sumPotGar);
 
-  // Totales de cobro (MO, Ref, Via, IVA) y Total cobrado
-  const sumMo  = FILTERED.reduce((a, r) => a + (Number(r.mo_monto) || 0), 0);
-  const sumRef = FILTERED.reduce((a, r) => a + (Number(r.refacciones_monto) || 0), 0);
-  const sumVia = FILTERED.reduce((a, r) => a + (Number(r.viaticos_monto) || 0), 0);
-  const sumIva = FILTERED.reduce((a, r) => a + (Number(r.iva_monto) || 0), 0);
-  const sumCob = sumMo + sumRef + sumVia + sumIva;
-
-  document.getElementById('kpiMo').textContent  = fmtMoney(sumMo);
-  document.getElementById('kpiRef').textContent = fmtMoney(sumRef);
-  document.getElementById('kpiVia').textContent = fmtMoney(sumVia);
-  document.getElementById('kpiIva').textContent = fmtMoney(sumIva);
-  document.getElementById('kpiCobradoTotal').textContent = fmtMoney(sumCob);
+  // Totales de INGRESOS (aplicando la regla de viáticos)
+  let tMo=0, tRef=0, tViaCob=0, tIva=0, tTot=0;
+  for (const r of FILTERED){
+    const inc = (r._ingresos_det) ? r._ingresos_det : cobradoRow(r);
+    tMo  += inc.mo;
+    tRef += inc.ref;
+    tViaCob += inc.via;  // solo viáticos facturables (fuera de garantía)
+    tIva += inc.iva;
+    tTot += inc.total;
+  }
+  document.getElementById('kpiMo').textContent  = fmtMoney(tMo);
+  document.getElementById('kpiRef').textContent = fmtMoney(tRef);
+  document.getElementById('kpiVia').textContent = fmtMoney(tViaCob);
+  document.getElementById('kpiIva').textContent = fmtMoney(tIva);
+  document.getElementById('kpiCobradoTotal').textContent = fmtMoney(tTot);
 
   // KPI de instalaciones
   const rowsInst = FILTERED.filter(isInst);
@@ -786,10 +819,10 @@ function renderKpis(){
   if (kpiEqSubEl) kpiEqSubEl.textContent = fmtMoney(eqSub);
   if (kpiEqTotEl) kpiEqTotEl.textContent = fmtMoney(eqTot);
 
-  // Costo empresa de instalación = (horas * 85) + viáticos (por registro de instalación)
+  // Costo empresa de instalación = (horas * 85) + viáticos (como GASTO)
   const sumCostoInst = rowsInst.reduce((a, r) => {
     const hrs = Number(r.horas_totales) || 0;
-    const via = Number(r.viaticos_monto) || 0;
+    const via = Number(r.viaticos_monto) || 0; // siempre como gasto en instalación
     return a + (hrs * TARIFA_INTERNA_INST) + via;
   }, 0);
   document.getElementById('kpiInstCosto').textContent = fmtMoney(sumCostoInst);
@@ -799,6 +832,7 @@ function renderKpis(){
   const elPct = document.getElementById('kpiEqPct');
   if (elPct) elPct.textContent = `${eqPct.toFixed(1)}%`;
 }
+
 
 /* ===== Tabla ===== */
 function fmtFechaHora(fecha, hora) {
