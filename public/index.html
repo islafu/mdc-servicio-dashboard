@@ -93,6 +93,17 @@
     border: 1px solid #334155;
   }
 
+  .badge{display:inline-flex;align-items:center;gap:.25rem;font-size:.75rem;padding:.15rem .5rem;border-radius:.4rem;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)}
+  .badge-green{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35)}
+  .badge-red{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35)}
+  .badge-sky{background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.35)}
+  .badge-amber{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35)}
+  .row{display:flex;justify-content:space-between;gap:.75rem;padding:.35rem .5rem;border-bottom:1px dashed rgba(255,255,255,.06)}
+  .row:last-child{border-bottom:0}
+  .row .k{color:#94a3b8}
+  .row .v{font-weight:500}
+
+
   </style>
 </head>
 <body class="h-full">
@@ -452,18 +463,48 @@
 
 <!-- Modal calendario (detalle) -->
 <div id="modalBg" class="modal-bg">
-  <div class="modal">
-    <div class="flex items-start justify-between">
-      <h3 id="mTitulo" class="text-lg font-semibold">Detalle del evento</h3>
+  <div class="modal max-w-4xl">
+    <div class="flex items-start justify-between gap-3 border-b border-white/10 pb-2">
+      <div class="min-w-0">
+        <h3 id="mTitulo" class="text-xl font-semibold truncate">Detalle del evento</h3>
+        <div id="mTags" class="mt-1 flex flex-wrap gap-2"></div>
+      </div>
       <button id="mClose" class="btn">✖</button>
     </div>
-    <div id="mBody" class="mt-2 text-slate-300 text-sm whitespace-pre-wrap"></div>
-    <div class="mt-4 flex gap-2 justify-end">
+
+    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Columna 1 -->
+      <div class="space-y-2">
+        <div class="text-slate-400 text-xs uppercase tracking-wide">Información</div>
+        <div id="mInfo" class="space-y-1"></div>
+
+        <div class="text-slate-400 text-xs uppercase tracking-wide mt-3">Bloques de horas</div>
+        <div id="mBloques" class="rounded-lg border border-white/10 bg-slate-900/40 p-2 text-sm"></div>
+
+        <div class="text-slate-400 text-xs uppercase tracking-wide mt-3">Notas</div>
+        <div id="mNotas" class="rounded-lg border border-white/10 bg-slate-900/40 p-3 text-sm whitespace-pre-wrap"></div>
+      </div>
+
+      <!-- Columna 2 -->
+      <div class="space-y-3">
+        <div class="text-slate-400 text-xs uppercase tracking-wide">Fechas</div>
+        <div id="mFechas" class="rounded-lg border border-white/10 bg-slate-900/40 p-2 text-sm"></div>
+
+        <div class="text-slate-400 text-xs uppercase tracking-wide">Dinero</div>
+        <div id="mDinero" class="rounded-lg border border-white/10 bg-slate-900/40 p-2 text-sm"></div>
+
+        <div class="text-slate-400 text-xs uppercase tracking-wide">Equipos</div>
+        <div id="mEquipos" class="rounded-lg border border-white/10 bg-slate-900/40 p-2 text-sm"></div>
+      </div>
+    </div>
+
+    <div class="mt-4 flex flex-wrap gap-2 justify-end">
       <button id="mEdit" class="btn btn-primary">✏️ Editar</button>
       <button id="mDel" class="btn">🗑️ Eliminar</button>
     </div>
   </div>
 </div>
+
 
 <!-- Modal Fecha/Hora -->
 <div id="dlgFHbg" class="modal-bg">
@@ -914,15 +955,100 @@ window.renderMapMarkers = function(){
 
 /* ===== Calendario + modal ===== */
 function openModal(evt, row){
-  $('#mTitulo').textContent = evt.title || 'Detalle';
-  $('#mBody').textContent = [
-    `Inicio: ${evt.start?.toISOString?.()||evt.startStr||''}`,
-    `Fin: ${evt.end?.toISOString?.()||evt.endStr||''}`,
-    `Asesor: ${row?.asesor||''}`,
-    `Actividad: ${row?.actividad||''}`,
-    `Ciudad: ${row?.ciudad||''}`,
-    `Notas: ${row?.notas||''}`
-  ].join('\n');
+  // Título
+  const act = row?.actividad || 'Actividad';
+  const asesor = row?.asesor || '—';
+  $('#mTitulo').textContent = `${act} — ${asesor}`;
+
+  // Etiquetas
+  const tags = [];
+  if (isInstalacion(row)) tags.push('<span class="badge badge-sky">Instalación</span>');
+  if (isGarantia(row))    tags.push('<span class="badge badge-amber">Garantía</span>');
+  const mod = (row?.modalidad||'').toLowerCase();
+  if (mod) tags.push(`<span class="badge">${mod[0].toUpperCase()+mod.slice(1)}</span>`);
+  $('#mTags').innerHTML = tags.join('');
+
+  // Fechas & horas (usa evento o campos crudos como fallback)
+  const fI = normalizeDate(row?.fecha_inicio) || normalizeDate(row?.fecha_fin);
+  const hI = normalizeTime(row?.hora_inicio);
+  const fF = normalizeDate(row?.fecha_fin) || normalizeDate(row?.fecha_inicio);
+  const hF = normalizeTime(row?.hora_fin);
+
+  const startStr = evt.start ? dayjs(evt.start).format('YYYY-MM-DD HH:mm') :
+                    (fI ? `${fI}${hI? ' '+hI: ''}` : '—');
+  const endStr   = evt.end ? dayjs(evt.end).format('YYYY-MM-DD HH:mm') :
+                    (fF ? `${fF}${hF? ' '+hF: ''}` : '—');
+
+  // Bloques de horas
+  let bloques = [];
+  try{ bloques = JSON.parse(row?.bloques_horas || '[]'); }catch{}
+  const blHtml = (bloques.length
+    ? bloques.map(b=>`<div class="row"><div class="k">${b.fecha||''}</div><div class="v">${b.inicio||''} → ${b.fin||''}  · break ${b.breakMin||0}′</div></div>`).join('')
+    : '<div class="text-slate-500">Sin bloques capturados.</div>'
+  );
+  $('#mBloques').innerHTML = blHtml;
+
+  // Notas
+  $('#mNotas').textContent = row?.notas || '—';
+
+  // Información general
+  const infoRows = [
+    ['Cliente', row?.cliente || '—'],
+    ['Teléfono', row?.telefono || '—'],
+    ['Ciudad', row?.ciudad || '—'],
+    ['Dirección', row?.direccion || '—'],
+    ['Modalidad', row?.modalidad || '—'],
+    ['Garantía', isGarantia(row) ? 'Sí' : 'No'],
+    ['Horas totales', (Number(row?.horas_totales)||0).toFixed(2)]
+  ];
+  $('#mInfo').innerHTML = infoRows.map(([k,v])=>`<div class="row"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+
+  // Fechas
+  $('#mFechas').innerHTML = [
+    ['Inicio', startStr],
+    ['Fin', endStr],
+  ].map(([k,v])=>`<div class="row"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+
+  // Reglas de viáticos para KPIs
+  const esInst = isInstalacion(row);
+  const esGarant = isGarantia(row);
+  const viat = Number(row?.viaticos_monto)||0;
+  const viaticosIngresos = (!esInst && !esGarant) ? viat : 0;  // solo fuera de garantía
+  const viaticosGasto    = (esInst || esGarant) ? viat : 0;
+
+  // Costo empresa (instalación): 85/h + viáticos (como gasto)
+  const horas = Number(row?.horas_totales)||0;
+  const costoInst = esInst ? (horas*TARIFA_INTERNA_INST + viaticosGasto) : 0;
+
+  // Potencial no cobrado (garantía)
+  const potGar = esGarant ? Math.round(horas * TARIFA_GARANTIA) : 0;
+
+  // Dinero (desglose visible)
+  const mo  = Number(row?.mo_monto)||0;
+  const ref = Number(row?.refacciones_monto)||0;
+  const iva = Number(row?.iva_monto)||0;
+  const totalIngresos = mo + ref + viaticosIngresos + iva;
+
+  $('#mDinero').innerHTML = [
+    ['MO', fmtMoney(mo)],
+    ['Refacciones', fmtMoney(ref)],
+    ['Viáticos (ingresos)', fmtMoney(viaticosIngresos)],
+    ['Viáticos (gasto)', fmtMoney(viaticosGasto)],
+    ['IVA', fmtMoney(iva)],
+    ['Total ingresos', `<span class="font-semibold">${fmtMoney(totalIngresos)}</span>`],
+    ...(esInst ? [['Costo empresa (instalación)', `<span class="font-semibold">${fmtMoney(costoInst)}</span>`]] : []),
+    ...(esGarant ? [['Potencial no cobrado (garantía)', `<span class="font-semibold">${fmtMoney(potGar)}</span>`]] : []),
+  ].map(([k,v])=>`<div class="row"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+
+  // Equipos
+  const eqSub = Number(row?.equipos_valor_subtotal)||0;
+  const eqTot = Number(row?.equipos_valor_total)||0;
+  $('#mEquipos').innerHTML = [
+    ['Subtotal equipos', fmtMoney(eqSub)],
+    ['Total equipos', fmtMoney(eqTot)],
+  ].map(([k,v])=>`<div class="row"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+
+  // Mostrar modal
   CAL_EVENT_CLICKED = row;
   $('#modalBg').style.display = 'flex';
 }
